@@ -17,16 +17,25 @@ else
     yum update -y
 fi
 
-# Node.js 18.x 설치 (Amazon Linux 2023)
+# Node.js 18.x 설치
 if ! command -v node &> /dev/null; then
     echo "Node.js 설치 중..."
     # Amazon Linux 2023의 경우 dnf 사용
     if command -v dnf &> /dev/null; then
+        echo "Amazon Linux 2023에서 기본 nodejs 패키지 설치 중..."
         dnf install -y nodejs npm
     else
         # Amazon Linux 2의 경우 nodesource 리포지토리 사용
-        curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
-        yum install -y nodejs
+        echo "Amazon Linux 2에서 NodeSource 리포지토리 사용..."
+        # curl이 사용 가능한지 확인
+        if command -v curl &> /dev/null; then
+            curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
+            yum install -y nodejs
+        else
+            echo "⚠️  curl을 찾을 수 없어 wget 사용 시도..."
+            wget -qO- https://rpm.nodesource.com/setup_18.x | bash -
+            yum install -y nodejs
+        fi
     fi
 else
     echo "Node.js가 이미 설치되어 있습니다: $(node --version)"
@@ -80,9 +89,26 @@ fi
 # 필요한 시스템 패키지 설치
 echo "추가 시스템 패키지 설치 중..."
 if command -v dnf &> /dev/null; then
-    dnf install -y git curl wget unzip htop nginx
+    # curl이 이미 설치되어 있을 수 있으므로 개별적으로 설치 시도
+    dnf install -y git wget unzip htop nginx
+    
+    # curl 별도 설치 (충돌 방지)
+    if ! command -v curl &> /dev/null; then
+        echo "curl 설치 시도 중..."
+        dnf install -y --allowerasing curl || echo "⚠️  curl 설치 실패 (이미 curl-minimal이 있을 수 있음)"
+    else
+        echo "curl이 이미 설치되어 있습니다: $(curl --version | head -1)"
+    fi
 else
-    yum install -y git curl wget unzip htop nginx
+    yum install -y git wget unzip htop nginx
+    
+    # curl 별도 설치
+    if ! command -v curl &> /dev/null; then
+        echo "curl 설치 시도 중..."
+        yum install -y curl || echo "⚠️  curl 설치 실패"
+    else
+        echo "curl이 이미 설치되어 있습니다: $(curl --version | head -1)"
+    fi
 fi
 
 # 기존 애플리케이션 디렉토리 백업 및 정리
