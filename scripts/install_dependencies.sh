@@ -16,7 +16,7 @@ echo "파일 목록: $(ls -la)"
 # 1. 루트 레벨 의존성 설치 (concurrently)
 echo "1. 루트 의존성 설치 중..."
 if [ -f "package.json" ]; then
-    npm install --production
+    npm install
     echo "루트 의존성 설치 완료"
 else
     echo "⚠️  루트 package.json을 찾을 수 없습니다."
@@ -28,8 +28,8 @@ if [ -d "aws2-api" ]; then
     cd aws2-api
     echo "백엔드 디렉토리로 이동: $(pwd)"
     
-    # 백엔드 npm 의존성 설치
-    npm install --production
+    # 백엔드 npm 의존성 설치 (빌드를 위해 devDependencies도 포함)
+    npm install
     
     # NestJS 빌드
     echo "NestJS 애플리케이션 빌드 중..."
@@ -75,8 +75,8 @@ if [ -d "frontend_backup" ]; then
     cd frontend_backup
     echo "프론트엔드 디렉토리로 이동: $(pwd)"
     
-    # 프론트엔드 npm 의존성 설치
-    npm install --production
+    # 프론트엔드 npm 의존성 설치 (빌드를 위해 devDependencies도 포함)
+    npm install
     
     # React 앱 빌드 (프로덕션용)
     echo "React 애플리케이션 빌드 중..."

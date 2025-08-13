@@ -58,16 +58,49 @@ EOF
     echo "✅ ecosystem.config.js 파일 생성 완료"
 fi
 
-# 백엔드 빌드 파일 존재 확인
+# 백엔드 빌드 파일 존재 확인 및 빌드
 if [ ! -f "aws2-api/dist/main.js" ]; then
-    echo "❌ 백엔드 빌드 파일(aws2-api/dist/main.js)을 찾을 수 없습니다."
-    echo "현재 디렉토리 구조:"
-    ls -la aws2-api/
-    if [ -d "aws2-api/dist" ]; then
-        echo "dist 디렉토리 내용:"
-        ls -la aws2-api/dist/
+    echo "⚠️  백엔드 빌드 파일을 찾을 수 없습니다. 빌드를 시작합니다..."
+    
+    cd aws2-api
+    echo "백엔드 디렉토리로 이동: $(pwd)"
+    
+    # Node.js 의존성 확인 및 설치
+    if [ ! -d "node_modules" ] || [ ! "$(ls -A node_modules)" ]; then
+        echo "Node.js 의존성 설치 중..."
+        npm install
     fi
-    exit 1
+    
+    # NestJS 빌드 시도
+    echo "NestJS 애플리케이션 빌드 중..."
+    if npm run build; then
+        echo "✅ 백엔드 빌드 성공"
+        
+        # 빌드 결과 확인
+        if [ -f "dist/main.js" ]; then
+            echo "빌드 파일 확인 완료: dist/main.js"
+            ls -la dist/main.js
+        else
+            echo "❌ 빌드 후에도 main.js 파일을 찾을 수 없습니다."
+            echo "dist 디렉토리 내용:"
+            ls -la dist/ || echo "dist 디렉토리가 존재하지 않습니다."
+            cd ..
+            exit 1
+        fi
+    else
+        echo "❌ NestJS 빌드 실패"
+        echo "package.json scripts 확인:"
+        cat package.json | grep -A 10 '"scripts"' || echo "scripts 섹션을 찾을 수 없습니다."
+        echo "에러 로그:"
+        npm run build 2>&1 | tail -20
+        cd ..
+        exit 1
+    fi
+    
+    cd ..
+    echo "루트 디렉토리로 복귀: $(pwd)"
+else
+    echo "✅ 백엔드 빌드 파일이 존재합니다: aws2-api/dist/main.js"
 fi
 
 # PM2로 애플리케이션 시작
