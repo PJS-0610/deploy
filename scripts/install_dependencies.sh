@@ -101,7 +101,7 @@ fi
 
 # 4. PM2 ecosystem 파일 생성
 echo "4. PM2 설정 파일 생성 중..."
-cat > ecosystem.config.js << EOF
+cat > ecosystem.config.js << 'EOF'
 module.exports = {
   apps: [
     {
@@ -123,7 +123,14 @@ module.exports = {
 };
 EOF
 
-echo "PM2 ecosystem 설정 완료"
+# 파일 생성 확인
+if [ -f "ecosystem.config.js" ]; then
+    echo "✅ PM2 ecosystem 설정 완료"
+    echo "파일 크기: $(ls -lh ecosystem.config.js | awk '{print $5}')"
+else
+    echo "❌ ecosystem.config.js 파일 생성 실패"
+    exit 1
+fi
 
 # 5. Nginx 설정 파일 생성 (정적 파일 서빙용)
 echo "5. Nginx 설정 파일 생성 중..."

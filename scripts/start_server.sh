@@ -30,13 +30,49 @@ export PORT=3001
 
 # 3. PM2로 백엔드 시작
 echo "3. PM2로 백엔드 애플리케이션 시작 중..."
-if [ -f "ecosystem.config.js" ]; then
-    pm2 start ecosystem.config.js
-    echo "✅ 백엔드 PM2 프로세스 시작 완료"
-else
-    echo "❌ ecosystem.config.js를 찾을 수 없습니다."
+
+# ecosystem.config.js 파일이 없으면 생성
+if [ ! -f "ecosystem.config.js" ]; then
+    echo "ecosystem.config.js 파일을 생성 중..."
+    cat > ecosystem.config.js << 'EOF'
+module.exports = {
+  apps: [
+    {
+      name: 'aws2-api-backend',
+      script: 'aws2-api/dist/main.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3001
+      },
+      log_file: '/var/log/aws2-giot-full/backend.log',
+      out_file: '/var/log/aws2-giot-full/backend-out.log',
+      error_file: '/var/log/aws2-giot-full/backend-error.log'
+    }
+  ]
+};
+EOF
+    echo "✅ ecosystem.config.js 파일 생성 완료"
+fi
+
+# 백엔드 빌드 파일 존재 확인
+if [ ! -f "aws2-api/dist/main.js" ]; then
+    echo "❌ 백엔드 빌드 파일(aws2-api/dist/main.js)을 찾을 수 없습니다."
+    echo "현재 디렉토리 구조:"
+    ls -la aws2-api/
+    if [ -d "aws2-api/dist" ]; then
+        echo "dist 디렉토리 내용:"
+        ls -la aws2-api/dist/
+    fi
     exit 1
 fi
+
+# PM2로 애플리케이션 시작
+pm2 start ecosystem.config.js
+echo "✅ 백엔드 PM2 프로세스 시작 완료"
 
 # 4. PM2 프로세스 상태 확인
 echo "4. PM2 프로세스 상태 확인 중..."
