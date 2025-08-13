@@ -14,6 +14,11 @@ exec > >(tee -a /var/log/codedeploy-before-install.log) 2>&1
 
 echo "=== Before Install: Amazon Linux 2023 환경 준비 시작 ==="
 
+# 모든 스크립트 파일에 실행 권한 부여
+echo "스크립트 파일 실행 권한 설정 중..."
+find /opt/aws2-giot-app/scripts -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+ls -la /opt/aws2-giot-app/scripts/*.sh 2>/dev/null || echo "스크립트 파일 아직 없음"
+
 # 패키지 업데이트
 echo "패키지 목록 업데이트 중..."
 dnf update -y
