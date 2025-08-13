@@ -43,30 +43,68 @@ else
 fi
 
 # 3. 백엔드 빌드 파일 확인 및 빌드
-if [ ! -f "aws2-api/dist/main.js" ]; then
-    echo "⚠️ 백엔드 빌드 파일이 없습니다. 긴급 빌드를 시도합니다..."
+echo "3. 백엔드 빌드 확인 및 재빌드 중..."
+cd aws2-api
+
+# 기존 빌드 정리
+echo "기존 빌드 정리 중..."
+rm -rf dist node_modules/.cache 2>/dev/null || true
+
+# 의존성 재설치
+echo "의존성 재설치 중..."
+npm ci --production=false
+
+# NestJS 완전 재빌드
+echo "NestJS 완전 재빌드 중..."
+if npx nest build --webpack=false; then
+    echo "✅ NestJS 빌드 성공"
+elif npm run build 2>/dev/null; then
+    echo "✅ npm run build 성공"
+elif npx tsc --project tsconfig.json; then
+    echo "✅ TypeScript 직접 컴파일 성공"
+else
+    echo "❌ 모든 빌드 실패, Node.js 직접 실행 모드로 전환..."
     
-    cd aws2-api
+    # ts-node로 직접 실행하도록 ecosystem.config.js 수정
+    cat > ../ecosystem.config.js << 'EOF'
+module.exports = {
+  apps: [
+    {
+      name: 'aws2-giot-backend',
+      script: 'npx',
+      args: 'ts-node src/main.ts',
+      cwd: '/opt/aws2-giot-app/aws2-api',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '2G',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3001,
+        TS_NODE_TRANSPILE_ONLY: 'true'
+      },
+      log_file: '/var/log/aws2-giot-app/backend.log',
+      out_file: '/var/log/aws2-giot-app/backend-out.log',
+      error_file: '/var/log/aws2-giot-app/backend-error.log'
+    }
+  ]
+};
+EOF
     
-    # 필수 패키지 재설치
-    npm install @types/node typescript @nestjs/cli --save-dev --force
-    
-    # 여러 빌드 방법 시도
-    if npx nest build; then
-        echo "✅ NestJS 빌드 성공"
-    elif npx tsc; then
-        echo "✅ TypeScript 컴파일 성공"
-    elif npx tsc --skipLibCheck; then
-        echo "✅ 타입 체크 무시 컴파일 성공"
-    else
-        echo "❌ 모든 빌드 실패, 소스 파일 복사로 대체..."
-        mkdir -p dist
-        cp -r src/* dist/
-        find dist -name "*.ts" -exec bash -c 'mv "$1" "${1%.ts}.js"' _ {} \;
-    fi
-    
-    cd ..
+    # ts-node 설치
+    npm install ts-node --save-dev
+    echo "✅ ts-node 직접 실행 모드 설정 완료"
 fi
+
+# 빌드 결과 확인
+if [ -f "dist/main.js" ]; then
+    echo "✅ 빌드 파일 확인: dist/main.js 존재"
+    echo "빌드 파일 크기: $(ls -lh dist/main.js | awk '{print $5}')"
+else
+    echo "⚠️ 빌드 파일이 없습니다. ts-node 모드로 실행됩니다."
+fi
+
+cd ..
 
 # 4. PM2로 백엔드 시작
 echo "4. PM2로 백엔드 애플리케이션 시작 중..."
@@ -150,20 +188,44 @@ else
     echo "✅ Nginx 서비스 시작 완료"
 fi
 
-# 8. 서비스 시작 대기
+# 8. 서비스 시작 대기 (단축)
 echo "8. 서비스 시작 대기 중..."
-sleep 15
+sleep 5
 
-# 9. 서비스 상태 확인
+# 9. 서비스 상태 확인 (빠른 실패 처리)
 echo "9. 서비스 상태 확인 중..."
 
-# PM2 프로세스 확인
-if pm2 list | grep -q "online.*aws2-giot-backend"; then
-    echo "✅ 백엔드 PM2 프로세스가 정상 실행 중입니다."
-else
-    echo "❌ 백엔드 프로세스 시작 실패"
+# PM2 프로세스 확인 (더 빠른 실패 처리)
+BACKEND_RETRY_COUNT=0
+MAX_BACKEND_RETRIES=6
+BACKEND_STARTED=false
+
+while [ $BACKEND_RETRY_COUNT -lt $MAX_BACKEND_RETRIES ]; do
+    if pm2 list | grep -q "online.*aws2-giot-backend"; then
+        echo "✅ 백엔드 PM2 프로세스가 정상 실행 중입니다."
+        BACKEND_STARTED=true
+        break
+    else
+        echo "⏳ 백엔드 프로세스 시작 대기 중... (시도 $((BACKEND_RETRY_COUNT + 1))/$MAX_BACKEND_RETRIES)"
+        BACKEND_RETRY_COUNT=$((BACKEND_RETRY_COUNT + 1))
+        sleep 5
+    fi
+done
+
+if [ "$BACKEND_STARTED" = "false" ]; then
+    echo "❌ 백엔드 프로세스 시작 실패 - 30초 타임아웃"
     echo "PM2 로그 확인:"
-    pm2 logs aws2-giot-backend --lines 10 || true
+    pm2 logs aws2-giot-backend --lines 20 || true
+    echo "PM2 프로세스 상태:"
+    pm2 list || true
+    
+    echo "⚠️ 백엔드 시작 실패로 인해 스크립트를 조기 종료합니다."
+    echo "🔧 문제 해결을 위해 다음을 확인하세요:"
+    echo "  1. NestJS 의존성: npm install 상태"
+    echo "  2. TypeScript 컴파일: npx tsc --noEmit"
+    echo "  3. 환경 변수: .env 파일 설정"
+    echo "  4. 포트 충돌: lsof -i :3001"
+    exit 1
 fi
 
 # Nginx 상태 확인
