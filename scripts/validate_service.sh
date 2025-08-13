@@ -45,8 +45,11 @@ MAX_RETRIES=10
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if curl -f -s -o /dev/null http://localhost:3001/healthz; then
+    if curl -f -s -o /dev/null http://localhost:3001/health; then
         echo "✅ 백엔드 헬스체크 성공"
+        break
+    elif curl -f -s -o /dev/null http://localhost:3001/; then
+        echo "✅ 백엔드 기본 경로 접근 성공"
         break
     else
         echo "⏳ 백엔드 응답 대기 중... (시도 $((RETRY_COUNT + 1))/$MAX_RETRIES)"

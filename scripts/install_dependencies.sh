@@ -33,7 +33,14 @@ if [ -d "aws2-api" ]; then
     
     # NestJS 빌드
     echo "NestJS 애플리케이션 빌드 중..."
-    npm run build
+    if npm run build; then
+        echo "✅ NestJS 빌드 성공"
+    else
+        echo "❌ NestJS 빌드 실패"
+        echo "에러 로그 확인:"
+        npm run build 2>&1 | tail -20
+        exit 1
+    fi
     
     # Python 의존성 설치
     if [ -f "python-scripts/requirements.txt" ]; then
@@ -68,13 +75,15 @@ if [ -d "frontend_backup" ]; then
     
     # React 앱 빌드 (프로덕션용)
     echo "React 애플리케이션 빌드 중..."
-    npm run build
-    
-    # 빌드 결과 확인
-    if [ -d "build" ]; then
-        echo "✅ React 빌드 완료. 파일 수: $(find build -type f | wc -l)"
+    if npm run build; then
+        echo "✅ React 빌드 성공"
+        if [ -d "build" ]; then
+            echo "빌드 파일 수: $(find build -type f | wc -l)"
+        fi
     else
         echo "❌ React 빌드 실패"
+        echo "에러 로그 확인:"
+        npm run build 2>&1 | tail -20
         exit 1
     fi
     

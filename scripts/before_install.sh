@@ -14,8 +14,14 @@ yum update -y
 # Node.js 18.x 설치 (Amazon Linux 2023)
 if ! command -v node &> /dev/null; then
     echo "Node.js 설치 중..."
-    curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
-    yum install -y nodejs
+    # Amazon Linux 2023의 경우 dnf 사용
+    if command -v dnf &> /dev/null; then
+        dnf install -y nodejs npm
+    else
+        # Amazon Linux 2의 경우 nodesource 리포지토리 사용
+        curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
+        yum install -y nodejs
+    fi
 else
     echo "Node.js가 이미 설치되어 있습니다: $(node --version)"
 fi
