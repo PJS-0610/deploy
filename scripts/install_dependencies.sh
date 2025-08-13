@@ -31,6 +31,24 @@ if [ -d "aws2-api" ]; then
     # 백엔드 npm 의존성 설치 (빌드를 위해 devDependencies도 포함)
     npm install
     
+    # 빌드에 필요한 핵심 패키지들이 누락된 경우 개별 설치
+    echo "필수 TypeScript 빌드 패키지 확인 중..."
+    
+    if [ ! -d "node_modules/@types/node" ]; then
+        echo "@types/node 설치 중..."
+        npm install @types/node --save-dev
+    fi
+    
+    if [ ! -d "node_modules/typescript" ]; then
+        echo "TypeScript 설치 중..."
+        npm install typescript --save-dev
+    fi
+    
+    if [ ! -d "node_modules/@nestjs/cli" ]; then
+        echo "@nestjs/cli 설치 중..."
+        npm install @nestjs/cli --save-dev
+    fi
+    
     # NestJS 빌드
     echo "NestJS 애플리케이션 빌드 중..."
     if npm run build; then

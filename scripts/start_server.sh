@@ -78,10 +78,23 @@ if [ ! -f "aws2-api/dist/main.js" ]; then
     NODE_VERSION=$(node --version)
     echo "현재 Node.js 버전: $NODE_VERSION"
     
+    # 필수 TypeScript 타입 패키지 확인 및 설치
+    echo "TypeScript 타입 패키지 확인 중..."
+    if [ ! -d "node_modules/@types/node" ]; then
+        echo "@types/node가 설치되어 있지 않습니다. 설치 중..."
+        npm install @types/node --save-dev
+    fi
+    
     # @nestjs/cli가 로컬에 설치되어 있는지 확인
     if [ ! -f "node_modules/.bin/nest" ]; then
         echo "로컬에 @nestjs/cli가 설치되어 있지 않습니다. 로컬 설치 시도 중..."
         npm install @nestjs/cli --save-dev
+    fi
+    
+    # TypeScript 컴파일러 확인
+    if [ ! -f "node_modules/.bin/tsc" ]; then
+        echo "TypeScript 컴파일러가 설치되어 있지 않습니다. 설치 중..."
+        npm install typescript --save-dev
     fi
     
     # 여러 빌드 방법 시도
