@@ -47,21 +47,44 @@ else
     CURRENT_VERSION=$(node --version)
     echo "Node.js가 이미 설치되어 있습니다: $CURRENT_VERSION"
     
-    # Node.js 버전이 18 미만이면 업데이트 시도
-    if [[ "$CURRENT_VERSION" < "v20" ]]; then
-        echo "⚠️  Node.js 버전이 v20 미만입니다. 업데이트를 시도합니다..."
+    # Node.js 버전이 20 미만이면 강제 업데이트
+    MAJOR_VERSION=$(echo $CURRENT_VERSION | sed 's/v//' | cut -d. -f1)
+    if [ "$MAJOR_VERSION" -lt 20 ]; then
+        echo "⚠️  Node.js 버전이 v20 미만입니다 (현재: $CURRENT_VERSION). 강제 업데이트를 시도합니다..."
+        
+        # 기존 Node.js 제거
         if command -v dnf &> /dev/null; then
+            echo "기존 Node.js 패키지 제거 중..."
+            dnf remove -y nodejs npm || true
+            
+            echo "NodeSource 리포지토리 설정 중..."
             if command -v curl &> /dev/null; then
                 curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-                dnf install -y nodejs
+            else
+                wget -qO- https://rpm.nodesource.com/setup_20.x | bash -
             fi
+            
+            echo "Node.js 20.x 설치 중..."
+            dnf install -y nodejs
         else
+            echo "기존 Node.js 패키지 제거 중..."
+            yum remove -y nodejs npm || true
+            
+            echo "NodeSource 리포지토리 설정 중..."
             if command -v curl &> /dev/null; then
                 curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-                yum install -y nodejs
+            else
+                wget -qO- https://rpm.nodesource.com/setup_20.x | bash -
             fi
+            
+            echo "Node.js 20.x 설치 중..."
+            yum install -y nodejs
         fi
+        
         echo "업데이트 후 Node.js 버전: $(node --version)"
+        echo "npm 버전: $(npm --version)"
+    else
+        echo "✅ Node.js 버전이 v20 이상입니다: $CURRENT_VERSION"
     fi
 fi
 

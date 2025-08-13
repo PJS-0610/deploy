@@ -71,50 +71,76 @@ if [ ! -f "aws2-api/dist/main.js" ]; then
         npm install
     fi
     
-    # NestJS CLI 설치 확인 및 설치
-    if ! command -v nest &> /dev/null && ! npx nest --version &> /dev/null 2>&1; then
-        echo "@nestjs/cli가 설치되지 않았습니다. 전역 설치 중..."
-        npm install -g @nestjs/cli
-    fi
-    
-    # NestJS 빌드 시도
+    # NestJS 빌드 시도 - npx 사용으로 전역 설치 불필요
     echo "NestJS 애플리케이션 빌드 중..."
     
-    # nest 명령어가 있으면 직접 사용, 없으면 npx 사용
-    if command -v nest &> /dev/null; then
-        BUILD_CMD="nest build"
-    else
-        BUILD_CMD="npx nest build"
+    # Node.js 버전 확인
+    NODE_VERSION=$(node --version)
+    echo "현재 Node.js 버전: $NODE_VERSION"
+    
+    # @nestjs/cli가 로컬에 설치되어 있는지 확인
+    if [ ! -f "node_modules/.bin/nest" ]; then
+        echo "로컬에 @nestjs/cli가 설치되어 있지 않습니다. 로컬 설치 시도 중..."
+        npm install @nestjs/cli --save-dev
     fi
     
-    echo "빌드 명령어: $BUILD_CMD"
+    # 여러 빌드 방법 시도
+    echo "빌드 방법을 시도 중..."
+    
+    # 1. npx 사용 시도
+    echo "1. npx @nestjs/cli build 시도 중..."
+    BUILD_CMD="npx @nestjs/cli build"
     
     if $BUILD_CMD; then
-        echo "✅ 백엔드 빌드 성공"
+        echo "✅ npx 빌드 성공"
+    else
+        echo "❌ npx 빌드 실패. 다른 방법 시도 중..."
         
-        # 빌드 결과 확인
-        if [ -f "dist/main.js" ]; then
-            echo "빌드 파일 확인 완료: dist/main.js"
-            ls -la dist/main.js
+        # 2. 로컬 바이너리 직접 실행 시도
+        echo "2. 로컬 바이너리 직접 실행 시도 중..."
+        if [ -f "node_modules/.bin/nest" ]; then
+            BUILD_CMD="./node_modules/.bin/nest build"
+            echo "빌드 명령어: $BUILD_CMD"
+            if $BUILD_CMD; then
+                echo "✅ 로컬 바이너리 빌드 성공"
+            else
+                echo "❌ 로컬 바이너리 빌드도 실패"
+                
+                # 3. TypeScript 컴파일러 직접 사용
+                echo "3. TypeScript 컴파일러 직접 사용 시도 중..."
+                if npx tsc -p tsconfig.build.json; then
+                    echo "✅ TypeScript 컴파일 성공"
+                else
+                    echo "❌ 모든 빌드 방법 실패"
+                    echo "Node.js 버전: $(node --version)"
+                    echo "npm 버전: $(npm --version)"
+                    echo "package.json scripts 확인:"
+                    cat package.json | grep -A 10 '"scripts"' || echo "scripts 섹션을 찾을 수 없습니다."
+                    
+                    echo "로컬 패키지 확인:"
+                    ls -la node_modules/.bin/ | head -10
+                    
+                    echo "마지막 에러 로그:"
+                    npx tsc -p tsconfig.build.json 2>&1 | tail -20
+                    cd ..
+                    exit 1
+                fi
+            fi
         else
-            echo "❌ 빌드 후에도 main.js 파일을 찾을 수 없습니다."
-            echo "dist 디렉토리 내용:"
-            ls -la dist/ || echo "dist 디렉토리가 존재하지 않습니다."
+            echo "❌ 로컬 nest 바이너리를 찾을 수 없습니다."
             cd ..
             exit 1
         fi
+    fi
+    
+    # 빌드 결과 확인
+    if [ -f "dist/main.js" ]; then
+        echo "✅ 빌드 파일 확인 완료: dist/main.js"
+        ls -la dist/main.js
     else
-        echo "❌ NestJS 빌드 실패"
-        echo "Node.js 버전: $(node --version)"
-        echo "npm 버전: $(npm --version)"
-        echo "package.json scripts 확인:"
-        cat package.json | grep -A 10 '"scripts"' || echo "scripts 섹션을 찾을 수 없습니다."
-        
-        echo "로컬 NestJS 패키지 확인:"
-        ls -la node_modules/.bin/ | grep nest || echo "nest 바이너리를 찾을 수 없음"
-        
-        echo "에러 로그:"
-        $BUILD_CMD 2>&1 | tail -20
+        echo "❌ 빌드 후에도 main.js 파일을 찾을 수 없습니다."
+        echo "dist 디렉토리 내용:"
+        ls -la dist/ || echo "dist 디렉토리가 존재하지 않습니다."
         cd ..
         exit 1
     fi
