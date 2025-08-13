@@ -9,7 +9,13 @@ echo "=== Before Install: 시스템 환경 준비 시작 ==="
 
 # 패키지 업데이트
 echo "패키지 목록 업데이트 중..."
-yum update -y
+if command -v dnf &> /dev/null; then
+    echo "Amazon Linux 2023 감지 - dnf 사용"
+    dnf update -y
+else
+    echo "Amazon Linux 2 감지 - yum 사용" 
+    yum update -y
+fi
 
 # Node.js 18.x 설치 (Amazon Linux 2023)
 if ! command -v node &> /dev/null; then
@@ -55,13 +61,12 @@ if ! command -v pip3 &> /dev/null; then
     fi
 fi
 
-# pip 업그레이드
+# pip 버전 확인 (업그레이드 생략 - Amazon Linux rpm 패키지 충돌 방지)
 if command -v pip3 &> /dev/null; then
-    echo "pip 업그레이드 중..."
-    pip3 install --upgrade pip
+    echo "현재 pip3 버전: $(pip3 --version)"
+    echo "ℹ️  Amazon Linux rpm 패키지 버전 사용 (업그레이드 생략)"
 else
-    echo "python -m pip 사용하여 업그레이드 중..."
-    python3 -m pip install --upgrade pip
+    echo "현재 pip 버전: $(python3 -m pip --version 2>/dev/null || echo 'pip를 찾을 수 없음')"
 fi
 
 # PM2 전역 설치 (프로덕션 프로세스 관리용)
@@ -74,13 +79,11 @@ fi
 
 # 필요한 시스템 패키지 설치
 echo "추가 시스템 패키지 설치 중..."
-yum install -y \
-    git \
-    curl \
-    wget \
-    unzip \
-    htop \
-    nginx
+if command -v dnf &> /dev/null; then
+    dnf install -y git curl wget unzip htop nginx
+else
+    yum install -y git curl wget unzip htop nginx
+fi
 
 # 기존 애플리케이션 디렉토리 백업 및 정리
 if [ -d "/opt/aws2-giot-full" ]; then
