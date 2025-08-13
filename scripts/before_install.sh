@@ -30,13 +30,39 @@ fi
 echo "Python 환경 확인 중..."
 if ! command -v python3 &> /dev/null; then
     echo "Python3 설치 중..."
-    yum install -y python3 python3-pip
+    if command -v dnf &> /dev/null; then
+        dnf install -y python3 python3-pip
+    else
+        yum install -y python3 python3-pip
+    fi
 else
     echo "Python3가 이미 설치되어 있습니다: $(python3 --version)"
 fi
 
+# pip3 설치 확인 및 설치
+if ! command -v pip3 &> /dev/null; then
+    echo "pip3 설치 중..."
+    if command -v dnf &> /dev/null; then
+        dnf install -y python3-pip
+    else
+        yum install -y python3-pip
+    fi
+    
+    # 여전히 pip3가 없다면 ensurepip 사용
+    if ! command -v pip3 &> /dev/null; then
+        echo "ensurepip를 사용하여 pip 설치 중..."
+        python3 -m ensurepip --default-pip
+    fi
+fi
+
 # pip 업그레이드
-pip3 install --upgrade pip
+if command -v pip3 &> /dev/null; then
+    echo "pip 업그레이드 중..."
+    pip3 install --upgrade pip
+else
+    echo "python -m pip 사용하여 업그레이드 중..."
+    python3 -m pip install --upgrade pip
+fi
 
 # PM2 전역 설치 (프로덕션 프로세스 관리용)
 if ! command -v pm2 &> /dev/null; then

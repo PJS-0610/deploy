@@ -45,7 +45,12 @@ if [ -d "aws2-api" ]; then
     # Python 의존성 설치
     if [ -f "python-scripts/requirements.txt" ]; then
         echo "Python 의존성 설치 중..."
-        pip3 install -r python-scripts/requirements.txt
+        if command -v pip3 &> /dev/null; then
+            pip3 install -r python-scripts/requirements.txt
+        else
+            echo "pip3를 찾을 수 없어 python -m pip 사용..."
+            python3 -m pip install -r python-scripts/requirements.txt
+        fi
         echo "Python 의존성 설치 완료"
     else
         echo "⚠️  requirements.txt를 찾을 수 없습니다."
