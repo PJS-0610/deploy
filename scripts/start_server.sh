@@ -78,23 +78,57 @@ if [ ! -f "aws2-api/dist/main.js" ]; then
     NODE_VERSION=$(node --version)
     echo "현재 Node.js 버전: $NODE_VERSION"
     
-    # 필수 TypeScript 타입 패키지 확인 및 설치
-    echo "TypeScript 타입 패키지 확인 중..."
-    if [ ! -d "node_modules/@types/node" ]; then
-        echo "@types/node가 설치되어 있지 않습니다. 설치 중..."
-        npm install @types/node --save-dev
-    fi
+    # 필수 TypeScript 타입 패키지 확인 및 강제 재설치
+    echo "TypeScript 타입 패키지 강제 재설치 중..."
+    npm install @types/node@latest --save-dev --force
+    npm install typescript@latest --save-dev --force
+    npm install @nestjs/cli@latest --save-dev --force
     
-    # @nestjs/cli가 로컬에 설치되어 있는지 확인
-    if [ ! -f "node_modules/.bin/nest" ]; then
-        echo "로컬에 @nestjs/cli가 설치되어 있지 않습니다. 로컬 설치 시도 중..."
-        npm install @nestjs/cli --save-dev
-    fi
-    
-    # TypeScript 컴파일러 확인
-    if [ ! -f "node_modules/.bin/tsc" ]; then
-        echo "TypeScript 컴파일러가 설치되어 있지 않습니다. 설치 중..."
-        npm install typescript --save-dev
+    # TypeScript 설정 파일 확인 및 수정
+    echo "TypeScript 설정 파일 확인 중..."
+    if [ -f "tsconfig.json" ]; then
+        echo "기존 tsconfig.json 내용:"
+        cat tsconfig.json | head -20
+        
+        # tsconfig.json에 Node.js 타입 강제 추가
+        echo "tsconfig.json에 Node.js 타입 설정 추가 중..."
+        
+        # 백업 생성
+        cp tsconfig.json tsconfig.json.backup
+        
+        # 새로운 tsconfig.json 생성 (Node.js 타입 포함)
+        cat > tsconfig.json << 'EOF'
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2020",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+EOF
+        echo "✅ tsconfig.json 업데이트 완료"
+    else
+        echo "❌ tsconfig.json을 찾을 수 없습니다."
+        exit 1
     fi
     
     # 여러 빌드 방법 시도
@@ -124,19 +158,33 @@ if [ ! -f "aws2-api/dist/main.js" ]; then
                 if npx tsc -p tsconfig.build.json; then
                     echo "✅ TypeScript 컴파일 성공"
                 else
-                    echo "❌ 모든 빌드 방법 실패"
-                    echo "Node.js 버전: $(node --version)"
-                    echo "npm 버전: $(npm --version)"
-                    echo "package.json scripts 확인:"
-                    cat package.json | grep -A 10 '"scripts"' || echo "scripts 섹션을 찾을 수 없습니다."
+                    echo "❌ tsconfig.build.json 컴파일 실패. 기본 tsconfig.json으로 시도..."
                     
-                    echo "로컬 패키지 확인:"
-                    ls -la node_modules/.bin/ | head -10
-                    
-                    echo "마지막 에러 로그:"
-                    npx tsc -p tsconfig.build.json 2>&1 | tail -20
-                    cd ..
-                    exit 1
+                    # 4. 기본 TypeScript 설정으로 컴파일 시도
+                    if npx tsc; then
+                        echo "✅ 기본 TypeScript 컴파일 성공"
+                    else
+                        echo "❌ TypeScript 컴파일도 실패. 타입 체크 무시하고 컴파일 시도..."
+                        
+                        # 5. 타입 체크 무시하고 강제 컴파일
+                        if npx tsc --noEmit false --skipLibCheck; then
+                            echo "✅ 강제 TypeScript 컴파일 성공"
+                        else
+                            echo "❌ 모든 빌드 방법 실패"
+                            echo "Node.js 버전: $(node --version)"
+                            echo "npm 버전: $(npm --version)"
+                            echo "@types/node 설치 확인:"
+                            ls -la node_modules/@types/ | grep node || echo "@types/node가 설치되지 않음"
+                            
+                            echo "TypeScript 설정 확인:"
+                            cat tsconfig.json | head -10
+                            
+                            echo "마지막 에러 로그:"
+                            npx tsc --noEmit false --skipLibCheck 2>&1 | tail -20
+                            cd ..
+                            exit 1
+                        fi
+                    fi
                 fi
             fi
         else
