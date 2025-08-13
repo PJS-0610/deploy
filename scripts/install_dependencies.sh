@@ -3,7 +3,14 @@
 # AWS2-GIOT-APP Install Dependencies Script
 # 애플리케이션 의존성 설치 및 빌드
 
-set -e
+# 스크립트 견고성 설정
+set -euo pipefail
+
+# 현재 스크립트에 실행 권한 부여 (안전장치)
+chmod +x "$0" 2>/dev/null || true
+
+# 로그 출력 강화
+exec > >(tee -a /var/log/codedeploy-install-dependencies.log) 2>&1
 
 echo "=== Install Dependencies: 의존성 설치 시작 ==="
 

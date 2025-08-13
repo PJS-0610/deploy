@@ -26,6 +26,26 @@ permissions:
     group: ec2-user
     mode: 755
     pattern: "**/*.sh"
+  - object: /opt/aws2-giot-app/scripts/before_install.sh
+    owner: root
+    group: root
+    mode: 755
+  - object: /opt/aws2-giot-app/scripts/install_dependencies.sh
+    owner: ec2-user
+    group: ec2-user
+    mode: 755
+  - object: /opt/aws2-giot-app/scripts/start_server.sh
+    owner: ec2-user
+    group: ec2-user
+    mode: 755
+  - object: /opt/aws2-giot-app/scripts/stop_application.sh
+    owner: ec2-user
+    group: ec2-user
+    mode: 755
+  - object: /opt/aws2-giot-app/scripts/validate_service.sh
+    owner: ec2-user
+    group: ec2-user
+    mode: 755
 
 hooks:
   BeforeInstall:

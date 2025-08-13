@@ -3,7 +3,14 @@
 # AWS2-GIOT-APP Stop Application Script
 # 애플리케이션 서비스 안전 종료
 
-set -e
+# 스크립트 견고성 설정
+set -euo pipefail
+
+# 현재 스크립트에 실행 권한 부여 (안전장치)
+chmod +x "$0" 2>/dev/null || true
+
+# 로그 출력 강화
+exec > >(tee -a /var/log/codedeploy-stop-application.log) 2>&1
 
 echo "=== Stop Application: 애플리케이션 종료 시작 ==="
 
