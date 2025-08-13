@@ -17,28 +17,52 @@ else
     yum update -y
 fi
 
-# Node.js 18.x 설치
+# Node.js 20.x 설치 (패키지 호환성을 위해)
 if ! command -v node &> /dev/null; then
     echo "Node.js 설치 중..."
-    # Amazon Linux 2023의 경우 dnf 사용
+    # Amazon Linux 2023의 경우 NodeSource 리포지토리 사용 (최신 버전 위해)
     if command -v dnf &> /dev/null; then
-        echo "Amazon Linux 2023에서 기본 nodejs 패키지 설치 중..."
-        dnf install -y nodejs npm
+        echo "Amazon Linux 2023에서 NodeSource 리포지토리 사용..."
+        if command -v curl &> /dev/null; then
+            curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+            dnf install -y nodejs
+        else
+            echo "⚠️  curl을 찾을 수 없어 wget 사용 시도..."
+            wget -qO- https://rpm.nodesource.com/setup_20.x | bash -
+            dnf install -y nodejs
+        fi
     else
         # Amazon Linux 2의 경우 nodesource 리포지토리 사용
         echo "Amazon Linux 2에서 NodeSource 리포지토리 사용..."
-        # curl이 사용 가능한지 확인
         if command -v curl &> /dev/null; then
-            curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
+            curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
             yum install -y nodejs
         else
             echo "⚠️  curl을 찾을 수 없어 wget 사용 시도..."
-            wget -qO- https://rpm.nodesource.com/setup_18.x | bash -
+            wget -qO- https://rpm.nodesource.com/setup_20.x | bash -
             yum install -y nodejs
         fi
     fi
 else
-    echo "Node.js가 이미 설치되어 있습니다: $(node --version)"
+    CURRENT_VERSION=$(node --version)
+    echo "Node.js가 이미 설치되어 있습니다: $CURRENT_VERSION"
+    
+    # Node.js 버전이 18 미만이면 업데이트 시도
+    if [[ "$CURRENT_VERSION" < "v20" ]]; then
+        echo "⚠️  Node.js 버전이 v20 미만입니다. 업데이트를 시도합니다..."
+        if command -v dnf &> /dev/null; then
+            if command -v curl &> /dev/null; then
+                curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+                dnf install -y nodejs
+            fi
+        else
+            if command -v curl &> /dev/null; then
+                curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+                yum install -y nodejs
+            fi
+        fi
+        echo "업데이트 후 Node.js 버전: $(node --version)"
+    fi
 fi
 
 # Python 3.11+ 확인 및 pip 설치

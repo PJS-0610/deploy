@@ -71,9 +71,25 @@ if [ ! -f "aws2-api/dist/main.js" ]; then
         npm install
     fi
     
+    # NestJS CLI 설치 확인 및 설치
+    if ! command -v nest &> /dev/null && ! npx nest --version &> /dev/null 2>&1; then
+        echo "@nestjs/cli가 설치되지 않았습니다. 전역 설치 중..."
+        npm install -g @nestjs/cli
+    fi
+    
     # NestJS 빌드 시도
     echo "NestJS 애플리케이션 빌드 중..."
-    if npm run build; then
+    
+    # nest 명령어가 있으면 직접 사용, 없으면 npx 사용
+    if command -v nest &> /dev/null; then
+        BUILD_CMD="nest build"
+    else
+        BUILD_CMD="npx nest build"
+    fi
+    
+    echo "빌드 명령어: $BUILD_CMD"
+    
+    if $BUILD_CMD; then
         echo "✅ 백엔드 빌드 성공"
         
         # 빌드 결과 확인
@@ -89,10 +105,16 @@ if [ ! -f "aws2-api/dist/main.js" ]; then
         fi
     else
         echo "❌ NestJS 빌드 실패"
+        echo "Node.js 버전: $(node --version)"
+        echo "npm 버전: $(npm --version)"
         echo "package.json scripts 확인:"
         cat package.json | grep -A 10 '"scripts"' || echo "scripts 섹션을 찾을 수 없습니다."
+        
+        echo "로컬 NestJS 패키지 확인:"
+        ls -la node_modules/.bin/ | grep nest || echo "nest 바이너리를 찾을 수 없음"
+        
         echo "에러 로그:"
-        npm run build 2>&1 | tail -20
+        $BUILD_CMD 2>&1 | tail -20
         cd ..
         exit 1
     fi
