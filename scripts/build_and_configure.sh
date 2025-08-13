@@ -98,8 +98,101 @@ fi
 
 cd ..
 
-# 3. PM2 ecosystem 설정 생성
-echo "3. PM2 설정 파일 생성 중..."
+# 3. 프론트엔드 빌드
+echo "3. 프론트엔드 빌드 중..."
+if [ -d "frontend_backup" ]; then
+    cd frontend_backup
+    
+    # 파라미터 스토어에서 생성된 프론트엔드 환경 변수 파일 사용
+    echo "프론트엔드 .env 파일 생성 중..."
+    
+    if [ -f "/opt/aws2-giot-app/.env/frontend.env" ]; then
+        # 기존 .env 파일이 있으면 백업
+        if [ -f ".env" ]; then
+            cp .env .env.backup.$(date +%Y%m%d-%H%M%S)
+        fi
+        
+        # 파라미터 스토어 환경 변수를 기반으로 .env 파일 생성
+        cp /opt/aws2-giot-app/.env/frontend.env .env
+        
+        # EC2 메타데이터에서 추가 정보 수집
+        PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "localhost")
+        
+        # 추가 환경 변수 append
+        cat >> .env << EOF
+
+# API URLs (using actual server info)
+REACT_APP_API_URL=http://${PUBLIC_IP}
+REACT_APP_INTERNAL_API_URL=http://localhost:3001
+
+# Application Configuration
+REACT_APP_APP_NAME=AWS2-GIOT Application
+REACT_APP_VERSION=1.0.0
+
+# Feature Flags
+REACT_APP_ENABLE_CHATBOT=true
+REACT_APP_ENABLE_QUICKSIGHT=true
+REACT_APP_ENABLE_S3_UPLOAD=true
+EOF
+        
+        echo "✅ 파라미터 스토어 프론트엔드 환경 변수 적용 완료"
+    else
+        echo "⚠️ 파라미터 스토어 프론트엔드 환경 변수 파일을 찾을 수 없습니다. 기본값 사용"
+        
+        # 기본값 사용
+        REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/region 2>/dev/null || echo "ap-northeast-2")
+        PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "localhost")
+        
+        cat > .env << EOF
+# Generated automatically during deployment (fallback)
+REACT_APP_API_URL=http://${PUBLIC_IP}
+REACT_APP_API_BASE=/api
+REACT_APP_INTERNAL_API_URL=http://localhost:3001
+
+# AWS Configuration
+REACT_APP_AWS_REGION=${REGION}
+
+# Application Configuration
+REACT_APP_APP_NAME=AWS2-GIOT Application
+REACT_APP_VERSION=1.0.0
+
+# Feature Flags
+REACT_APP_ENABLE_CHATBOT=true
+REACT_APP_ENABLE_QUICKSIGHT=true
+REACT_APP_ENABLE_S3_UPLOAD=true
+
+# Build Configuration
+GENERATE_SOURCEMAP=false
+DISABLE_ESLINT_PLUGIN=true
+
+# Generated timestamp
+REACT_APP_BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+EOF
+    fi
+    
+    echo "✅ 프론트엔드 .env 파일 생성 완료"
+    
+    # React 앱 빌드
+    echo "React 애플리케이션 빌드 중..."
+    if npm run build; then
+        echo "✅ React 빌드 성공"
+        if [ -d "build" ]; then
+            echo "빌드 파일 수: $(find build -type f | wc -l)"
+        fi
+    else
+        echo "❌ React 빌드 실패"
+        exit 1
+    fi
+    
+    cd ..
+    echo "✅ 프론트엔드 빌드 완료"
+else
+    echo "❌ frontend_backup 디렉토리를 찾을 수 없습니다."
+    exit 1
+fi
+
+# 4. PM2 ecosystem 설정 생성
+echo "4. PM2 설정 파일 생성 중..."
 
 # ecosystem.config.js가 없으면 생성 (파라미터 스토어 환경 변수 포함)
 if [ ! -f "ecosystem.config.js" ]; then
@@ -155,8 +248,8 @@ fi
 
 echo "✅ PM2 설정 파일 준비 완료"
 
-# 4. Nginx 설정 확인 및 문법 검사
-echo "4. Nginx 설정 확인 중..."
+# 5. Nginx 설정 확인 및 문법 검사
+echo "5. Nginx 설정 확인 중..."
 if sudo nginx -t; then
     echo "✅ Nginx 설정 문법 검사 통과"
 else
@@ -164,16 +257,16 @@ else
     exit 1
 fi
 
-# 5. 로그 디렉토리 및 권한 설정
-echo "5. 로그 디렉토리 설정 중..."
+# 6. 로그 디렉토리 및 권한 설정
+echo "6. 로그 디렉토리 설정 중..."
 sudo mkdir -p /var/log/aws2-giot-app
 sudo chown -R ec2-user:ec2-user /var/log/aws2-giot-app
 sudo chmod 755 /var/log/aws2-giot-app
 
 echo "✅ 로그 디렉토리 설정 완료"
 
-# 6. PM2 자동 시작 설정 (미리 준비)
-echo "6. PM2 자동 시작 설정 준비 중..."
+# 7. PM2 자동 시작 설정 (미리 준비)
+echo "7. PM2 자동 시작 설정 준비 중..."
 pm2 save 2>/dev/null || true
 sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ec2-user --hp /home/ec2-user 2>/dev/null || echo "PM2 startup 설정은 이미 완료되어 있습니다."
 
@@ -183,6 +276,7 @@ echo ""
 echo "=== Build and Configure 완료 ==="
 echo ""
 echo "✅ 백엔드 빌드 완료"
+echo "✅ 프론트엔드 빌드 완료"
 echo "✅ PM2 설정 준비 완료"
 echo "✅ Nginx 설정 검증 완료"
 echo "✅ 로그 디렉토리 설정 완료"
