@@ -6,11 +6,28 @@
 # 스크립트 견고성 설정
 set -euo pipefail
 
+# 에러 핸들러 함수
+handle_error() {
+    echo "❌ 오류 발생: 라인 $1에서 명령 실행 실패"
+    echo "📋 디버그 정보:"
+    echo "  - 현재 디렉토리: $(pwd)"
+    echo "  - 사용자: $(whoami)"
+    echo "  - Node.js 버전: $(node --version 2>/dev/null || echo 'Node.js 없음')"
+    echo "  - npm 버전: $(npm --version 2>/dev/null || echo 'npm 없음')"
+    exit 1
+}
+
+# 에러 발생 시 handle_error 함수 호출
+trap 'handle_error $LINENO' ERR
+
 # 현재 스크립트에 실행 권한 부여 (안전장치)
 chmod +x "$0" 2>/dev/null || true
 
-# 로그 출력 강화
-exec > >(tee -a /var/log/codedeploy-build-configure.log) 2>&1
+# 로그 출력 강화 (권한 문제 해결)
+sudo mkdir -p /var/log 2>/dev/null || true
+sudo touch /var/log/codedeploy-build-configure.log 2>/dev/null || true
+sudo chown ec2-user:ec2-user /var/log/codedeploy-build-configure.log 2>/dev/null || true
+exec > >(tee -a /var/log/codedeploy-build-configure.log 2>/dev/null || cat) 2>&1
 
 echo "=== Build and Configure: 빌드 및 설정 시작 ==="
 
@@ -25,7 +42,7 @@ echo "1. 환경 변수 설정 중..."
 # 파라미터 스토어에서 생성된 환경 변수 파일 로드
 if [ -f "/opt/aws2-giot-app/.env/backend.env" ]; then
     echo "파라미터 스토어 환경 변수 로드 중..."
-    export $(grep -v '^#' /opt/aws2-giot-app/.env/backend.env | xargs)
+    export $(grep -v '^#' "/opt/aws2-giot-app/.env/backend.env" | xargs)
     echo "✅ 파라미터 스토어 환경 변수 적용 완료"
 else
     echo "⚠️ 파라미터 스토어 환경 변수 파일을 찾을 수 없습니다. 기본값 사용"
@@ -103,6 +120,14 @@ echo "3. 프론트엔드 빌드 중..."
 if [ -d "frontend_backup" ]; then
     cd frontend_backup
     
+    # 프론트엔드 의존성이 제대로 설치되었는지 확인
+    echo "프론트엔드 의존성 확인 중..."
+    if [ ! -d "node_modules" ] || [ ! -f "node_modules/.bin/react-scripts" ]; then
+        echo "⚠️ 프론트엔드 의존성이 누락되었습니다. 재설치 중..."
+        npm install
+        echo "✅ 프론트엔드 의존성 재설치 완료"
+    fi
+    
     # 파라미터 스토어에서 생성된 프론트엔드 환경 변수 파일 사용
     echo "프론트엔드 .env 파일 생성 중..."
     
@@ -172,15 +197,33 @@ EOF
     
     echo "✅ 프론트엔드 .env 파일 생성 완료"
     
-    # React 앱 빌드
+    # React 앱 빌드 (여러 방법 시도)
     echo "React 애플리케이션 빌드 중..."
+    
+    # 1차 시도: npm run build
     if npm run build; then
         echo "✅ React 빌드 성공"
         if [ -d "build" ]; then
             echo "빌드 파일 수: $(find build -type f | wc -l)"
         fi
+    # 2차 시도: npx react-scripts build
+    elif npx react-scripts build; then
+        echo "✅ React 빌드 성공 (npx 사용)"
+        if [ -d "build" ]; then
+            echo "빌드 파일 수: $(find build -type f | wc -l)"
+        fi
+    # 3차 시도: node_modules/.bin/react-scripts build
+    elif ./node_modules/.bin/react-scripts build; then
+        echo "✅ React 빌드 성공 (직접 경로 사용)"
+        if [ -d "build" ]; then
+            echo "빌드 파일 수: $(find build -type f | wc -l)"
+        fi
     else
-        echo "❌ React 빌드 실패"
+        echo "❌ React 빌드 실패 - 모든 방법 시도했지만 실패"
+        echo "node_modules 상태 확인:"
+        ls -la node_modules/.bin/react* 2>/dev/null || echo "react-scripts가 node_modules/.bin에 없습니다."
+        echo "package.json scripts 확인:"
+        cat package.json | grep -A5 '"scripts"' || echo "package.json scripts 섹션을 찾을 수 없습니다."
         exit 1
     fi
     
