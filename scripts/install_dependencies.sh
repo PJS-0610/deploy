@@ -118,43 +118,49 @@ if [ -d "/etc/nginx/conf.d" ] && [ "$(ls -A /etc/nginx/conf.d)" ]; then
     echo "✅ 기존 conf.d 설정 백업 완료"
 fi
 
-# 4-2. 기존 server 블록 확인 및 처리 (강화된 방법)
-echo "기존 server 블록 충돌 확인 중..."
+# 4-2. 안전한 Nginx 설정 방법 - 기존 설정을 건드리지 않고 conf.d만 사용
+echo "안전한 Nginx 설정 방법 사용 - 기존 nginx.conf 유지"
 
-# 기존 nginx.conf 상태 분석
-DEFAULT_SERVER_EXISTS=false
-CONFLICTING_SERVERS=false
+# 기존 nginx.conf를 수정하지 않고, conf.d에 default_server 설정만 추가
+echo "기존 nginx.conf를 수정하지 않고 conf.d 사용"
+echo "Nginx 설정 전략: 기존 설정 유지 + conf.d 추가"
 
-echo "현재 nginx 설정 분석 중..."
-if sudo nginx -T 2>/dev/null | grep -q "listen.*80.*default_server"; then
-    DEFAULT_SERVER_EXISTS=true
-    echo "⚠️ 기존 default_server 블록 발견됨"
-elif sudo nginx -T 2>/dev/null | grep -q "server_name.*_;"; then
-    CONFLICTING_SERVERS=true
-    echo "⚠️ server_name '_'를 사용하는 블록 발견됨"
-fi
+# 기본 nginx.conf가 제대로 있는지만 확인
+if [ ! -f "/etc/nginx/nginx.conf" ]; then
+    echo "⚠️ nginx.conf가 없습니다. 기본 설정 생성 중..."
+    sudo tee /etc/nginx/nginx.conf > /dev/null << 'EOF'
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log notice;
+pid /run/nginx.pid;
 
-# 충돌 방지를 위한 기존 server 블록 완전 비활성화
-if [ "$DEFAULT_SERVER_EXISTS" = "true" ] || [ "$CONFLICTING_SERVERS" = "true" ]; then
-    echo "기존 server 블록 비활성화 중..."
-    
-    # nginx.conf 백업
-    sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.pre-modification.$(date +%Y%m%d-%H%M%S)
-    
-    # 기존 server 블록을 주석 처리 (더 안전한 방법)
-    sudo sed -i '/^[[:space:]]*server[[:space:]]*{/,/^[[:space:]]*}/s/^/#/' /etc/nginx/nginx.conf
-    
-    # 또는 완전히 제거하는 방법 (더 확실한 방법)
-    echo "기존 server 블록을 임시 비활성화 파일로 이동 중..."
-    sudo sed -i '/^[[:space:]]*server[[:space:]]*{/,/^[[:space:]]*}/ {
-        /^[[:space:]]*server[[:space:]]*{/i\
-    # Original server block moved to avoid conflicts
-        s/.*/# &/
-    }' /etc/nginx/nginx.conf
-    
-    echo "✅ 기존 server 블록 비활성화 완료"
+include /usr/share/nginx/modules/*.conf;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log /var/log/nginx/access.log main;
+
+    sendfile on;
+    tcp_nopush on;
+    keepalive_timeout 65;
+    types_hash_max_size 4096;
+
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    include /etc/nginx/conf.d/*.conf;
+}
+EOF
+    echo "✅ 기본 nginx.conf 생성 완료"
 else
-    echo "✅ 기존 충돌 요소 없음"
+    echo "✅ 기존 nginx.conf 살아있음, 수정하지 않음"
 fi
 
 # 4-3. EC2 메타데이터에서 IP 정보 수집 (대안 방법 포함)
@@ -208,19 +214,34 @@ else
     PRIVATE_IP="localhost"
 fi
 
-# 4-4. 개선된 Nginx 설정 파일 생성
-echo "개선된 Nginx 설정 파일 생성 중..."
-sudo tee /etc/nginx/conf.d/aws2-giot-app.conf > /dev/null << EOF
+# 4-4. 안전한 Nginx 설정 파일 생성 (기존 설정과 충돌 방지)
+echo "안전한 Nginx 설정 파일 생성 중..."
+
+# 기존 conf.d 설정 파일들 백업
+if [ -d "/etc/nginx/conf.d" ] && [ "$(ls -A /etc/nginx/conf.d 2>/dev/null)" ]; then
+    echo "기존 conf.d 설정 백업 중..."
+    sudo mkdir -p "$NGINX_BACKUP_DIR/conf.d.$(date +%Y%m%d-%H%M%S)"
+    sudo cp -r /etc/nginx/conf.d/* "$NGINX_BACKUP_DIR/conf.d.$(date +%Y%m%d-%H%M%S)/" 2>/dev/null || true
+fi
+
+# 기존 default 설정 비활성화 (안전한 방법)
+if [ -f "/etc/nginx/conf.d/default.conf" ]; then
+    echo "기존 default.conf 비활성화 중..."
+    sudo mv /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.disabled
+fi
+
+# 안전한 방법으로 Nginx 설정 파일 생성 (변수 치환 문제 해결)
+cat > /tmp/nginx_config_template << 'TEMPLATE'
 # AWS2-GIOT-APP Nginx Configuration
-# Generated at: $(date)
-# Private IP: $PRIVATE_IP | Public IP: $PUBLIC_IP | Instance: $INSTANCE_ID
+# Generated at: __DATE__
+# Private IP: __PRIVATE_IP__ | Public IP: __PUBLIC_IP__ | Instance: __INSTANCE_ID__
 
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
     
     # 다양한 호스트 이름 지원 (ALB, IP, localhost, 도메인)
-    server_name _ localhost $PRIVATE_IP $PUBLIC_IP *.amazonaws.com;
+    server_name _ localhost __PRIVATE_IP__ __PUBLIC_IP__ *.amazonaws.com;
     
     # 보안 헤더
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -231,10 +252,10 @@ server {
     # 헬스체크 엔드포인트 (최우선 처리)
     location = /health {
         proxy_pass http://localhost:3001/health;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         
         # 헬스체크 최적화
         proxy_connect_timeout 5s;
@@ -253,10 +274,10 @@ server {
     # healthz 엔드포인트 (기존 호환성)
     location = /healthz {
         proxy_pass http://localhost:3001/healthz;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         
         proxy_connect_timeout 5s;
         proxy_read_timeout 5s;
@@ -267,30 +288,30 @@ server {
     location /api/ {
         proxy_pass http://localhost:3001/;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
         proxy_read_timeout 86400;
         
         # 백엔드 응답 시간 모니터링
-        add_header X-Response-Time \$request_time always;
+        add_header X-Response-Time $request_time always;
     }
     
     # 챗봇 API 직접 접근
     location /chatbot/ {
         proxy_pass http://localhost:3001/chatbot/;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
         proxy_read_timeout 86400;
     }
     
@@ -298,13 +319,13 @@ server {
     location /dev/ {
         proxy_pass http://localhost:3000/;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
         proxy_read_timeout 86400;
         
         # 개발 서버용 추가 헤더
@@ -316,17 +337,17 @@ server {
     location / {
         root /opt/aws2-giot-app/frontend_backup/build;
         index index.html index.htm;
-        try_files \$uri \$uri/ /index.html;
+        try_files $uri $uri/ /index.html;
         
         # 정적 파일 캐시 설정
-        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)\$ {
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
             expires 1y;
             add_header Cache-Control "public, immutable" always;
             add_header X-Static-File "true" always;
         }
         
         # HTML 파일은 캐시하지 않음
-        location ~* \.html\$ {
+        location ~* \.html$ {
             add_header Cache-Control "no-cache, no-store, must-revalidate" always;
             add_header Pragma "no-cache" always;
             add_header Expires "0" always;
@@ -337,37 +358,126 @@ server {
     access_log /var/log/nginx/aws2-giot-app-access.log combined;
     error_log /var/log/nginx/aws2-giot-app-error.log warn;
 }
-EOF
+TEMPLATE
+
+# 변수 치환 및 설정 파일 생성
+sed -e "s/__DATE__/$(date)/" \
+    -e "s/__PRIVATE_IP__/$PRIVATE_IP/" \
+    -e "s/__PUBLIC_IP__/$PUBLIC_IP/" \
+    -e "s/__INSTANCE_ID__/$INSTANCE_ID/" \
+    /tmp/nginx_config_template | sudo tee /etc/nginx/conf.d/aws2-giot-app.conf > /dev/null
+
+# 임시 파일 정리
+rm -f /tmp/nginx_config_template
 
 echo "✅ Nginx 설정 완료"
 
-# 4-5. Nginx 설정 검증 및 테스트
+# 4-5. Nginx 설정 검증 및 테스트 (개선된 에러 처리)
 echo "4-5. Nginx 설정 검증 중..."
 
 # 설정 파일 문법 검사
-if sudo nginx -t; then
+echo "Nginx 설정 문법 검사 중..."
+if sudo nginx -t 2>/dev/null; then
     echo "✅ Nginx 설정 문법 검사 통과"
 else
-    echo "❌ Nginx 설정 문법 오류 발생"
-    echo "설정 파일 내용:"
+    echo "❌ Nginx 설정 문법 오류 발생 - 자동 복구 시도"
+    
+    # 오류 상세 내용 표시
+    echo "에러 내용:"
+    sudo nginx -t
+    
+    echo "생성된 설정 파일 내용:"
     sudo cat /etc/nginx/conf.d/aws2-giot-app.conf
-    echo "에러를 확인하고 수동으로 수정해주세요."
-    exit 1
+    
+    # 기초적인 대체 설정 생성 (안전한 방법)
+    echo "기초적인 대체 설정 생성 중..."
+    cat > /tmp/nginx_fallback_config << 'FALLBACK_TEMPLATE'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _ localhost *.amazonaws.com;
+    
+    location = /health {
+        proxy_pass http://localhost:3001/health;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 5s;
+    }
+    
+    location = /healthz {
+        proxy_pass http://localhost:3001/healthz;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 5s;
+    }
+    
+    location /api/ {
+        proxy_pass http://localhost:3001/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    location / {
+        root /opt/aws2-giot-app/frontend_backup/build;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+}
+FALLBACK_TEMPLATE
+    
+    sudo cp /tmp/nginx_fallback_config /etc/nginx/conf.d/aws2-giot-app.conf
+    rm -f /tmp/nginx_fallback_config
+    
+    # 대체 설정으로 재검사
+    if sudo nginx -t 2>/dev/null; then
+        echo "✅ 대체 설정으로 문법 검사 통과"
+    else
+        echo "❌ 대체 설정도 실패, 수동 수정 필요"
+        exit 1
+    fi
 fi
 
-# 기존 Nginx 프로세스 정리 및 재시작
-echo "Nginx 서비스 재시작 중..."
-sudo systemctl stop nginx 2>/dev/null || true
-sleep 2
-sudo systemctl start nginx
+# Nginx 서비스 안전 재시작
+echo "Nginx 서비스 안전 재시작 중..."
 
+# 현재 Nginx 상태 확인
+if sudo systemctl is-active --quiet nginx; then
+    echo "Nginx 서비스 reload 시도 중..."
+    if sudo nginx -s reload 2>/dev/null; then
+        echo "✅ Nginx reload 성공"
+    else
+        echo "Nginx reload 실패, 전체 재시작 시도"
+        sudo systemctl restart nginx
+    fi
+else
+    echo "Nginx 서비스 시작 중..."
+    sudo systemctl start nginx
+fi
+
+# 재시작 후 상태 확인
 if sudo systemctl is-active --quiet nginx; then
     echo "✅ Nginx 서비스 정상 시작"
 else
     echo "❌ Nginx 서비스 시작 실패"
-    sudo systemctl status nginx --no-pager
-    echo "Nginx 에러 로그:"
-    sudo tail -20 /var/log/nginx/error.log
+    exit 1
+fi
+
+# 최종 상태 확인 및 디버그 정보
+echo "최종 Nginx 상태 확인 중..."
+if sudo systemctl is-active --quiet nginx; then
+    echo "✅ Nginx 서비스 정상 시작"
+    # 기본 연결 테스트
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ 2>/dev/null || echo "000")
+    echo "Nginx 기본 연결 테스트: HTTP $HTTP_CODE"
+else
+    echo "❌ Nginx 서비스 시작 실패"
+    echo "Nginx 상태 정보:"
+    sudo systemctl status nginx --no-pager --lines=10
+    echo ""
+    echo "Nginx 에러 로그 (마지막 10줄):"
+    sudo tail -10 /var/log/nginx/error.log 2>/dev/null || echo "에러 로그 없음"
     exit 1
 fi
 

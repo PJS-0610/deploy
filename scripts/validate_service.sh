@@ -287,7 +287,21 @@ if command -v curl &> /dev/null; then
     fi
 fi
 
-# 11. 검증 결과 종합
+# 11. Quick Health Check 실행 (추가 검증)
+echo "11. Quick Health Check 실행 중..."
+if [ -f "/opt/aws2-giot-app/scripts/quick_health_check.sh" ]; then
+    chmod +x /opt/aws2-giot-app/scripts/quick_health_check.sh
+    if /opt/aws2-giot-app/scripts/quick_health_check.sh; then
+        echo "✅ Quick Health Check 통과"
+    else
+        echo "❌ Quick Health Check 실패"
+        VALIDATION_FAILED=$((VALIDATION_FAILED + 1))
+    fi
+else
+    echo "⚠️ Quick Health Check 스크립트를 찾을 수 없습니다"
+fi
+
+# 12. 검증 결과 종합
 echo ""
 echo "=== Validate Service 결과 ==="
 
