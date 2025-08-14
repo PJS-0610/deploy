@@ -105,11 +105,41 @@ done
 
 # 실패해도 경고만 하고 계속 진행 (서비스가 실제로는 작동할 수 있음)
 if [ "$BACKEND_STARTED" = "false" ]; then
-    echo "⚠️ PM2 프로세스 확인 실패 - 하지만 서비스는 작동 중일 수 있습니다."
+    echo "⚠️ 백엔드 프로세스 확인 실패 - 하지만 서비스는 작동 중일 수 있습니다."
     echo "PM2 프로세스 상태:"
     pm2 list || true
     echo "포트 상태 확인:"
     ss -tlnp | grep ":3001" || echo "포트 3001이 아직 열리지 않았습니다."
+fi
+
+# 프론트엔드 서버 상태 확인
+echo "6-2. 프론트엔드 서버 상태 확인 중..."
+FRONTEND_RETRY_COUNT=0
+MAX_FRONTEND_RETRIES=5
+FRONTEND_STARTED=false
+
+while [ $FRONTEND_RETRY_COUNT -lt $MAX_FRONTEND_RETRIES ]; do
+    # 프론트엔드 프로세스 확인
+    if pm2 list | grep -E "(frontend|aws2-giot-frontend)" | grep -q "online"; then
+        echo "✅ 프론트엔드 PM2 프로세스가 정상 실행 중입니다."
+        FRONTEND_STARTED=true
+        break
+    # 포트 확인으로도 검증
+    elif ss -tlnp | grep -q ":3000.*LISTEN"; then
+        echo "✅ 프론트엔드 포트 3000이 활성화되어 있습니다."
+        FRONTEND_STARTED=true
+        break
+    else
+        echo "⏳ 프론트엔드 프로세스 시작 대기 중... (시도 $((FRONTEND_RETRY_COUNT + 1))/$MAX_FRONTEND_RETRIES)"
+        FRONTEND_RETRY_COUNT=$((FRONTEND_RETRY_COUNT + 1))
+        sleep 2
+    fi
+done
+
+if [ "$FRONTEND_STARTED" = "false" ]; then
+    echo "⚠️ 프론트엔드 프로세스 확인 실패 - 개발 서버가 시작되지 않았을 수 있습니다."
+    echo "포트 3000 상태:"
+    ss -tlnp | grep ":3000" || echo "포트 3000이 아직 열리지 않았습니다."
 fi
 
 # Nginx 상태 확인
@@ -126,6 +156,12 @@ if ss -tlnp | grep -q ":3001.*LISTEN"; then
     echo "✅ 백엔드 포트 3001이 정상적으로 열려 있습니다."
 else
     echo "⚠️ 백엔드 포트 3001이 아직 열리지 않았습니다."
+fi
+
+if ss -tlnp | grep -q ":3000.*LISTEN"; then
+    echo "✅ 프론트엔드 포트 3000이 정상적으로 열려 있습니다."
+else
+    echo "⚠️ 프론트엔드 포트 3000이 아직 열리지 않았습니다."
 fi
 
 if ss -tlnp | grep -q ":80.*LISTEN"; then
@@ -146,8 +182,10 @@ echo ""
 echo "📊 서비스 접근 정보:"
 # Get public IP with shorter timeout
 PUBLIC_IP=$(timeout 3s curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "localhost")
-echo "  - 웹 애플리케이션: http://${PUBLIC_IP}/"
+echo "  - 웹 애플리케이션 (정적): http://${PUBLIC_IP}/"
+echo "  - 웹 애플리케이션 (개발): http://${PUBLIC_IP}:3000/"
 echo "  - API 엔드포인트: http://${PUBLIC_IP}/api/"
+echo "  - 백엔드 직접: http://${PUBLIC_IP}:3001/"
 echo "  - 헬스체크: http://${PUBLIC_IP}/health"
 echo "  - 챗봇 API: http://${PUBLIC_IP}/chatbot/"
 echo ""

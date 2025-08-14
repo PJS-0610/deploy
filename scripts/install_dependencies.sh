@@ -135,6 +135,24 @@ server {
         proxy_read_timeout 86400;
     }
     
+    # 프론트엔드 개발 서버 프록시 (포트 3000)
+    location /dev/ {
+        proxy_pass http://localhost:3000/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+        
+        # 개발 서버용 추가 헤더
+        proxy_set_header Accept-Encoding "";
+        add_header X-Dev-Server "React Development Server" always;
+    }
+    
     # 로그 설정
     access_log /var/log/nginx/aws2-giot-app-access.log;
     error_log /var/log/nginx/aws2-giot-app-error.log;

@@ -257,6 +257,16 @@ else
     VALIDATION_FAILED=$((VALIDATION_FAILED + 1))
 fi
 
+# 프론트엔드 개발 서버 테스트 (경고만, 치명적 오류 아님)
+echo "프론트엔드 개발 서버 테스트:"
+if curl -f -s -o /dev/null --connect-timeout 5 --max-time 10 "http://localhost:3000/" 2>/dev/null; then
+    echo "✅ 프론트엔드 개발 서버 접근 성공"
+elif ss -tlnp | grep -q ":3000.*LISTEN"; then
+    echo "⚠️ 프론트엔드 포트 3000은 열려있지만 HTTP 응답 실패 (시작 중일 수 있음)"
+else
+    echo "ℹ️ 프론트엔드 개발 서버가 실행되지 않음 (선택사항)"
+fi
+
 # 외부에서의 접근 테스트 (경고만, 실패해도 배포 성공으로 취급)
 if command -v curl &> /dev/null; then
     PUBLIC_IP=$(timeout 5s curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "localhost")
@@ -287,8 +297,10 @@ if [ $VALIDATION_FAILED -eq 0 ]; then
     echo ""
     echo "🌐 서비스 접근 정보:"
     PUBLIC_IP=$(timeout 5s curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "YOUR-EC2-IP")
-    echo "  - 웹 애플리케이션: http://$PUBLIC_IP/"
+    echo "  - 웹 애플리케이션 (정적): http://$PUBLIC_IP/"
+    echo "  - 웹 애플리케이션 (개발): http://$PUBLIC_IP:3000/"
     echo "  - API 엔드포인트: http://$PUBLIC_IP/api/"
+    echo "  - 백엔드 직접: http://$PUBLIC_IP:3001/"
     echo "  - 헬스체크: http://$PUBLIC_IP/health"  
     echo "  - 챗봇 API: http://$PUBLIC_IP/chatbot/"
     echo ""
