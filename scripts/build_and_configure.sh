@@ -39,6 +39,21 @@ echo "현재 디렉토리: $(pwd)"
 # 1. 환경 변수 설정
 echo "1. 환경 변수 설정 중..."
 
+# Parameter Store에서 도메인 정보 가져오기
+echo "Parameter Store에서 도메인 정보 가져오는 중..."
+DOMAIN_FROM_PARAM_STORE=""
+if command -v aws &> /dev/null; then
+    DOMAIN_FROM_PARAM_STORE=$(aws ssm get-parameter --name "/test_pjs/domain" --query "Parameter.Value" --output text 2>/dev/null || echo "")
+    if [ -n "$DOMAIN_FROM_PARAM_STORE" ]; then
+        echo "✅ Parameter Store에서 도메인 가져오기 성공: $DOMAIN_FROM_PARAM_STORE"
+        export DOMAIN_NAME="$DOMAIN_FROM_PARAM_STORE"
+    else
+        echo "⚠️ Parameter Store에서 도메인을 가져올 수 없습니다. 기본값 사용"
+    fi
+else
+    echo "⚠️ AWS CLI가 설치되지 않았습니다. 도메인 설정을 건너뜁니다."
+fi
+
 # 파라미터 스토어에서 생성된 환경 변수 파일 로드
 if [ -f "/opt/aws2-giot-app/.env/backend.env" ]; then
     echo "파라미터 스토어 환경 변수 로드 중..."
@@ -49,6 +64,12 @@ else
     export NODE_ENV=production
     export PORT=3001
     export AWS_REGION=ap-northeast-2
+fi
+
+# 도메인 환경변수 설정 (Parameter Store에서 가져온 값 사용)
+if [ -n "$DOMAIN_FROM_PARAM_STORE" ]; then
+    export DOMAIN_NAME="$DOMAIN_FROM_PARAM_STORE"
+    echo "✅ 도메인 환경변수 설정 완료: $DOMAIN_NAME"
 fi
 
 # 2. 백엔드 빌드
@@ -260,6 +281,9 @@ if [ ! -f "ecosystem.config.js" ]; then
         QUICKSIGHT_NAMESPACE_VAL=""
     fi
     
+    # Parameter Store에서 가져온 도메인 값 사용
+    DOMAIN_NAME_VAL="${DOMAIN_FROM_PARAM_STORE:-your-domain.com}"
+    
     cat > ecosystem.config.js << EOF
 module.exports = {
   apps: [
@@ -278,7 +302,9 @@ module.exports = {
         AWS_SECRET_ACCESS_KEY: '${AWS_SECRET_ACCESS_KEY_VAL}',
         AWS_ACCOUNT_ID: '${AWS_ACCOUNT_ID_VAL}',
         S3_BUCKET_NAME: '${S3_BUCKET_NAME_VAL}',
-        QUICKSIGHT_NAMESPACE: '${QUICKSIGHT_NAMESPACE_VAL}'
+        QUICKSIGHT_NAMESPACE: '${QUICKSIGHT_NAMESPACE_VAL}',
+        DOMAIN_NAME: '${DOMAIN_NAME_VAL}',
+        ADDITIONAL_DOMAINS: ''
       },
       log_file: '/var/log/aws2-giot-app/backend.log',
       out_file: '/var/log/aws2-giot-app/backend-out.log',

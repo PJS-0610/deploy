@@ -21,6 +21,32 @@ echo "현재 디렉토리: $(pwd)"
 echo "파일 목록:"
 ls -la
 
+# 0. AWS CLI 설치 확인 및 설치
+echo "0. AWS CLI 설치 확인 중..."
+if ! command -v aws &> /dev/null; then
+    echo "AWS CLI가 설치되지 않았습니다. 설치 중..."
+    
+    # Amazon Linux 2023에서는 yum 대신 dnf 사용
+    if command -v dnf &> /dev/null; then
+        sudo dnf update -y
+        sudo dnf install -y awscli
+    elif command -v yum &> /dev/null; then
+        sudo yum update -y
+        sudo yum install -y awscli
+    else
+        echo "패키지 매니저를 찾을 수 없습니다. AWS CLI를 수동 설치합니다..."
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip awscliv2.zip
+        sudo ./aws/install
+        rm -rf awscliv2.zip aws/
+    fi
+    
+    echo "✅ AWS CLI 설치 완료"
+else
+    echo "✅ AWS CLI가 이미 설치되어 있습니다."
+    aws --version
+fi
+
 # 1. 루트 의존성 설치 (concurrently 등)
 if [ -f "package.json" ]; then
     echo "1. 루트 의존성 설치 중..."

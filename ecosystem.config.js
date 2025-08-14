@@ -10,12 +10,16 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
-        AWS_REGION: 'ap-northeast-2'
+        AWS_REGION: 'ap-northeast-2',
+        DOMAIN_NAME: process.env.DOMAIN_NAME || 'your-domain.com',
+        ADDITIONAL_DOMAINS: process.env.ADDITIONAL_DOMAINS || ''
       },
       env_production: {
         NODE_ENV: 'production',
         PORT: 3001,
-        AWS_REGION: 'ap-northeast-2'
+        AWS_REGION: 'ap-northeast-2',
+        DOMAIN_NAME: process.env.DOMAIN_NAME || 'your-domain.com',
+        ADDITIONAL_DOMAINS: process.env.ADDITIONAL_DOMAINS || ''
       },
       log_file: '/var/log/aws2-giot-app/backend.log',
       out_file: '/var/log/aws2-giot-app/backend-out.log',
