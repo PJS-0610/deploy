@@ -3,17 +3,46 @@
 ## 🎯 개요
 Application Load Balancer(ALB)에서 EC2 인스턴스의 health check가 실패하는 문제를 해결하기 위한 설정 가이드입니다.
 
-## 🔧 코드 변경 사항
+## ⚠️ 중요: 개선된 배포 스크립트 사용
+**이 문제는 개선된 배포 스크립트로 자동 해결됩니다!** 새로운 `install_dependencies.sh`는 다음을 자동으로 처리합니다:
+- 기존 Nginx 설정 분석 및 백업
+- default_server 충돌 자동 해결
+- ALB 호환 설정 자동 생성
+- 종합적인 테스트 및 검증
 
-### 1. Health Check 엔드포인트 개선
-- **기존**: `/healthz` 엔드포인트만 제공
-- **개선**: `/health` 엔드포인트 추가 (ALB 표준 경로)
-- **응답 개선**: 타임스탬프, 서비스명, 버전 정보 포함
+## 🚀 빠른 시작
 
-### 2. CORS 설정 환경변수화
-- **기존**: 하드코딩된 도메인 (`aws2aws2.com`)
-- **개선**: 환경변수 기반 동적 도메인 설정
-- **지원**: Route 53 도메인, 서브도메인, HTTP/HTTPS
+### 자동 진단 및 테스트
+```bash
+# EC2에서 실행
+cd /opt/aws2-giot-app
+chmod +x scripts/test_health_check.sh
+./scripts/test_health_check.sh
+```
+
+이 스크립트는 모든 health check 관련 문제를 자동으로 진단하고 해결 방법을 제시합니다.
+
+## 🔧 개선된 기능들
+
+### 1. 자동 충돌 감지 및 해결
+- **문제**: 기존 nginx default_server와 충돌
+- **해결**: 자동으로 기존 설정 분석 및 우선순위 조정
+- **백업**: 모든 기존 설정을 타임스탬프와 함께 자동 백업
+
+### 2. 향상된 Nginx 설정
+- **다중 호스트명 지원**: localhost, private IP, public IP, ALB DNS
+- **최적화된 헬스체크**: 5초 타임아웃, 캐시 방지, 전용 로그
+- **상세한 모니터링**: 응답 시간, 에러 추적, 헤더 정보
+
+### 3. 종합적인 테스트 시스템
+- **8단계 검증**: 서비스 상태부터 ALB 시뮬레이션까지
+- **자동 진단**: 문제 발생 시 원인과 해결책 자동 제시
+- **실시간 로그**: 모든 테스트 과정을 상세히 기록
+
+### 4. 환경 인식 배포
+- **EC2 메타데이터 활용**: IP, 인스턴스 정보 자동 수집
+- **Parameter Store 연동**: 도메인 정보 자동 적용
+- **환경별 최적화**: 개발/운영 환경에 맞는 설정 자동 생성
 
 ## ⚙️ AWS ALB 설정 방법
 
@@ -142,22 +171,47 @@ aws elbv2 describe-target-health \
 
 ## 🛠️ 문제 해결 (Troubleshooting)
 
-### 1. Health Check가 여전히 실패하는 경우
+### 1. 자동 진단 사용 (권장)
 
 ```bash
-# 1. EC2에서 애플리케이션이 실행 중인지 확인
-pm2 list
-pm2 logs aws2-giot-backend
+# 종합적인 문제 진단
+cd /opt/aws2-giot-app
+./scripts/test_health_check.sh
 
-# 2. 포트가 열려있는지 확인
-sudo ss -tlnp | grep :3001
-
-# 3. 보안 그룹 규칙 확인
-aws ec2 describe-security-groups --group-ids sg-your-ec2-security-group
-
-# 4. Target Group에 인스턴스가 등록되어 있는지 확인
-aws elbv2 describe-target-health --target-group-arn your-target-group-arn
+# 결과에 따른 자동 해결 방법 제시
 ```
+
+### 2. 수동 문제 해결
+
+#### Health Check가 여전히 실패하는 경우
+
+```bash
+# 1. 기본 서비스 상태 확인
+pm2 list
+sudo systemctl status nginx
+sudo ss -tlnp | grep -E ":80|:3001"
+
+# 2. Nginx 설정 확인
+sudo nginx -t
+sudo nginx -T | grep -A10 -B5 "server {"
+
+# 3. 직접 테스트
+curl -v http://localhost/health
+curl -v http://private-ip/health
+
+# 4. 로그 확인
+sudo tail -20 /var/log/nginx/error.log
+pm2 logs aws2-giot-backend --lines 10
+```
+
+#### 일반적인 문제와 해결책
+
+| 문제 | 원인 | 해결책 |
+|------|------|--------|
+| 404 Not Found | Nginx 설정 충돌 | `sudo systemctl restart nginx` |
+| Connection Refused | 백엔드 서비스 중단 | `pm2 restart aws2-giot-backend` |
+| Timeout | 응답 지연 | 백엔드 로그 확인, 리소스 점검 |
+| 502 Bad Gateway | 백엔드 연결 실패 | 포트 3001 확인, 방화벽 점검 |
 
 ### 2. CORS 오류가 발생하는 경우
 

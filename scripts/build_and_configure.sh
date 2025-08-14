@@ -8,13 +8,44 @@ set -euo pipefail
 
 # 에러 핸들러 함수
 handle_error() {
-    echo "❌ 오류 발생: 라인 $1에서 명령 실행 실패"
+    local exit_code=$?
+    local line_number=$1
+    
+    echo ""
+    echo "❌ 오류 발생: 라인 $line_number에서 명령 실행 실패 (exit code: $exit_code)"
     echo "📋 디버그 정보:"
     echo "  - 현재 디렉토리: $(pwd)"
     echo "  - 사용자: $(whoami)"
     echo "  - Node.js 버전: $(node --version 2>/dev/null || echo 'Node.js 없음')"
     echo "  - npm 버전: $(npm --version 2>/dev/null || echo 'npm 없음')"
-    exit 1
+    echo "  - 시간: $(date)"
+    echo ""
+    
+    echo "🔧 가능한 해결 방법:"
+    echo "  1. 로그 확인: tail -50 /var/log/codedeploy-build-configure.log"
+    echo "  2. 권한 확인: ls -la /opt/aws2-giot-app"
+    echo "  3. 디스크 공간 확인: df -h"
+    echo "  4. 메모리 확인: free -h"
+    echo ""
+    
+    echo "🔄 롤백 옵션:"
+    echo "  - Nginx 설정 롤백: /opt/aws2-giot-app/scripts/rollback_nginx.sh"
+    echo "  - 이전 배포 상태로 복원: pm2 list 확인 후 문제 진단"
+    echo ""
+    
+    # 중요한 로그 파일들 보존
+    BACKUP_DIR="/opt/aws2-giot-app/error-logs/$(date +%Y%m%d-%H%M%S)"
+    sudo mkdir -p "$BACKUP_DIR" 2>/dev/null || true
+    
+    # 관련 로그 백업
+    sudo cp /var/log/codedeploy-build-configure.log "$BACKUP_DIR/" 2>/dev/null || true
+    sudo cp /var/log/nginx/error.log "$BACKUP_DIR/" 2>/dev/null || true
+    pm2 logs aws2-giot-backend --lines 50 > "$BACKUP_DIR/pm2-logs.txt" 2>/dev/null || true
+    
+    echo "📁 에러 로그가 다음 위치에 백업되었습니다: $BACKUP_DIR"
+    echo ""
+    
+    exit $exit_code
 }
 
 # 에러 발생 시 handle_error 함수 호출
