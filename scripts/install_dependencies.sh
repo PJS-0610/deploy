@@ -118,31 +118,95 @@ if [ -d "/etc/nginx/conf.d" ] && [ "$(ls -A /etc/nginx/conf.d)" ]; then
     echo "✅ 기존 conf.d 설정 백업 완료"
 fi
 
-# 4-2. 기존 server 블록 확인 및 처리
+# 4-2. 기존 server 블록 확인 및 처리 (강화된 방법)
 echo "기존 server 블록 충돌 확인 중..."
+
+# 기존 nginx.conf 상태 분석
 DEFAULT_SERVER_EXISTS=false
+CONFLICTING_SERVERS=false
+
+echo "현재 nginx 설정 분석 중..."
 if sudo nginx -T 2>/dev/null | grep -q "listen.*80.*default_server"; then
     DEFAULT_SERVER_EXISTS=true
     echo "⚠️ 기존 default_server 블록 발견됨"
-    
-    # 기존 default_server 제거
-    echo "기존 default_server 지시어 제거 중..."
-    sudo sed -i.bak 's/listen\s*80\s*default_server;/listen 80;/' /etc/nginx/nginx.conf
-    sudo sed -i.bak 's/listen\s*\[::\]:80\s*default_server;/listen [::]:80;/' /etc/nginx/nginx.conf
-    echo "✅ 기존 default_server 지시어 제거 완료"
-else
-    echo "✅ 기존 default_server 블록 없음"
+elif sudo nginx -T 2>/dev/null | grep -q "server_name.*_;"; then
+    CONFLICTING_SERVERS=true
+    echo "⚠️ server_name '_'를 사용하는 블록 발견됨"
 fi
 
-# 4-3. EC2 메타데이터에서 IP 정보 수집
-echo "EC2 환경 정보 수집 중..."
-PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null || echo "localhost")
-PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
-INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
+# 충돌 방지를 위한 기존 server 블록 완전 비활성화
+if [ "$DEFAULT_SERVER_EXISTS" = "true" ] || [ "$CONFLICTING_SERVERS" = "true" ]; then
+    echo "기존 server 블록 비활성화 중..."
+    
+    # nginx.conf 백업
+    sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.pre-modification.$(date +%Y%m%d-%H%M%S)
+    
+    # 기존 server 블록을 주석 처리 (더 안전한 방법)
+    sudo sed -i '/^[[:space:]]*server[[:space:]]*{/,/^[[:space:]]*}/s/^/#/' /etc/nginx/nginx.conf
+    
+    # 또는 완전히 제거하는 방법 (더 확실한 방법)
+    echo "기존 server 블록을 임시 비활성화 파일로 이동 중..."
+    sudo sed -i '/^[[:space:]]*server[[:space:]]*{/,/^[[:space:]]*}/ {
+        /^[[:space:]]*server[[:space:]]*{/i\
+    # Original server block moved to avoid conflicts
+        s/.*/# &/
+    }' /etc/nginx/nginx.conf
+    
+    echo "✅ 기존 server 블록 비활성화 완료"
+else
+    echo "✅ 기존 충돌 요소 없음"
+fi
 
+# 4-3. EC2 메타데이터에서 IP 정보 수집 (대안 방법 포함)
+echo "EC2 환경 정보 수집 중..."
+
+# 메타데이터 서비스 접근 시도
+PRIVATE_IP=""
+PUBLIC_IP=""
+INSTANCE_ID=""
+
+echo "메타데이터 서비스 접근 시도 중..."
+if curl -s --max-time 3 http://169.254.169.254/latest/meta-data/ > /dev/null 2>&1; then
+    echo "✅ 메타데이터 서비스 접근 가능"
+    PRIVATE_IP=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null || echo "")
+    PUBLIC_IP=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+    INSTANCE_ID=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
+else
+    echo "⚠️ 메타데이터 서비스 접근 실패, 대안 방법 사용"
+fi
+
+# 대안 방법으로 IP 정보 수집
+if [ -z "$PRIVATE_IP" ] || [ "$PRIVATE_IP" = "localhost" ]; then
+    echo "대안 방법으로 Private IP 수집 중..."
+    # hostname -I를 사용한 IP 정보 수집
+    PRIVATE_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "")
+    if [ -z "$PRIVATE_IP" ]; then
+        # ip route를 사용한 IP 정보 수집
+        PRIVATE_IP=$(ip route get 8.8.8.8 | grep -oP 'src \K\S+' 2>/dev/null || echo "")
+    fi
+    if [ -z "$PRIVATE_IP" ]; then
+        # ifconfig을 사용한 IP 정보 수집 (마지막 수단)
+        PRIVATE_IP=$(ifconfig | grep -A 1 'eth0' | tail -1 | cut -d ':' -f 2 | cut -d ' ' -f 1 2>/dev/null || echo "localhost")
+    fi
+fi
+
+# 기본값 설정
+PRIVATE_IP=${PRIVATE_IP:-"localhost"}
+PUBLIC_IP=${PUBLIC_IP:-""}
+INSTANCE_ID=${INSTANCE_ID:-"unknown"}
+
+echo "✅ IP 정보 수집 완료:"
 echo "  - Private IP: $PRIVATE_IP"
 echo "  - Public IP: $PUBLIC_IP"
 echo "  - Instance ID: $INSTANCE_ID"
+
+# IP 정보가 올바른지 검증
+if [[ "$PRIVATE_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "✅ Private IP 검증 성공: $PRIVATE_IP"
+else
+    echo "⚠️ Private IP 형식이 올바르지 않음: $PRIVATE_IP, localhost로 대체"
+    PRIVATE_IP="localhost"
+fi
 
 # 4-4. 개선된 Nginx 설정 파일 생성
 echo "개선된 Nginx 설정 파일 생성 중..."
@@ -307,13 +371,79 @@ else
     exit 1
 fi
 
-# 4-6. 기본 연결 테스트 (백엔드가 아직 시작되지 않았으므로 nginx만 테스트)
+# 4-6. 종합적인 배포 검증 테스트
+echo "4-6. 종합적인 배포 검증 중..."
+
+# 기본 연결 테스트
 echo "기본 연결 테스트 중..."
-if curl -s -o /dev/null -w "%{http_code}" http://localhost/ | grep -q "200\|404"; then
-    echo "✅ Nginx 기본 연결 정상"
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ 2>/dev/null || echo "000")
+if echo "$HTTP_CODE" | grep -q "200\|404\|403"; then
+    echo "✅ Nginx 기본 연결 정상 (HTTP $HTTP_CODE)"
 else
-    echo "⚠️ Nginx 연결에 문제가 있을 수 있습니다"
+    echo "❌ Nginx 기본 연결 실패 (HTTP $HTTP_CODE)"
+    exit 1
 fi
+
+# 설정 파일 검증
+echo "생성된 설정 파일 검증 중..."
+if [ -f "/etc/nginx/conf.d/aws2-giot-app.conf" ]; then
+    echo "✅ Nginx 설정 파일 생성 완료"
+    
+    # 설정 파일 내용 검증
+    if grep -q "location = /health" /etc/nginx/conf.d/aws2-giot-app.conf; then
+        echo "✅ Health check 경로 설정 확인"
+    else
+        echo "❌ Health check 경로 설정 누락"
+        exit 1
+    fi
+    
+    if grep -q "proxy_pass.*3001" /etc/nginx/conf.d/aws2-giot-app.conf; then
+        echo "✅ 백엔드 프록시 설정 확인"
+    else
+        echo "❌ 백엔드 프록시 설정 누락"
+        exit 1
+    fi
+    
+    if grep -q "$PRIVATE_IP" /etc/nginx/conf.d/aws2-giot-app.conf; then
+        echo "✅ Private IP ($PRIVATE_IP) 설정 확인"
+    else
+        echo "⚠️ Private IP 설정 없음, localhost만 사용"
+    fi
+else
+    echo "❌ Nginx 설정 파일이 생성되지 않음"
+    exit 1
+fi
+
+# Nginx 프로세스 확인
+echo "Nginx 프로세스 상태 확인 중..."
+if pgrep nginx > /dev/null; then
+    echo "✅ Nginx 프로세스 실행 중"
+else
+    echo "❌ Nginx 프로세스가 실행되지 않음"
+    exit 1
+fi
+
+# 포트 리스닝 확인
+echo "포트 리스닝 상태 확인 중..."
+if ss -tlnp | grep -q ":80.*LISTEN"; then
+    echo "✅ 포트 80 리스닝 확인"
+else
+    echo "❌ 포트 80이 리스닝되지 않음"
+    exit 1
+fi
+
+# 최종 상태 로그
+echo ""
+echo "📋 배포 완료 상태 요약:"
+echo "  - Nginx 설정 파일: /etc/nginx/conf.d/aws2-giot-app.conf"
+echo "  - 백업 디렉토리: $NGINX_BACKUP_DIR"
+echo "  - Private IP: $PRIVATE_IP"
+echo "  - 지원되는 Health Check 경로: /health, /healthz"
+echo "  - 예상 ALB Target Group 설정:"
+echo "    * Protocol: HTTP"
+echo "    * Port: 80"
+echo "    * Health check path: /health"
+echo ""
 
 # 5. 권한 설정
 echo "5. 파일 권한 설정 중..."

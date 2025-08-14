@@ -31,7 +31,7 @@ hooks:
   Install:
     - location: scripts/install_dependencies.sh
       timeout: 1200
-      runas: ec2-user
+      runas: root
 
   AfterInstall:
     - location: scripts/build_and_configure.sh

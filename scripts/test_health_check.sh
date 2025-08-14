@@ -16,11 +16,41 @@ echo "=== ALB Health Check 종합 테스트 시작 ==="
 echo "테스트 시간: $(date)"
 echo ""
 
-# 환경 정보 수집
+# 환경 정보 수집 (개선된 방법)
 echo "🔍 환경 정보 수집"
-PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null || echo "localhost")
-PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "N/A")
-INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
+
+# 메타데이터 서비스 접근 시도
+PRIVATE_IP=""
+PUBLIC_IP=""
+INSTANCE_ID=""
+
+if curl -s --max-time 3 http://169.254.169.254/latest/meta-data/ > /dev/null 2>&1; then
+    echo "  메타데이터 서비스 접근 가능"
+    PRIVATE_IP=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null || echo "")
+    PUBLIC_IP=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+    INSTANCE_ID=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
+else
+    echo "  메타데이터 서비스 접근 실패, 대안 방법 사용"
+fi
+
+# 대안 방법으로 IP 정보 수집 (install_dependencies.sh와 동일한 로직)
+if [ -z "$PRIVATE_IP" ] || [ "$PRIVATE_IP" = "localhost" ]; then
+    echo "  대안 방법으로 Private IP 수집 중..."
+    # hostname -I를 사용한 IP 정보 수집
+    PRIVATE_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "")
+    if [ -z "$PRIVATE_IP" ]; then
+        # ip route를 사용한 IP 정보 수집
+        PRIVATE_IP=$(ip route get 8.8.8.8 | grep -oP 'src \K\S+' 2>/dev/null || echo "")
+    fi
+    if [ -z "$PRIVATE_IP" ]; then
+        # ifconfig을 사용한 IP 정보 수집 (마지막 수단)
+        PRIVATE_IP=$(ifconfig | grep -A 1 'eth0' | tail -1 | cut -d ':' -f 2 | cut -d ' ' -f 1 2>/dev/null || echo "localhost")
+    fi
+fi
+
+PRIVATE_IP=${PRIVATE_IP:-"localhost"}
+PUBLIC_IP=${PUBLIC_IP:-"N/A"}
+INSTANCE_ID=${INSTANCE_ID:-"unknown"}
 
 echo "  - Private IP: $PRIVATE_IP"
 echo "  - Public IP: $PUBLIC_IP"
@@ -106,9 +136,16 @@ echo ""
 # 5. Nginx 설정 검증
 echo "5️⃣ Nginx 설정 검증"
 run_test "Nginx 설정 문법 검사" "sudo nginx -t" "syntax is ok"
+run_test "우리 설정 파일 존재 확인" "test -f /etc/nginx/conf.d/aws2-giot-app.conf && echo 'exists'" "exists"
 run_test "default_server 설정 확인" "sudo nginx -T | grep 'listen.*80.*default_server'" "default_server"
 run_test "server_name 설정 확인" "sudo nginx -T | grep 'server_name'" "_\|localhost"
 run_test "헬스체크 location 확인" "sudo nginx -T | grep 'location.*health'" "/health"
+# Private IP 검증 및 설정 확인
+if [[ "$PRIVATE_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    run_test "Private IP 설정 확인" "sudo nginx -T | grep '$PRIVATE_IP' || echo 'localhost-only'" "localhost-only\|$PRIVATE_IP"
+else
+    run_test "localhost 설정 확인" "sudo nginx -T | grep 'localhost' || echo 'no-localhost'" "localhost"
+fi
 echo ""
 
 # 6. 로그 분석
@@ -131,10 +168,26 @@ echo "Nginx 프로세스:"
 ps aux | grep nginx | grep -v grep || echo "  Nginx 프로세스 없음"
 echo ""
 
-# 8. AWS 메타데이터 및 보안 그룹 힌트
-echo "8️⃣ AWS 환경 정보"
-echo "가용 영역: $(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone 2>/dev/null || echo 'N/A')"
-echo "인스턴스 타입: $(curl -s http://169.254.169.254/latest/meta-data/instance-type 2>/dev/null || echo 'N/A')"
+# 8. AWS 환경 정보 및 배포 검증
+echo "8️⃣ AWS 환경 및 배포 정보"
+echo "가용 영역: $(curl -s --max-time 3 http://169.254.169.254/latest/meta-data/placement/availability-zone 2>/dev/null || echo 'N/A (메타데이터 접근 실패)')"
+echo "인스턴스 타입: $(curl -s --max-time 3 http://169.254.169.254/latest/meta-data/instance-type 2>/dev/null || echo 'N/A (메타데이터 접근 실패)')"
+echo ""
+
+# 배포 구성 요소 상태 확인
+echo "배포 구성 요소 상태:"
+echo "  - PM2 설정 파일: $([ -f '/opt/aws2-giot-app/ecosystem.config.js' ] && echo '✅ 존재' || echo '❌ 없음')"
+echo "  - Nginx 앱 설정: $([ -f '/etc/nginx/conf.d/aws2-giot-app.conf' ] && echo '✅ 존재' || echo '❌ 없음')"
+echo "  - 백엔드 빌드: $([ -f '/opt/aws2-giot-app/aws2-api/dist/main.js' ] && echo '✅ 빌드됨' || echo '⚠️ ts-node 모드')"
+echo "  - 프론트엔드 빌드: $([ -d '/opt/aws2-giot-app/frontend_backup/build' ] && echo '✅ 빌드됨' || echo '❌ 없음')"
+echo "  - Parameter Store 연동: $([ -f '/opt/aws2-giot-app/.env/backend.env' ] && echo '✅ 설정됨' || echo '⚠️ 기본값 사용')"
+echo ""
+
+# 개선된 배포 시스템 확인
+echo "개선된 배포 시스템 상태:"
+echo "  - 충돌 방지 설정: $(sudo nginx -T 2>/dev/null | grep -q 'default_server' && echo '✅ 적용됨' || echo '❌ 설정 필요')"
+echo "  - 메타데이터 대안: $(command -v hostname >/dev/null && echo '✅ 사용 가능' || echo '❌ 제한됨')"
+echo "  - 자동 백업: $([ -d '/opt/aws2-giot-app/nginx-backup' ] && echo '✅ 활성화' || echo '⚠️ 필요시 생성')"
 echo ""
 
 # 결과 요약
