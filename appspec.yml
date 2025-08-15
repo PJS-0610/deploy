@@ -31,11 +31,6 @@ permissions:
 
 hooks:
   BeforeInstall:
-    - location: scripts/simple_before_install.sh
-      timeout: 300
-      runas: root
-  
-  Install:
-    - location: scripts/simple_install.sh
+    - location: scripts/debug_only.sh
       timeout: 300
       runas: root
