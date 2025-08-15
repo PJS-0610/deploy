@@ -8,6 +8,13 @@ if ! command -v node &> /dev/null; then
     dnf install -y nodejs npm
 fi
 
+# nginx 설치 (Amazon Linux 2023용)
+if ! command -v nginx &> /dev/null; then
+    echo "nginx 설치 중..."
+    dnf install -y nginx
+    systemctl enable nginx
+fi
+
 # PM2 전역 설치
 if ! command -v pm2 &> /dev/null; then
     echo "PM2 설치 중..."
@@ -23,6 +30,71 @@ if [ -f "package.json" ]; then
     npm install --production
 else
     echo "package.json이 없습니다."
+fi
+
+# nginx 설정 구성
+echo "nginx 프록시 설정 중..."
+cat > /etc/nginx/conf.d/app.conf << 'EOF'
+server {
+    listen 80;
+    server_name _;
+
+    location /health {
+        proxy_pass http://127.0.0.1:3001/health;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+# 기본 nginx server 블록 비활성화
+if grep -q "server {" /etc/nginx/nginx.conf; then
+    echo "기본 nginx server 블록 비활성화 중..."
+    sed -i '/^    server {/,/^    }$/c\
+#    server {\
+#        listen       80;\
+#        listen       [::]:80;\
+#        server_name  _;\
+#        root         /usr/share/nginx/html;\
+#\
+#        include /etc/nginx/default.d/*.conf;\
+#\
+#        error_page 404 /404.html;\
+#        location = /404.html {\
+#        }\
+#\
+#        error_page 500 502 503 504 /50x.html;\
+#        location = /50x.html {\
+#        }\
+#    }' /etc/nginx/nginx.conf
+fi
+
+# nginx 설정 테스트
+echo "nginx 설정 테스트 중..."
+nginx -t
+if [ $? -eq 0 ]; then
+    echo "nginx 설정이 올바릅니다."
+else
+    echo "nginx 설정에 오류가 있습니다."
+    exit 1
 fi
 
 # 권한 설정
