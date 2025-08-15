@@ -367,12 +367,86 @@ fi
 
 echo "✅ PM2 설정 파일 준비 완료"
 
-# 5. Nginx 설정 확인 및 문법 검사
-echo "5. Nginx 설정 확인 중..."
+# 5. Nginx 설정 파일 생성 및 배치
+echo "5. Nginx 설정 파일 생성 및 배치 중..."
+
+# 현재 서버 정보 수집
+PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "localhost")
+DOMAIN_NAME_VAL="${DOMAIN_FROM_PARAM_STORE:-$PUBLIC_IP}"
+
+# Nginx 설정 파일 생성
+sudo tee /etc/nginx/conf.d/aws2-giot-app.conf > /dev/null << EOF
+# AWS2-GIOT-APP Nginx Configuration
+server {
+    listen 80;
+    server_name ${DOMAIN_NAME_VAL} ${PUBLIC_IP} localhost;
+    
+    # Security headers
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    # Frontend (React) - serve static files
+    location / {
+        root /opt/aws2-giot-app/frontend_backup/build;
+        try_files \$uri \$uri/ /index.html;
+        index index.html;
+        
+        # Cache static assets
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+    
+    # Backend API proxy
+    location /api/ {
+        proxy_pass http://localhost:3001/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        
+        # Timeout settings
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # Health check endpoint
+    location /health {
+        proxy_pass http://localhost:3001/health;
+        access_log off;
+    }
+    
+    # Error pages
+    error_page 404 /index.html;
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}
+EOF
+
+echo "✅ Nginx 설정 파일 생성 완료: /etc/nginx/conf.d/aws2-giot-app.conf"
+
+# 기본 Nginx 설정 비활성화 (충돌 방지)
+if [ -f "/etc/nginx/conf.d/default.conf" ]; then
+    sudo mv /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.disabled
+    echo "✅ 기본 Nginx 설정 비활성화"
+fi
+
+# Nginx 설정 문법 검사
+echo "Nginx 설정 문법 검사 중..."
 if sudo nginx -t; then
     echo "✅ Nginx 설정 문법 검사 통과"
 else
     echo "❌ Nginx 설정에 문제가 있습니다."
+    sudo nginx -t
     exit 1
 fi
 

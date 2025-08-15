@@ -59,13 +59,17 @@ echo "✅ 백엔드 PM2 프로세스 시작 완료"
 echo "4. Nginx 서비스 시작 중..."
 sudo systemctl enable nginx
 
-# Nginx 시작 또는 재시작
+# Nginx 중지 후 시작 (설정 적용 보장)
+sudo systemctl stop nginx 2>/dev/null || true
+sudo systemctl start nginx
+
 if sudo systemctl is-active --quiet nginx; then
-    sudo systemctl reload nginx
-    echo "✅ Nginx 설정 재로드 완료"
-else
-    sudo systemctl start nginx
     echo "✅ Nginx 서비스 시작 완료"
+else
+    echo "❌ Nginx 서비스 시작 실패"
+    sudo systemctl status nginx --no-pager
+    sudo nginx -t
+    exit 1
 fi
 
 # 5. 서비스 시작 대기

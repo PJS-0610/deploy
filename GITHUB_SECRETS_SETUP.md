@@ -149,4 +149,39 @@ No deployment configuration found for name: CodeDeployDefault.EC2OneAtATime
 
 **해결방법**: 위의 GitHub Repository Secrets 설정 가이드 참조
 
+### 오류: "HEALTH_CONSTRAINTS" 배포 실패
+
+**원인**: EC2 인스턴스에서 배포 스크립트 실행 실패
+
+**주요 원인들**:
+1. **SSM Parameter Store 권한 부족**
+2. **CodeDeploy 에이전트 미설치/중단**
+3. **배포 스크립트 오류**
+
+**해결방법**:
+1. EC2 IAM 역할에 SSM 권한 추가:
+   ```json
+   {
+       "Effect": "Allow",
+       "Action": [
+           "ssm:GetParameter",
+           "ssm:GetParameters",
+           "ssm:GetParametersByPath"
+       ],
+       "Resource": "arn:aws:ssm:*:*:parameter/test_pjs/*"
+   }
+   ```
+
+2. CodeDeploy 에이전트 상태 확인:
+   ```bash
+   sudo service codedeploy-agent status
+   sudo service codedeploy-agent start
+   ```
+
+3. 배포 로그 확인:
+   ```bash
+   sudo tail -f /var/log/codedeploy-before-install.log
+   sudo journalctl -u codedeploy-agent -f
+   ```
+
 이후 보안 강화를 위해 OIDC 설정을 고려해보세요.
