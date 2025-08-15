@@ -94,22 +94,28 @@ echo "환경변수 설정 중..."
 # SSM Parameter Store에서 실제 값 가져오기
 echo "SSM Parameter Store에서 환경변수 가져오는 중..."
 
-# 백엔드 환경변수 가져오기
-AWS_ACCESS_KEY_ID=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_ACCESS_KEY_ID" --query "Parameter.Value" --output text 2>/dev/null || echo "")
+# 백엔드 환경변수 가져오기 (모두 with-decryption 사용)
+echo "SSM 파라미터 복호화 중..."
+AWS_ACCESS_KEY_ID=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_ACCESS_KEY_ID" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "")
 AWS_SECRET_ACCESS_KEY=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_SECRET_ACCESS_KEY" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "")
-AWS_ACCOUNT_ID=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_ACCOUNT_ID" --query "Parameter.Value" --output text 2>/dev/null || echo "123456789012")
-AWS_REGION=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_REGION" --query "Parameter.Value" --output text 2>/dev/null || echo "ap-northeast-2")
-S3_BUCKET_NAME=$(aws ssm get-parameter --name "/test_pjs/backend/S3_BUCKET_NAME" --query "Parameter.Value" --output text 2>/dev/null || echo "aws2-giot-data-bucket")
-QUICKSIGHT_NAMESPACE=$(aws ssm get-parameter --name "/test_pjs/backend/QUICKSIGHT_NAMESPACE" --query "Parameter.Value" --output text 2>/dev/null || echo "default")
+AWS_ACCOUNT_ID=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_ACCOUNT_ID" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "123456789012")
+AWS_REGION=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_REGION" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "ap-northeast-2")
+S3_BUCKET_NAME=$(aws ssm get-parameter --name "/test_pjs/backend/S3_BUCKET_NAME" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "aws2-giot-data-bucket")
+QUICKSIGHT_NAMESPACE=$(aws ssm get-parameter --name "/test_pjs/backend/QUICKSIGHT_NAMESPACE" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "default")
 
 # 프론트엔드 환경변수 가져오기
-FRONTEND_PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --query "Parameter.Value" --output text 2>/dev/null || echo "3000")
-REACT_APP_API_BASE=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE" --query "Parameter.Value" --output text 2>/dev/null || echo "http://localhost:3001")
+FRONTEND_PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3000")
+REACT_APP_API_BASE=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "http://localhost:3001")
 
 # 도메인 정보
-DOMAIN_NAME=$(aws ssm get-parameter --name "/test_pjs/domain" --query "Parameter.Value" --output text 2>/dev/null || echo "localhost")
+DOMAIN_NAME=$(aws ssm get-parameter --name "/test_pjs/domain" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "localhost")
 
-echo "환경변수 확인: S3_BUCKET_NAME=$S3_BUCKET_NAME, AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID"
+echo "환경변수 확인:"
+echo "- S3_BUCKET_NAME=$S3_BUCKET_NAME"
+echo "- AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID"
+echo "- AWS_REGION=$AWS_REGION"
+echo "- FRONTEND_PORT=$FRONTEND_PORT"
+echo "- DOMAIN_NAME=$DOMAIN_NAME"
 
 # 백엔드 .env 파일 생성
 cat > /home/ec2-user/app/aws2-api/.env << EOF
@@ -118,6 +124,7 @@ PORT=3001
 AWS_REGION=$AWS_REGION
 AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID
 S3_BUCKET_NAME=$S3_BUCKET_NAME
 S3_REGION=$AWS_REGION
 QUICKSIGHT_ACCOUNT_ID=$AWS_ACCOUNT_ID
