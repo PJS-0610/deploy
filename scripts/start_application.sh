@@ -5,35 +5,56 @@ echo "=== 애플리케이션 시작 중 ==="
 # 애플리케이션 디렉토리로 이동
 cd /home/ec2-user/app
 
-# PM2 경로 확인 및 설정
+# 환경 변수 설정
+source /etc/profile
 export PATH=$PATH:/usr/local/bin:/usr/bin
+
+# PM2가 설치되어 있는지 확인
 if ! command -v pm2 &> /dev/null; then
-    echo "PM2를 찾을 수 없습니다. 다시 설치합니다..."
+    echo "PM2를 찾을 수 없습니다. 설치 확인 중..."
+    if ! command -v npm &> /dev/null; then
+        echo "npm도 찾을 수 없습니다. Node.js 재설치가 필요합니다."
+        exit 1
+    fi
+    echo "PM2 재설치 중..."
     npm install -g pm2
+    export PATH=$PATH:/usr/local/bin
 fi
+
+# 기존 PM2 프로세스 정리
+echo "기존 PM2 프로세스 정리 중..."
+sudo -u ec2-user -H bash -c "pm2 kill" || true
 
 # ecosystem.config.js가 있으면 PM2로 시작
 if [ -f "ecosystem.config.js" ]; then
     echo "PM2로 애플리케이션 시작 중..."
-    sudo -u ec2-user pm2 start ecosystem.config.js
+    sudo -u ec2-user -H bash -c "cd /home/ec2-user/app && pm2 start ecosystem.config.js"
 elif [ -f "package.json" ]; then
     echo "npm start로 애플리케이션 시작 중..."
-    sudo -u ec2-user pm2 start npm --name "app" -- start
+    sudo -u ec2-user -H bash -c "cd /home/ec2-user/app && pm2 start npm --name 'app' -- start"
 else
     echo "시작 스크립트를 찾을 수 없습니다."
     exit 1
 fi
 
 # PM2 프로세스 저장
-sudo -u ec2-user pm2 save
+sudo -u ec2-user -H bash -c "pm2 save"
 
-# nginx 재시작 (프록시 설정 적용)
-echo "nginx 재시작 중..."
-systemctl restart nginx
-if [ $? -eq 0 ]; then
-    echo "nginx가 성공적으로 재시작되었습니다."
+# nginx 상태 확인 및 재시작
+echo "nginx 상태 확인 및 재시작 중..."
+if systemctl is-active --quiet nginx; then
+    echo "nginx가 실행 중입니다. 재시작합니다..."
+    systemctl restart nginx
 else
-    echo "nginx 재시작에 실패했습니다."
+    echo "nginx가 실행되지 않고 있습니다. 시작합니다..."
+    systemctl start nginx
+fi
+
+if systemctl is-active --quiet nginx; then
+    echo "nginx가 성공적으로 실행되었습니다."
+else
+    echo "nginx 시작에 실패했습니다."
+    systemctl status nginx --no-pager
     exit 1
 fi
 

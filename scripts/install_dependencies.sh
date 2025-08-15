@@ -2,24 +2,33 @@
 
 echo "=== 의존성 설치 시작 ==="
 
+# 패키지 매니저 업데이트
+echo "패키지 매니저 업데이트 중..."
+dnf update -y
+
 # Node.js와 npm 설치 (Amazon Linux 2023용)
+echo "Node.js 및 npm 설치 중..."
+dnf install -y nodejs npm
 if ! command -v node &> /dev/null; then
-    echo "Node.js 설치 중..."
-    dnf install -y nodejs npm
+    echo "Node.js 설치 실패. 다른 방법으로 시도..."
+    curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+    dnf install -y nodejs
 fi
 
 # nginx 설치 (Amazon Linux 2023용)
-if ! command -v nginx &> /dev/null; then
-    echo "nginx 설치 중..."
-    dnf install -y nginx
-    systemctl enable nginx
-fi
+echo "nginx 설치 중..."
+dnf install -y nginx
+systemctl enable nginx
+systemctl start nginx
 
 # PM2 전역 설치
-if ! command -v pm2 &> /dev/null; then
-    echo "PM2 설치 중..."
-    npm install -g pm2
-fi
+echo "PM2 설치 중..."
+npm install -g pm2
+# PM2 경로를 시스템 PATH에 추가
+echo 'export PATH=$PATH:/usr/local/bin' >> /etc/profile
+echo 'export PATH=$PATH:/usr/local/bin' >> /home/ec2-user/.bashrc
+# 즉시 적용
+export PATH=$PATH:/usr/local/bin
 
 # 애플리케이션 디렉토리로 이동
 cd /home/ec2-user/app
