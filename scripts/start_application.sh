@@ -5,40 +5,57 @@ echo "=== 애플리케이션 시작 중 ==="
 # 애플리케이션 디렉토리로 이동
 cd /home/ec2-user/app
 
-# 환경 변수 설정
-source /etc/profile
+# 완전한 의존성 재설치 (견고성을 위해)
+echo "의존성 확인 및 설치 중..."
+
+# Node.js 및 npm 강제 설치
+dnf install -y nodejs npm
+
+# PATH 환경변수 설정
 export PATH=$PATH:/usr/local/bin:/usr/bin
 
-# PM2가 설치되어 있는지 확인
-if ! command -v pm2 &> /dev/null; then
-    echo "PM2를 찾을 수 없습니다. 설치 확인 중..."
-    if ! command -v npm &> /dev/null; then
-        echo "npm도 찾을 수 없습니다. Node.js 재설치가 필요합니다."
-        exit 1
-    fi
-    echo "PM2 재설치 중..."
-    npm install -g pm2
-    export PATH=$PATH:/usr/local/bin
+# PM2 전역 설치
+npm install -g pm2
+
+# 설치 확인
+if ! command -v node &> /dev/null; then
+    echo "Node.js 설치 실패"
+    exit 1
 fi
+
+if ! command -v npm &> /dev/null; then
+    echo "npm 설치 실패"
+    exit 1
+fi
+
+if ! command -v pm2 &> /dev/null; then
+    echo "PM2 설치 실패"
+    exit 1
+fi
+
+echo "모든 의존성이 준비되었습니다."
+echo "Node.js 버전: $(node --version)"
+echo "npm 버전: $(npm --version)"
+echo "PM2 버전: $(pm2 --version)"
 
 # 기존 PM2 프로세스 정리
 echo "기존 PM2 프로세스 정리 중..."
-sudo -u ec2-user -H bash -c "pm2 kill" || true
+sudo -u ec2-user bash -c "pm2 kill" 2>/dev/null || true
 
 # ecosystem.config.js가 있으면 PM2로 시작
 if [ -f "ecosystem.config.js" ]; then
     echo "PM2로 애플리케이션 시작 중..."
-    sudo -u ec2-user -H bash -c "cd /home/ec2-user/app && pm2 start ecosystem.config.js"
+    sudo -u ec2-user bash -c "cd /home/ec2-user/app && PATH=$PATH:/usr/local/bin pm2 start ecosystem.config.js"
 elif [ -f "package.json" ]; then
     echo "npm start로 애플리케이션 시작 중..."
-    sudo -u ec2-user -H bash -c "cd /home/ec2-user/app && pm2 start npm --name 'app' -- start"
+    sudo -u ec2-user bash -c "cd /home/ec2-user/app && PATH=$PATH:/usr/local/bin pm2 start npm --name 'app' -- start"
 else
     echo "시작 스크립트를 찾을 수 없습니다."
     exit 1
 fi
 
 # PM2 프로세스 저장
-sudo -u ec2-user -H bash -c "pm2 save"
+sudo -u ec2-user bash -c "PATH=$PATH:/usr/local/bin pm2 save"
 
 # nginx 상태 확인 및 재시작
 echo "nginx 상태 확인 및 재시작 중..."
