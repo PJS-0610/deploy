@@ -169,20 +169,14 @@ if [ -d "aws2-api" ] && [ -f "aws2-api/package.json" ]; then
     
     # 기존 node_modules 및 package-lock.json 정리 후 의존성 설치
     echo "백엔드 의존성 정리 및 설치 중..."
-    rm -rf node_modules
+    rm -rf node_modules package-lock.json
     
-    # npm ci 시도, 실패 시 npm install 사용
-    if [ -f "package-lock.json" ]; then
-        echo "package-lock.json 발견, npm ci 사용 중..."
-        su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm ci --production=false" || {
-            echo "npm ci 실패, npm install로 재시도..."
-            rm -f package-lock.json
-            su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm install"
-        }
-    else
-        echo "package-lock.json 없음, npm install 사용 중..."
-        su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm install"
-    fi
+    # npm 캐시 정리
+    su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm cache clean --force"
+    
+    # 의존성 설치 (빌드에 필요한 devDependencies 포함)
+    echo "백엔드 의존성 설치 중..."
+    su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm install --no-optional --legacy-peer-deps"
     
     # NestJS CLI 전역 설치
     npm install -g @nestjs/cli
@@ -202,41 +196,51 @@ if [ -d "aws2-api" ] && [ -f "aws2-api/package.json" ]; then
     cd ..
 fi
 
+# npm 캐시 권한 문제 해결
+echo "npm 캐시 권한 수정 중..."
+chown -R ec2-user:ec2-user /home/ec2-user/.npm 2>/dev/null || true
+su - ec2-user -c "npm cache clean --force" 2>/dev/null || true
+
 # 프론트엔드 의존성 설치
 if [ -d "frontend_backup" ] && [ -f "frontend_backup/package.json" ]; then
     echo "프론트엔드 의존성 설치 중..."
     cd frontend_backup
     chown -R ec2-user:ec2-user .
     
-    # 기존 node_modules 제거 후 재설치
-    rm -rf node_modules
+    # 기존 node_modules와 캐시 완전 정리
+    rm -rf node_modules package-lock.json
     
-    # npm ci 시도, 실패 시 npm install 사용
-    if [ -f "package-lock.json" ]; then
-        echo "package-lock.json 발견, npm ci 사용 중..."
-        su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm ci" || {
-            echo "npm ci 실패, npm install로 재시도..."
-            rm -f package-lock.json
-            su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install"
-        }
-    else
-        echo "package-lock.json 없음, npm install 사용 중..."
-        su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install"
+    # npm 설정 초기화 및 캐시 정리
+    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm cache clean --force"
+    
+    # 의존성 설치 (강제 설치)
+    echo "프론트엔드 의존성 강제 설치 중..."
+    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install --no-optional --legacy-peer-deps"
+    
+    # 설치 검증
+    echo "react-scripts 설치 확인 중..."
+    if ! su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npx react-scripts --version" 2>/dev/null; then
+        echo "react-scripts가 설치되지 않았습니다. 재설치 시도..."
+        su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install react-scripts@5.0.1 --save"
     fi
     
     # serve 패키지 설치 (프로덕션 정적 파일 서빙용)
     echo "serve 패키지 설치 중..."
-    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install serve"
+    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install serve --save"
     
     # 프론트엔드 빌드
     echo "프론트엔드 빌드 실행 중..."
-    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm run build"
+    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && CI=true npm run build"
     
     # 빌드 결과 확인
     if [ ! -d "build" ]; then
         echo "프론트엔드 빌드 실패: build 디렉토리가 생성되지 않았습니다."
         echo "현재 디렉토리 내용:"
         ls -la
+        echo "node_modules 상태:"
+        ls -la node_modules/.bin/ | grep react-scripts || echo "react-scripts 바이너리 없음"
+        echo "package.json 확인:"
+        cat package.json | grep react-scripts || echo "package.json에 react-scripts 없음"
         exit 1
     fi
     
