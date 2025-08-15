@@ -223,6 +223,23 @@ if [ -d "frontend_backup" ] && [ -f "frontend_backup/package.json" ]; then
         echo "package-lock.json 없음, npm install 사용 중..."
         su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install"
     fi
+    
+    # serve 패키지 설치 (프로덕션 정적 파일 서빙용)
+    echo "serve 패키지 설치 중..."
+    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install serve"
+    
+    # 프론트엔드 빌드
+    echo "프론트엔드 빌드 실행 중..."
+    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm run build"
+    
+    # 빌드 결과 확인
+    if [ ! -d "build" ]; then
+        echo "프론트엔드 빌드 실패: build 디렉토리가 생성되지 않았습니다."
+        echo "현재 디렉토리 내용:"
+        ls -la
+        exit 1
+    fi
+    
     cd ..
 fi
 

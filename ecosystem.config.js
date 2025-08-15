@@ -26,22 +26,18 @@ module.exports = {
     },
     {
       name: 'aws2-giot-frontend',
-      script: 'npm',
-      args: 'start',
+      script: 'npx',
+      args: 'serve -s build -l 3002',
       cwd: '/home/ec2-user/app/frontend_backup',
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
       env: {
-        NODE_ENV: 'production',
-        BROWSER: 'none',
-        CI: 'true'
+        NODE_ENV: 'production'
       },
       env_production: {
-        NODE_ENV: 'production',
-        BROWSER: 'none',
-        CI: 'true'
+        NODE_ENV: 'production'
       },
       log_file: '/var/log/aws2-giot-app/frontend.log',
       out_file: '/var/log/aws2-giot-app/frontend-out.log',
