@@ -22,6 +22,10 @@ dnf install -y nodejs
 # Python (일부 npm 패키지 빌드용)
 dnf install -y python3 python3-pip
 
+# Python 패키지 설치
+echo "Python 패키지 설치 중..."
+pip3 install boto3>=1.34.0
+
 # Build tools (네이티브 모듈 컴파일용)
 dnf install -y gcc-c++ make
 
@@ -191,6 +195,12 @@ if [ -d "aws2-api" ] && [ -f "aws2-api/package.json" ]; then
         echo "빌드 디렉토리 내용:"
         ls -la dist/ || echo "dist 디렉토리가 존재하지 않습니다."
         exit 1
+    fi
+    
+    # Python 패키지 설치 (프로젝트별)
+    echo "백엔드 Python 패키지 설치 중..."
+    if [ -f "python-scripts/requirements.txt" ]; then
+        pip3 install -r python-scripts/requirements.txt
     fi
     
     cd ..
