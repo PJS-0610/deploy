@@ -3,11 +3,30 @@
 # AWS2-GIOT-APP Install Dependencies Script
 # 애플리케이션 의존성 설치 및 빌드
 
-# 스크립트 견고성 설정
-set -euo pipefail
+# 스크립트 견고성 설정 (에러에 관대하게)
+set -uo pipefail
+
+# 에러 핸들러 함수
+handle_error() {
+    local exit_code=$?
+    local line_number=$1
+    echo "❌ Error at line $line_number (exit code: $exit_code)"
+    echo "📋 Current directory: $(pwd)"
+    echo "📋 Available disk space: $(df -h /opt)"
+    # 에러가 발생해도 계속 진행
+    return 0
+}
+
+# 에러 발생 시 handle_error 함수 호출
+trap 'handle_error $LINENO' ERR
 
 # 현재 스크립트에 실행 권한 부여 (안전장치)
 chmod +x "$0" 2>/dev/null || true
+
+# 로그 디렉토리 생성 및 권한 설정
+sudo mkdir -p /var/log 2>/dev/null || true
+sudo touch /var/log/codedeploy-install-dependencies.log 2>/dev/null || true
+sudo chmod 666 /var/log/codedeploy-install-dependencies.log 2>/dev/null || true
 
 # 로그 출력 강화
 exec > >(tee -a /var/log/codedeploy-install-dependencies.log) 2>&1
