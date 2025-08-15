@@ -79,6 +79,79 @@ echo "기존 PM2 프로세스 정리 중..."
 export HOME=/home/ec2-user
 su - ec2-user -c "pm2 kill" 2>/dev/null || true
 
+# AWS CLI 설치 (환경변수 가져오기용)
+echo "AWS CLI 설치 중..."
+if ! command -v aws &> /dev/null; then
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    unzip awscliv2.zip
+    ./aws/install
+    export PATH=$PATH:/usr/local/bin
+fi
+
+# 환경변수 파일 생성
+echo "환경변수 설정 중..."
+
+# SSM Parameter Store에서 실제 값 가져오기
+echo "SSM Parameter Store에서 환경변수 가져오는 중..."
+
+# 백엔드 환경변수 가져오기
+AWS_ACCESS_KEY_ID=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_ACCESS_KEY_ID" --query "Parameter.Value" --output text 2>/dev/null || echo "")
+AWS_SECRET_ACCESS_KEY=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_SECRET_ACCESS_KEY" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "")
+AWS_ACCOUNT_ID=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_ACCOUNT_ID" --query "Parameter.Value" --output text 2>/dev/null || echo "123456789012")
+AWS_REGION=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_REGION" --query "Parameter.Value" --output text 2>/dev/null || echo "ap-northeast-2")
+S3_BUCKET_NAME=$(aws ssm get-parameter --name "/test_pjs/backend/S3_BUCKET_NAME" --query "Parameter.Value" --output text 2>/dev/null || echo "aws2-giot-data-bucket")
+QUICKSIGHT_NAMESPACE=$(aws ssm get-parameter --name "/test_pjs/backend/QUICKSIGHT_NAMESPACE" --query "Parameter.Value" --output text 2>/dev/null || echo "default")
+
+# 프론트엔드 환경변수 가져오기
+FRONTEND_PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --query "Parameter.Value" --output text 2>/dev/null || echo "3000")
+REACT_APP_API_BASE=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE" --query "Parameter.Value" --output text 2>/dev/null || echo "http://localhost:3001")
+
+# 도메인 정보
+DOMAIN_NAME=$(aws ssm get-parameter --name "/test_pjs/domain" --query "Parameter.Value" --output text 2>/dev/null || echo "localhost")
+
+echo "환경변수 확인: S3_BUCKET_NAME=$S3_BUCKET_NAME, AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID"
+
+# 백엔드 .env 파일 생성
+cat > /home/ec2-user/app/aws2-api/.env << EOF
+NODE_ENV=production
+PORT=3001
+AWS_REGION=$AWS_REGION
+AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+S3_BUCKET_NAME=$S3_BUCKET_NAME
+S3_REGION=$AWS_REGION
+QUICKSIGHT_ACCOUNT_ID=$AWS_ACCOUNT_ID
+QUICKSIGHT_REGION=$AWS_REGION
+QUICKSIGHT_NAMESPACE=$QUICKSIGHT_NAMESPACE
+LOG_LEVEL=info
+LOG_FILE_PATH=/var/log/aws2-giot-app
+HEALTH_CHECK_TIMEOUT=5000
+METRICS_ENABLED=true
+DOMAIN_NAME=$DOMAIN_NAME
+EOF
+
+# 프론트엔드 .env 파일 생성
+cat > /home/ec2-user/app/frontend_backup/.env << EOF
+REACT_APP_API_URL=$REACT_APP_API_BASE
+REACT_APP_ENV=production
+PORT=$FRONTEND_PORT
+BROWSER=none
+CI=true
+EOF
+
+# 루트 .env 파일 생성
+cat > /home/ec2-user/app/.env << EOF
+NODE_ENV=production
+AWS_REGION=$AWS_REGION
+S3_BUCKET_NAME=$S3_BUCKET_NAME
+DOMAIN_NAME=$DOMAIN_NAME
+EOF
+
+# 권한 설정
+chown ec2-user:ec2-user /home/ec2-user/app/.env
+chown ec2-user:ec2-user /home/ec2-user/app/aws2-api/.env 2>/dev/null || true
+chown ec2-user:ec2-user /home/ec2-user/app/frontend_backup/.env 2>/dev/null || true
+
 # 백엔드 의존성 설치 및 빌드
 if [ -d "aws2-api" ] && [ -f "aws2-api/package.json" ]; then
     echo "백엔드 의존성 설치 및 빌드 중..."
