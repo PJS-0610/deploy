@@ -102,9 +102,10 @@ AWS_ACCOUNT_ID=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_ACCOUNT_ID"
 AWS_REGION=$(aws ssm get-parameter --name "/test_pjs/backend/AWS_REGION" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "ap-northeast-2")
 S3_BUCKET_NAME=$(aws ssm get-parameter --name "/test_pjs/backend/S3_BUCKET_NAME" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "aws2-giot-data-bucket")
 QUICKSIGHT_NAMESPACE=$(aws ssm get-parameter --name "/test_pjs/backend/QUICKSIGHT_NAMESPACE" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "default")
+BACKEND_PORT=$(aws ssm get-parameter --name "/test_pjs/backend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3001")
 
 # 프론트엔드 환경변수 가져오기
-FRONTEND_PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3000")
+FRONTEND_PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3002")
 REACT_APP_API_BASE=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "http://localhost:3001")
 
 # 도메인 정보
@@ -114,13 +115,14 @@ echo "환경변수 확인:"
 echo "- S3_BUCKET_NAME=$S3_BUCKET_NAME"
 echo "- AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID"
 echo "- AWS_REGION=$AWS_REGION"
+echo "- BACKEND_PORT=$BACKEND_PORT"
 echo "- FRONTEND_PORT=$FRONTEND_PORT"
 echo "- DOMAIN_NAME=$DOMAIN_NAME"
 
 # 백엔드 .env 파일 생성
 cat > /home/ec2-user/app/aws2-api/.env << EOF
 NODE_ENV=production
-PORT=3001
+PORT=$BACKEND_PORT
 AWS_REGION=$AWS_REGION
 AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
@@ -204,27 +206,27 @@ server {
     server_name _;
 
     location /health {
-        proxy_pass http://127.0.0.1:3001/health;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:$BACKEND_PORT/health;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:3001/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:$BACKEND_PORT/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
     location / {
-        proxy_pass http://127.0.0.1:3000/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:$FRONTEND_PORT/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
 EOF

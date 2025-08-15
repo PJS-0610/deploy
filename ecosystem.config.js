@@ -9,14 +9,10 @@ module.exports = {
       max_memory_restart: '2G',
       cwd: '/home/ec2-user/app/aws2-api',
       env: {
-        NODE_ENV: 'production',
-        PORT: 3001,
-        AWS_REGION: 'ap-northeast-2'
+        NODE_ENV: 'production'
       },
       env_production: {
-        NODE_ENV: 'production',
-        PORT: 3001,
-        AWS_REGION: 'ap-northeast-2'
+        NODE_ENV: 'production'
       },
       log_file: '/var/log/aws2-giot-app/backend.log',
       out_file: '/var/log/aws2-giot-app/backend-out.log',
@@ -39,13 +35,11 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        PORT: 3000,
         BROWSER: 'none',
         CI: 'true'
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3000,
         BROWSER: 'none',
         CI: 'true'
       },
