@@ -167,9 +167,22 @@ if [ -d "aws2-api" ] && [ -f "aws2-api/package.json" ]; then
     cd aws2-api
     chown -R ec2-user:ec2-user .
     
-    # devDependencies 포함하여 설치 (빌드에 필요)
-    echo "백엔드 전체 의존성 설치 중..."
-    su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm install"
+    # 기존 node_modules 및 package-lock.json 정리 후 의존성 설치
+    echo "백엔드 의존성 정리 및 설치 중..."
+    rm -rf node_modules
+    
+    # npm ci 시도, 실패 시 npm install 사용
+    if [ -f "package-lock.json" ]; then
+        echo "package-lock.json 발견, npm ci 사용 중..."
+        su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm ci --production=false" || {
+            echo "npm ci 실패, npm install로 재시도..."
+            rm -f package-lock.json
+            su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm install"
+        }
+    else
+        echo "package-lock.json 없음, npm install 사용 중..."
+        su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm install"
+    fi
     
     # NestJS CLI 전역 설치
     npm install -g @nestjs/cli
@@ -194,19 +207,39 @@ if [ -d "frontend_backup" ] && [ -f "frontend_backup/package.json" ]; then
     echo "프론트엔드 의존성 설치 중..."
     cd frontend_backup
     chown -R ec2-user:ec2-user .
-    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install"
+    
+    # 기존 node_modules 제거 후 재설치
+    rm -rf node_modules
+    
+    # npm ci 시도, 실패 시 npm install 사용
+    if [ -f "package-lock.json" ]; then
+        echo "package-lock.json 발견, npm ci 사용 중..."
+        su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm ci" || {
+            echo "npm ci 실패, npm install로 재시도..."
+            rm -f package-lock.json
+            su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install"
+        }
+    else
+        echo "package-lock.json 없음, npm install 사용 중..."
+        su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install"
+    fi
     cd ..
 fi
 
-# nginx 프록시 설정
+# nginx 프록시 설정 (동적 포트 적용)
 echo "nginx 프록시 설정 중..."
-cat > /etc/nginx/conf.d/app.conf << 'EOF'
+
+# 기존 설정 파일들 정리
+rm -f /etc/nginx/conf.d/default.conf
+rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+
+cat > /etc/nginx/conf.d/app.conf << EOF
 server {
     listen 80;
     server_name _;
 
     location /health {
-        proxy_pass http://127.0.0.1:$BACKEND_PORT/health;
+        proxy_pass http://127.0.0.1:${BACKEND_PORT}/health;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -214,7 +247,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:$BACKEND_PORT/;
+        proxy_pass http://127.0.0.1:${BACKEND_PORT}/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -222,7 +255,7 @@ server {
     }
 
     location / {
-        proxy_pass http://127.0.0.1:$FRONTEND_PORT/;
+        proxy_pass http://127.0.0.1:${FRONTEND_PORT}/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -231,23 +264,44 @@ server {
 }
 EOF
 
-# 기본 nginx server 블록 비활성화
-if grep -q "server {" /etc/nginx/nginx.conf; then
-    echo "기본 nginx server 블록 비활성화 중..."
-    sed -i '/^    server {/,/^    }$/c\
-#    server {\
-#        listen       80;\
-#        server_name  _;\
-#        root         /usr/share/nginx/html;\
-#        include /etc/nginx/default.d/*.conf;\
-#        error_page 404 /404.html;\
-#        location = /404.html {\
-#        }\
-#        error_page 500 502 503 504 /50x.html;\
-#        location = /50x.html {\
-#        }\
-#    }' /etc/nginx/nginx.conf
+# 기본 nginx server 블록 비활성화 - 더 안전한 방법
+echo "기본 nginx server 블록 비활성화 중..."
+# main nginx.conf에서 기본 server 블록 주석 처리
+if grep -q "listen.*80" /etc/nginx/nginx.conf; then
+    cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
+    sed -i '/server {/,/}/s/^/#/' /etc/nginx/nginx.conf
 fi
+
+# 또는 include 구문만 남기고 기본 설정 제거
+cat > /etc/nginx/nginx.conf << 'EOF'
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log;
+pid /run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile            on;
+    tcp_nopush          on;
+    tcp_nodelay         on;
+    keepalive_timeout   65;
+    types_hash_max_size 4096;
+
+    include             /etc/nginx/mime.types;
+    default_type        application/octet-stream;
+
+    include /etc/nginx/conf.d/*.conf;
+}
+EOF
 
 # ecosystem.config.js 확인 및 PM2 시작
 echo "애플리케이션 시작 중..."
@@ -269,9 +323,14 @@ su - ec2-user -c "pm2 save"
 
 # nginx 설정 테스트 및 재시작
 echo "nginx 설정 테스트 및 재시작 중..."
-nginx -t
-if [ $? -ne 0 ]; then
-    echo "nginx 설정에 오류가 있습니다."
+
+# nginx 설정 파일 구문 확인
+if ! nginx -t 2>&1; then
+    echo "nginx 설정에 오류가 있습니다. 설정 파일을 확인합니다."
+    echo "현재 nginx 설정 파일들:"
+    ls -la /etc/nginx/conf.d/
+    echo "app.conf 내용:"
+    cat /etc/nginx/conf.d/app.conf
     exit 1
 fi
 
@@ -289,7 +348,7 @@ sleep 5
 
 # PM2 상태 확인
 echo "PM2 프로세스 상태:"
-pm2 list
+su - ec2-user -c "pm2 list"
 
 # nginx 상태 확인
 echo "nginx 상태:"
