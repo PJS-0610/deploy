@@ -9,6 +9,8 @@ async function bootstrap() {
   const allowedOrigins = [
     'http://localhost:3000', // 개발 환경
     'https://localhost:3000', // 로컬 HTTPS
+    'http://localhost:3002', // 프론트엔드 개발 환경
+    'https://localhost:3002', // 프론트엔드 로컬 HTTPS
   ];
 
   // 운영 환경 도메인 추가
