@@ -2,24 +2,21 @@ module.exports = {
   apps: [
     {
       name: 'aws2-giot-backend',
-      script: 'aws2-api/dist/main.js',
+      script: '/home/ec2-user/app/aws2-api/dist/main.js',
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '2G',
+      cwd: '/home/ec2-user/app/aws2-api',
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
-        AWS_REGION: 'ap-northeast-2',
-        DOMAIN_NAME: process.env.DOMAIN_NAME || 'your-domain.com',
-        ADDITIONAL_DOMAINS: process.env.ADDITIONAL_DOMAINS || ''
+        AWS_REGION: 'ap-northeast-2'
       },
       env_production: {
         NODE_ENV: 'production',
         PORT: 3001,
-        AWS_REGION: 'ap-northeast-2',
-        DOMAIN_NAME: process.env.DOMAIN_NAME || 'your-domain.com',
-        ADDITIONAL_DOMAINS: process.env.ADDITIONAL_DOMAINS || ''
+        AWS_REGION: 'ap-northeast-2'
       },
       log_file: '/var/log/aws2-giot-app/backend.log',
       out_file: '/var/log/aws2-giot-app/backend-out.log',
@@ -35,19 +32,19 @@ module.exports = {
       name: 'aws2-giot-frontend',
       script: 'npm',
       args: 'start',
-      cwd: '/opt/aws2-giot-app/frontend_backup',
+      cwd: '/home/ec2-user/app/frontend_backup',
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
       env: {
-        NODE_ENV: 'development',
+        NODE_ENV: 'production',
         PORT: 3000,
         BROWSER: 'none',
         CI: 'true'
       },
       env_production: {
-        NODE_ENV: 'development',
+        NODE_ENV: 'production',
         PORT: 3000,
         BROWSER: 'none',
         CI: 'true'
