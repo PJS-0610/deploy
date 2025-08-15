@@ -5,20 +5,48 @@ echo "=== 애플리케이션 시작 중 ==="
 # 애플리케이션 디렉토리로 이동
 cd /home/ec2-user/app
 
-# 완전한 의존성 재설치 (견고성을 위해)
-echo "의존성 확인 및 설치 중..."
+# 완전한 시스템 준비 (Amazon Linux 2023)
+echo "시스템 완전 설정 중..."
 
-# Node.js 및 npm 강제 설치
-dnf install -y nodejs npm
+# 패키지 매니저 업데이트
+dnf update -y
+
+# 필수 시스템 도구 설치
+dnf install -y curl wget git tar gzip unzip
+
+# Node.js 및 npm 설치 (NodeSource 저장소 사용 - 더 안정적)
+echo "Node.js 설치 중..."
+curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+dnf install -y nodejs
+
+# Python (일부 npm 패키지 빌드용)
+dnf install -y python3 python3-pip
+
+# Build tools (네이티브 모듈 컴파일용)
+dnf install -y gcc-c++ make
 
 # nginx 설치 및 시작
+echo "nginx 설치 중..."
 dnf install -y nginx
 systemctl enable nginx
+systemctl start nginx
+
+# nginx 설치 확인
+if ! systemctl is-active --quiet nginx; then
+    echo "nginx 서비스 시작 실패. 수동으로 시작 시도..."
+    /usr/sbin/nginx
+fi
+
+if ! command -v nginx &> /dev/null; then
+    echo "nginx 설치 실패"
+    exit 1
+fi
 
 # PATH 환경변수 설정
 export PATH=$PATH:/usr/local/bin:/usr/bin
 
 # PM2 전역 설치
+echo "PM2 설치 중..."
 npm install -g pm2
 
 # 로그 디렉토리 생성
@@ -56,12 +84,26 @@ if [ -d "aws2-api" ] && [ -f "aws2-api/package.json" ]; then
     echo "백엔드 의존성 설치 및 빌드 중..."
     cd aws2-api
     chown -R ec2-user:ec2-user .
-    su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm ci"
     
-    # 빌드 스크립트가 있으면 실행
-    if grep -q '"build"' package.json; then
-        su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm run build"
+    # devDependencies 포함하여 설치 (빌드에 필요)
+    echo "백엔드 전체 의존성 설치 중..."
+    su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm install"
+    
+    # NestJS CLI 전역 설치
+    npm install -g @nestjs/cli
+    
+    # 빌드 실행
+    echo "백엔드 빌드 실행 중..."
+    su - ec2-user -c "cd /home/ec2-user/app/aws2-api && npm run build"
+    
+    # 빌드 결과 확인
+    if [ ! -f "dist/main.js" ]; then
+        echo "빌드 실패: dist/main.js 파일이 생성되지 않았습니다."
+        echo "빌드 디렉토리 내용:"
+        ls -la dist/ || echo "dist 디렉토리가 존재하지 않습니다."
+        exit 1
     fi
+    
     cd ..
 fi
 
@@ -70,7 +112,7 @@ if [ -d "frontend_backup" ] && [ -f "frontend_backup/package.json" ]; then
     echo "프론트엔드 의존성 설치 중..."
     cd frontend_backup
     chown -R ec2-user:ec2-user .
-    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm ci"
+    su - ec2-user -c "cd /home/ec2-user/app/frontend_backup && npm install"
     cd ..
 fi
 
@@ -143,22 +185,20 @@ fi
 # PM2 프로세스 저장
 su - ec2-user -c "pm2 save"
 
-# nginx 상태 확인 및 재시작
-echo "nginx 상태 확인 및 재시작 중..."
-if systemctl is-active --quiet nginx; then
-    echo "nginx가 실행 중입니다. 재시작합니다..."
-    systemctl restart nginx
-else
-    echo "nginx가 실행되지 않고 있습니다. 시작합니다..."
-    systemctl start nginx
+# nginx 설정 테스트 및 재시작
+echo "nginx 설정 테스트 및 재시작 중..."
+nginx -t
+if [ $? -ne 0 ]; then
+    echo "nginx 설정에 오류가 있습니다."
+    exit 1
 fi
 
+systemctl restart nginx
 if systemctl is-active --quiet nginx; then
-    echo "nginx가 성공적으로 실행되었습니다."
+    echo "nginx가 성공적으로 재시작되었습니다."
 else
-    echo "nginx 시작에 실패했습니다."
-    systemctl status nginx --no-pager
-    exit 1
+    echo "nginx 재시작에 실패했습니다. 직접 시작 시도..."
+    /usr/sbin/nginx
 fi
 
 # 서비스 상태 확인
