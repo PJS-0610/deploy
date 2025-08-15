@@ -5,20 +5,27 @@ echo "=== 애플리케이션 시작 중 ==="
 # 애플리케이션 디렉토리로 이동
 cd /home/ec2-user/app
 
+# PM2 경로 확인 및 설정
+export PATH=$PATH:/usr/local/bin:/usr/bin
+if ! command -v pm2 &> /dev/null; then
+    echo "PM2를 찾을 수 없습니다. 다시 설치합니다..."
+    npm install -g pm2
+fi
+
 # ecosystem.config.js가 있으면 PM2로 시작
 if [ -f "ecosystem.config.js" ]; then
     echo "PM2로 애플리케이션 시작 중..."
-    pm2 start ecosystem.config.js
+    sudo -u ec2-user pm2 start ecosystem.config.js
 elif [ -f "package.json" ]; then
     echo "npm start로 애플리케이션 시작 중..."
-    pm2 start npm --name "app" -- start
+    sudo -u ec2-user pm2 start npm --name "app" -- start
 else
     echo "시작 스크립트를 찾을 수 없습니다."
     exit 1
 fi
 
 # PM2 프로세스 저장
-pm2 save
+sudo -u ec2-user pm2 save
 
 # nginx 재시작 (프록시 설정 적용)
 echo "nginx 재시작 중..."
