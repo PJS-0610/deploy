@@ -107,4 +107,46 @@ CODEDEPLOY_DEPLOYMENT_GROUP: your-deployment-group
 1. GitHub Repository Secrets에 AWS 자격 증명 추가
 2. GitHub Actions 워크플로우 재실행
 
+## 트러블슈팅
+
+### 오류: "argument --deployment-group-name: expected one argument"
+
+**원인**: `CODEDEPLOY_DEPLOYMENT_GROUP` secret이 비어있거나 설정되지 않음
+
+**해결방법**:
+1. AWS Console에서 실제 배포 그룹 이름 확인:
+   ```bash
+   aws deploy list-deployment-groups --application-name your-app-name
+   ```
+
+2. GitHub Repository Secrets에서 `CODEDEPLOY_DEPLOYMENT_GROUP` 수정/추가:
+   - 일반적인 이름: `production`, `staging`, `default-deployment-group`
+
+3. Secret 값에 공백이나 특수문자가 없는지 확인
+
+### 오류: "DeploymentConfigDoesNotExistException"
+
+**원인**: 잘못된 배포 구성 이름 사용
+
+**오류 메시지**: 
+```
+No deployment configuration found for name: CodeDeployDefault.EC2OneAtATime
+```
+
+**해결방법**:
+1. 올바른 배포 구성 이름 사용:
+   - EC2 인스턴스: `CodeDeployDefault.EC2OneAtATimeV2`
+   - Auto Scaling: `CodeDeployDefault.EC2AllAtOneTimeV2`
+
+2. 사용 가능한 구성 확인:
+   ```bash
+   aws deploy list-deployment-configs --region ap-northeast-2
+   ```
+
+### 오류: "Credentials could not be loaded"
+
+**원인**: AWS 자격 증명 secrets 누락
+
+**해결방법**: 위의 GitHub Repository Secrets 설정 가이드 참조
+
 이후 보안 강화를 위해 OIDC 설정을 고려해보세요.
