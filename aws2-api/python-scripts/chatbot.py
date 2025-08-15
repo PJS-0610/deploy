@@ -4,6 +4,9 @@ import json
 import uuid
 import boto3
 import traceback
+import threading
+import atexit
+import sys
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 import concurrent.futures as _f
@@ -2163,28 +2166,31 @@ class UserSession:
         self.last_sensor_ctx["tag"] = tag
         self.last_sensor_ctx["label"] = label
 
-# 전역 세션 저장소
+# 전역 세션 저장소 (스레드 안전)
 USER_SESSIONS: Dict[str, UserSession] = {}
 SESSION_TIMEOUT = 3600  # 1시간 후 세션 만료
+_session_lock = threading.RLock()  # 재진입 가능한 락
 
 def get_or_create_session(session_id: str = None):
-    """세션을 가져오거나 새로 생성"""
-    if session_id and session_id in USER_SESSIONS:
-        session = USER_SESSIONS[session_id]
-        session.update_activity()
-        return session
-    
-    # 새 세션 생성 (사용자 제공 ID 사용 또는 자동 생성)
-    new_session = UserSession(session_id)
-    USER_SESSIONS[new_session.session_id] = new_session
-    
-    # 만료된 세션 정리
-    cleanup_expired_sessions()
-    
-    return new_session
+    """세션을 가져오거나 새로 생성 (스레드 안전)"""
+    with _session_lock:
+        if session_id and session_id in USER_SESSIONS:
+            session = USER_SESSIONS[session_id]
+            session.update_activity()
+            return session
+        
+        # 새 세션 생성 (사용자 제공 ID 사용 또는 자동 생성)
+        new_session = UserSession(session_id)
+        USER_SESSIONS[new_session.session_id] = new_session
+        
+        # 만료된 세션 정리
+        cleanup_expired_sessions()
+        
+        return new_session
 
 def cleanup_expired_sessions():
-    """만료된 세션들을 정리"""
+    """만료된 세션들을 정리 (스레드 안전)"""
+    # 이 함수는 이미 _session_lock 내에서 호출되므로 추가 락 불필요
     now = datetime.now(KST)
     expired_sessions = []
     
@@ -2196,7 +2202,47 @@ def cleanup_expired_sessions():
         del USER_SESSIONS[session_id]
     
     if expired_sessions:
-        print(f"정리된 만료 세션: {len(expired_sessions)}개")
+        print(f"정리된 만료 세션: {len(expired_sessions)}개", file=sys.stderr)
+
+# 자동 세션 정리 스케줄러
+_cleanup_timer = None
+CLEANUP_INTERVAL = 300  # 5분마다 정리
+
+def start_session_cleanup_scheduler(silent=False):
+    """자동 세션 정리 스케줄러 시작"""
+    global _cleanup_timer
+    
+    # 이미 실행 중이면 무시
+    if _cleanup_timer is not None:
+        return
+    
+    def periodic_cleanup():
+        with _session_lock:
+            cleanup_expired_sessions()
+        # 다음 정리 스케줄
+        global _cleanup_timer
+        _cleanup_timer = threading.Timer(CLEANUP_INTERVAL, periodic_cleanup)
+        _cleanup_timer.daemon = True
+        _cleanup_timer.start()
+    
+    # 최초 실행
+    _cleanup_timer = threading.Timer(CLEANUP_INTERVAL, periodic_cleanup)
+    _cleanup_timer.daemon = True
+    _cleanup_timer.start()
+    
+    if not silent:
+        print(f"[세션] 자동 정리 스케줄러 시작됨 (간격: {CLEANUP_INTERVAL}초)", file=sys.stderr)
+
+def stop_session_cleanup_scheduler():
+    """자동 세션 정리 스케줄러 중지"""
+    global _cleanup_timer
+    if _cleanup_timer:
+        _cleanup_timer.cancel()
+        _cleanup_timer = None
+        print("[세션] 자동 정리 스케줄러 중지됨", file=sys.stderr)
+
+# 프로그램 종료 시 정리
+atexit.register(stop_session_cleanup_scheduler)
 
 # 하위 호환성을 위한 전역 변수들 (기본 세션용) 
 SESSION_ID = datetime.now(KST).strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
@@ -2213,7 +2259,7 @@ def reset_session():
     SESSION_ID = datetime.now(KST).strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
     clear_followup_timestamp()
     _reset_last_ctx()
-    print("[세션] 대화 히스토리가 초기화되었습니다.")
+    print("[세션] 대화 히스토리가 초기화되었습니다.", file=sys.stderr)
 
 # 후속질문용 기준 타임스탬프 저장
 _FOLLOWUP_TIMESTAMP = None
