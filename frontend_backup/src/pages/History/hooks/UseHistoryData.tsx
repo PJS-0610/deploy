@@ -6,7 +6,7 @@ const initialState: HistoryState = {
   isLoading: false,
   error: null,
   showFilters: false,
-  showDatePicker: false,        // ← HistoryState에 필수
+  showDatePicker: false,
   selectedDate: null,
   filters: { date: null, sensorType: null, status: null },
   events: [],
@@ -37,14 +37,15 @@ export default function useHistoryData() {
     setHistoryState((prev) => ({
       ...prev,
       selectedDate: date,
-      // formatDate가 Date | string 모두 받도록 HistoryUtils 수정됨
-      filters: { ...prev.filters, date: HistoryUtils.formatDate(date) },
+      // ✅ 수정: formatDate 대신 formatDateToString 사용
+      filters: { ...prev.filters, date: HistoryUtils.formatDateToString(date) },
     }));
   }, []);
 
   const applyFilters = useCallback(async (page: number = 1) => {
     setHistoryState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
+      // ✅ 수정: fetchEvents 메서드 사용
       const { events, totalPages } = await HistoryAPI.fetchEvents(historyState.filters, page);
       setHistoryState((prev) => ({
         ...prev,
@@ -54,13 +55,21 @@ export default function useHistoryData() {
         isLoading: false,
       }));
     } catch (e) {
-      setHistoryState((prev) => ({ ...prev, isLoading: false, error: '데이터 로딩 실패' }));
+      const errorMessage = e instanceof Error ? e.message : '데이터 로드 실패';
+      setHistoryState((prev) => ({ 
+        ...prev, 
+        isLoading: false, 
+        error: errorMessage,
+        events: [],
+        totalPages: 1
+      }));
     }
   }, [historyState.filters]);
 
   const changePage = useCallback(async (page: number) => {
     setHistoryState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
+      // ✅ 수정: fetchEvents 메서드 사용
       const { events } = await HistoryAPI.fetchEvents(historyState.filters, page);
       setHistoryState((prev) => ({
         ...prev,
@@ -69,7 +78,12 @@ export default function useHistoryData() {
         isLoading: false,
       }));
     } catch (e) {
-      setHistoryState((prev) => ({ ...prev, isLoading: false, error: '페이지 로딩 실패' }));
+      const errorMessage = e instanceof Error ? e.message : '페이지 로드 실패';
+      setHistoryState((prev) => ({ 
+        ...prev, 
+        isLoading: false, 
+        error: errorMessage 
+      }));
     }
   }, [historyState.filters]);
 
@@ -78,7 +92,10 @@ export default function useHistoryData() {
   }, []);
 
   // HistoryScreen.tsx에서 기대하는 보조 함수들
-  const loadHistoryData = useCallback((page?: number) => { void applyFilters(page ?? 1); }, [applyFilters]);
+  const loadHistoryData = useCallback((page?: number) => { 
+    void applyFilters(page ?? 1); 
+  }, [applyFilters]);
+  
   const updateHistoryState = useCallback((patch: Partial<HistoryState>) => {
     setHistoryState((prev) => ({ ...prev, ...patch }));
   }, []);

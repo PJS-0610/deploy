@@ -14,8 +14,7 @@ import {
 } from '../../services/DashboardTypes';
 import {
   MintrendService,
-  MintrendResponse,
-  MintrendData
+  MintrendResponse
 } from '../../services/MintrendTypes';
 // 🆕 QuickSight 관련 import 추가
 import {
@@ -278,23 +277,33 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     }
   };
 
-  // Mintrend 데이터 가져오기
-  const fetchMintrendData = async () => {
-    setMintrendLoading(true);
-    setMintrendError(null);
+// DashboardScreen.tsx에서 fetchMintrendData 함수만 수정
 
-    try {
-      const data = await MintrendService.getLatestMintrendData();
-      setMintrendData(data);
-      console.log('✅ Mintrend 데이터 로드 성공:', data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Mintrend 데이터를 가져오는 중 오류가 발생했습니다.';
-      setMintrendError(errorMessage);
-      console.error('❌ Mintrend 데이터 로드 실패:', err);
-    } finally {
-      setMintrendLoading(false);
+// Mintrend 데이터 가져오기 - 수정된 버전
+const fetchMintrendData = async () => {
+  setMintrendLoading(true);
+  setMintrendError(null);
+
+  try {
+    const data = await MintrendService.getLatestMintrendData();
+    setMintrendData(data);
+    console.log('✅ Mintrend 데이터 로드 성공:', data);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Mintrend 데이터를 가져오는 중 오류가 발생했습니다.';
+    setMintrendError(errorMessage);
+    console.error('❌ Mintrend 데이터 로드 실패:', err);
+    
+    // 🔧 개발 시 디버깅용 정보 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 디버깅 정보:');
+      console.log('- API_BASE_URL:', process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001');
+      console.log('- 백엔드 서버가 실행 중인지 확인하세요');
+      console.log('- http://localhost:3001/s3/file/last/mintrend 에 직접 접속해보세요');
     }
-  };
+  } finally {
+    setMintrendLoading(false);
+  }
+};
 
   // 🆕 QuickSight 데이터 가져오기
   const fetchQuickSightData = async (sensorType: QuickSightSensorType) => {

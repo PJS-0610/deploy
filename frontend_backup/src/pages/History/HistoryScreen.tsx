@@ -30,8 +30,8 @@ import { HistoryUtils } from '../../services/HistoryTypes';
 import { HistoryScreenProps, NotificationData } from '../../services/HistoryTypes';
 import styles from './HistoryScreen.module.css';
 import useHistoryData from './hooks/UseHistoryData';
+// ✅ import에서 HistoryTable 제거 (사용하지 않으므로)
 import HistoryFilter from '../../components/history/HistoryFilter';
-import HistoryTable from '../../components/history/HistoryTable';
 
 
 /**
@@ -323,3 +323,4 @@ const getTypeLabel = (r: any) => ({
 };
 
 export default HistoryScreen;
+
