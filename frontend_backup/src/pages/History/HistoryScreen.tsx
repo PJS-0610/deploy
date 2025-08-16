@@ -284,7 +284,7 @@ const getTypeLabel = (r: any) => ({
   GAS:  'Gas Concentration'
 }[typeKey(r)] ?? typeKey(r));
 
-          const unitOf = (t: string) => ({ TEMP: '°C', HUMID: '%', GAS: 'ppm' }[t] || '');
+          const unitOf = (t: string) => ({ TEMP: '°C', HUMI: '%', GAS: 'ppm' }[t] || '');
 
           return (
             <React.Fragment key={`grp-${g.gid}`}>

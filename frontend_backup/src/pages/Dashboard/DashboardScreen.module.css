@@ -614,3 +614,31 @@
     padding: 4px 8px;
   }
 }
+
+/* Mintrend 상태별 색상 클래스 */
+.status-good {
+  color: #10b981; /* 녹색 */
+  font-weight: 600;
+}
+
+.status-moderate {
+  color: #f59e0b; /* 주황색 */
+  font-weight: 600;
+}
+
+.status-poor {
+  color: #ef4444; /* 빨간색 */
+  font-weight: 600;
+}
+
+.status-danger {
+  color: #dc2626; /* 진한 빨간색 */
+  font-weight: 700;
+  background-color: #fee2e2; /* 연한 빨간 배경 */
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.status-default {
+  color: #6b7280; /* 회색 */
+}
