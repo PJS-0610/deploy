@@ -1,0 +1,186 @@
+/* components/chatbot/MessageItem.module.css */
+
+/* 메시지 아이템 */
+.chatbotMessageItem {
+  display: flex;
+  margin-bottom: 20px;
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+.chatbotMessageItem.user {
+  justify-content: flex-end;
+}
+
+.chatbotMessageItem.bot {
+  justify-content: flex-start;
+}
+
+/* 메시지 아바타 */
+.chatbotMessageAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.chatbotMessageAvatar.bot {
+  background-color: white;
+  color: #1f2937;
+  margin-right: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  border: 1px solid #e5e7eb;
+}
+
+.chatbotMessageAvatar.user {
+  background-color: #6b7280;
+  color: white;
+  margin-left: 12px;
+}
+
+/* 메시지 버블 */
+.chatbotMessageBubble {
+  max-width: 70%;
+  position: relative;
+}
+
+.chatbotMessageContent {
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  position: relative;
+}
+
+.chatbotMessageContent.bot {
+  background-color: #1f2937;
+  color: white;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 2px 8px rgba(31, 41, 55, 0.2);
+}
+
+.chatbotMessageContent.user {
+  background-color: #6b7280;
+  color: white;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 8px rgba(107, 114, 128, 0.2);
+}
+
+/* 메시지 메타 정보 */
+.chatbotMessageMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 0 4px;
+}
+
+.chatbotMessageMeta.bot {
+  justify-content: flex-start;
+}
+
+.chatbotMessageMeta.user {
+  justify-content: flex-end;
+}
+
+.chatbotMessageTime {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.chatbotMessageActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.chatbotMessageActionButton {
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #9ca3af;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chatbotMessageActionButton:hover {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+/* 센서 데이터 표시 */
+.chatbotSensorData {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.chatbotSensorItem {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.chatbotSensorItem:last-child {
+  margin-bottom: 0;
+}
+
+/* 애니메이션 */
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .chatbotMessageContent {
+    max-width: 85%;
+  }
+}
+
+@media (max-width: 480px) {
+  .chatbotMessageContent {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}
+
+/* 접근성 */
+@media (prefers-reduced-motion: reduce) {
+  .chatbotMessageItem {
+    animation: none;
+  }
+  
+  .chatbotMessageActionButton {
+    transition: none;
+  }
+}
+
+/* 인쇄 스타일 */
+@media print {
+  .chatbotMessageContent {
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+  }
+}

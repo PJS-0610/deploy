@@ -1,0 +1,138 @@
+/* components/chatbot/ChatbotHeader.module.css */
+
+/* 챗봇 헤더 */
+.chatbotHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.chatbotHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.chatbotBackButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.chatbotBackButton:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.chatbotModelInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chatbotModelName {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.chatbotModelStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chatbotStatusBadge {
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chatbotStatusActive {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.chatbotStatusInactive {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.chatbotHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chatbotActionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.chatbotActionButton:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .chatbotHeader {
+    padding: 12px 16px;
+  }
+  
+  .chatbotModelName {
+    font-size: 14px;
+  }
+  
+  .chatbotActionButton {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chatbotHeaderActions {
+    gap: 4px;
+  }
+  
+  .chatbotActionButton {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .chatbotHeader {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .chatbotModelName {
+    color: #f9fafb;
+  }
+}

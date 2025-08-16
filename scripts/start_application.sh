@@ -109,8 +109,9 @@ QUICKSIGHT_NAMESPACE=$(aws ssm get-parameter --name "/test_pjs/backend/QUICKSIGH
 BACKEND_PORT=$(aws ssm get-parameter --name "/test_pjs/backend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3001")
 
 # 프론트엔드 환경변수 가져오기
-FRONTEND_PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3002")
-REACT_APP_API_BASE=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "http://localhost:3001")
+PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3002")
+REACT_APP_API_BASE_URL=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE_URL" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "http://localhost:3001")
+REACT_APP_DEBUG=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_DEBUG" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "false")
 
 # 도메인 정보
 DOMAIN_NAME=$(aws ssm get-parameter --name "/test_pjs/domain" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "localhost")
@@ -120,13 +121,14 @@ echo "- S3_BUCKET_NAME=$S3_BUCKET_NAME"
 echo "- AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID"
 echo "- AWS_REGION=$AWS_REGION"
 echo "- BACKEND_PORT=$BACKEND_PORT"
-echo "- FRONTEND_PORT=$FRONTEND_PORT"
+echo "- PORT=$PORT"
 echo "- DOMAIN_NAME=$DOMAIN_NAME"
 
 # 백엔드 .env 파일 생성
 cat > /home/ec2-user/app/aws2-api/.env << EOF
 NODE_ENV=production
 PORT=$BACKEND_PORT
+BACKEND_PORT=$BACKEND_PORT
 AWS_REGION=$AWS_REGION
 AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
@@ -145,9 +147,10 @@ EOF
 
 # 프론트엔드 .env 파일 생성
 cat > /home/ec2-user/app/frontend_backup/.env << EOF
-REACT_APP_API_URL=$REACT_APP_API_BASE
+REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
+REACT_APP_DEBUG=$REACT_APP_DEBUG
 REACT_APP_ENV=production
-PORT=$FRONTEND_PORT
+PORT=$PORT
 BROWSER=none
 CI=true
 EOF
@@ -286,7 +289,7 @@ server {
     }
 
     location / {
-        proxy_pass http://127.0.0.1:${FRONTEND_PORT}/;
+        proxy_pass http://127.0.0.1:${PORT}/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
