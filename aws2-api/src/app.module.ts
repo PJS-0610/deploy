@@ -7,11 +7,12 @@ import { S3Module } from './s3/s3.module';
 import { S3Controller } from './s3/s3.controller';
 import { QuickSightModule } from './quicksight/quicksight.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
+import { LoginModule } from './login/login.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 @Module({
-  imports: [S3Module, QuickSightModule, ChatbotModule],
+  imports: [S3Module, QuickSightModule, ChatbotModule, LoginModule],
   controllers: [AppController, HealthController, S3Controller],
   providers: [AppService],
 })
