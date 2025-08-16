@@ -396,8 +396,11 @@ else
     su - ec2-user -c "cd /home/ec2-user/app && pm2 start npm --name 'app' -- start"
 fi
 
-# PM2 프로세스 저장
+# PM2 자동 시작 설정 및 프로세스 저장
+echo "PM2 자동 시작 설정 중..."
+su - ec2-user -c "pm2 startup systemd -u ec2-user --hp /home/ec2-user" | grep "sudo" | sh || echo "PM2 startup 설정 실패 (이미 설정되었을 수 있음)"
 su - ec2-user -c "pm2 save"
+echo "PM2 프로세스 저장 완료"
 
 # nginx 설정 테스트 및 재시작
 echo "nginx 설정 테스트 및 재시작 중..."
@@ -432,15 +435,61 @@ su - ec2-user -c "pm2 list"
 echo "nginx 상태:"
 systemctl status nginx --no-pager
 
-# Health check 테스트
+# Health check 테스트 (강화된 버전)
 echo "Health check 테스트 중..."
-if curl -f http://localhost/health > /dev/null 2>&1; then
-    echo "✅ Health check 성공"
-else
-    echo "❌ Health check 실패"
-    echo "로컬 애플리케이션 상태 확인:"
+HEALTH_CHECK_SUCCESS=false
+RETRY_COUNT=0
+MAX_RETRIES=6
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "Health check 시도 $RETRY_COUNT/$MAX_RETRIES..."
+    
+    if curl -f http://localhost/health > /dev/null 2>&1; then
+        echo "✅ Health check 성공!"
+        HEALTH_CHECK_SUCCESS=true
+        break
+    else
+        echo "⏳ Health check 실패, 30초 후 재시도..."
+        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+            sleep 30
+        fi
+    fi
+done
+
+if [ "$HEALTH_CHECK_SUCCESS" = "false" ]; then
+    echo "❌ Health check 최종 실패 - 롤백 시작"
+    echo "서비스 상태 진단:"
+    
+    # PM2 상태 확인
+    echo "PM2 프로세스 상태:"
+    su - ec2-user -c "pm2 list" || echo "PM2 상태 확인 실패"
+    
+    # nginx 상태 확인
+    echo "nginx 상태:"
+    systemctl status nginx --no-pager || echo "nginx 상태 확인 실패"
+    
+    # 직접 포트 확인
+    echo "포트 상태 확인:"
+    ss -tlnp | grep -E ":(3001|3002|80)" || echo "포트 확인 실패"
+    
+    # 백엔드 직접 접근 확인
+    echo "백엔드 직접 접근 테스트:"
     curl -s http://localhost:3001/health || echo "백엔드 직접 접근 실패"
-    curl -s http://localhost:3000 > /dev/null && echo "프론트엔드 직접 접근 성공" || echo "프론트엔드 직접 접근 실패"
+    
+    # 프론트엔드 직접 접근 확인  
+    echo "프론트엔드 직접 접근 테스트:"
+    curl -s -o /dev/null -w "%{http_code}" http://localhost:3002/ || echo "프론트엔드 직접 접근 실패"
+    
+    echo "❌ 배포 실패 - 수동 확인이 필요합니다"
+    echo "다음 명령어로 문제를 확인하세요:"
+    echo "  pm2 logs"
+    echo "  sudo journalctl -u nginx -f"
+    echo "  sudo tail -f /var/log/aws2-giot-app/*.log"
+    
+    exit 1
+else
+    echo "✅ 배포 성공 - 서비스가 정상적으로 실행 중입니다"
 fi
 
 echo "=== 애플리케이션 시작 완료 ==="
