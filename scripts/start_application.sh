@@ -177,17 +177,8 @@ else
     exit 1
 fi
 
-# 루트 .env 파일 생성
-cat > /home/ec2-user/app/.env << EOF
-NODE_ENV=production
-AWS_REGION=$AWS_REGION
-S3_BUCKET_NAME=$S3_BUCKET_NAME
-DOMAIN_NAME=$DOMAIN_NAME
-EOF
-
 # 권한 설정
 echo "환경변수 파일 권한 설정 중..."
-chown ec2-user:ec2-user /home/ec2-user/app/.env
 
 # 백엔드 .env 파일 권한 설정
 if [ -f "/home/ec2-user/app/aws2-api/.env" ]; then
