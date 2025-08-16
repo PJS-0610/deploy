@@ -23,19 +23,20 @@
  */
 
 // ChatbotScreen.tsx - 간소화된 챗봇 화면 컴포넌트
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell, User, ChevronDown } from 'lucide-react';
 import { Sidebar } from '../../components/common/Sidebar';
 import NotificationDropdown from '../../components/common/dropdown/NotificationDropdown';
 import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
-import ChatbotHeader from '../../components/chatbot/ChatbotHeader';
-import MessageItem from '../../components/chatbot/MessageItem';
-import TypingIndicator from '../../components/chatbot/TypingIndicator';
-import ChatbotInput from '../../components/chatbot/ChatbotInput';
-import { useChatbot } from './hooks/UseChatbot';
-import { useCurrentTime } from './hooks/UseCurrentTime';
 import { ChatbotScreenProps, NotificationData } from '../../services/ChatbotTypes';
 import styles from "./ChatbotScreen.module.css";
+import { useChatbot } from '../../services/UseChatbot';
+import {
+  ChatbotHeader,
+  MessageItem,
+  TypingIndicator,
+  ChatbotInput,
+} from './hooks/ChatbotComponents';
 
 const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ 
   onNavigateToHistory,
@@ -52,6 +53,18 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
    * - sendMessage: POST /chatbot/ask API 호출 함수
    * - 실시간 대화 상태 및 세션 관리
    */
+
+  // ChatbotScreen.tsx 상단에 추가
+const useCurrentTime = () => {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now.toLocaleString('ko-KR', { hour12: false });
+};
+
+
   const {
     chatbotState,        // 챗봇 전체 상태 (메시지, 로딩, 에러 등)
     messagesEndRef,      // 메시지 스크롤 자동 이동용 ref

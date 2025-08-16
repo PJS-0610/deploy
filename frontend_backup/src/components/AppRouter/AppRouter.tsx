@@ -37,58 +37,59 @@ const AppRouter: React.FC<AppRouterProps> = ({ appState, handlers, navigation })
   // 현재 라우트에 따른 화면 렌더링
   const renderCurrentScreen = () => {
     console.log(`🖥️ 렌더링: ${currentRoute} (역할: ${selectedRole})`);
-    
+
     switch (currentRoute) {
       case 'loading':
         return (
-          <LoadingScreen 
+          <LoadingScreen
             onLoadingComplete={onLoadingComplete}
           />
         );
-      
+
       case 'main':
         return (
-          <MainScreen 
-onNavigateToDashboard={() => onNavigateToRoleSelect()}
-/>
+          <MainScreen
+            onNavigateToDashboard={() => onNavigateToRoleSelect()}
+          />
         );
-      
+
       case 'role':
         return (
-          <RoleSelectionScreen 
+          <RoleSelectionScreen
             onRoleSelected={onRoleSelected}
           />
         );
-      
+
       case 'adminLogin':
         console.log('🔋 관리자 로그인 화면 표시');
         return (
-          <AuthSystem 
+          <AuthSystem
             onLoginSuccess={onAdminLoginSuccess}
             selectedRole={selectedRole}
+            onGoBack={onGoBackToRole}  // ✅ 이 줄 추가!
           />
         );
-      
+
       case 'userCode':
         console.log('🔒 사용자 코드 입력 화면 표시');
         return (
-          <UserCodeScreen 
-  onCodeSuccess={onUserCodeSuccess}
-  onGoBack={onGoBackToRole}
-/>
+          <UserCodeScreen
+            onCodeSuccess={onUserCodeSuccess}
+            onGoBack={onGoBackToRole}
+          />
         );
-      
+
       case 'dashboard':
         return (
           <DashboardScreen
             onNavigateToChatbot={() => navigateToRoute('chatbot')}
             onNavigateToHistory={() => navigateToRoute('history')}
             onNavigateToRole={onLogout}
-            // activeMenu={activeMenu}
-            // setActiveMenu={setActiveMenu}
+          // activeMenu={activeMenu}
+          // setActiveMenu={setActiveMenu}
           />
         );
-      
+
       case 'chatbot':
         return (
           <ChatbotScreen
@@ -99,7 +100,7 @@ onNavigateToDashboard={() => onNavigateToRoleSelect()}
             setActiveMenu={setActiveMenu}
           />
         );
-      
+
       case 'history':
         return (
           <HistoryScreen
@@ -112,7 +113,7 @@ onNavigateToDashboard={() => onNavigateToRoleSelect()}
             setActiveMenu={setActiveMenu}
           />
         );
-      
+
       default:
         console.warn(`⚠️ 알 수 없는 라우트: ${currentRoute}`);
         return (

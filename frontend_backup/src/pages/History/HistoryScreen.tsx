@@ -281,7 +281,7 @@ const groups = React.useMemo(() => {
 const getTypeLabel = (r: any) => ({
   TEMP: 'Temperature',
   HUMI: 'Humidity',
-  GAS:  'Gas Concentration'
+  GAS:  'CO₂ Concentration'
 }[typeKey(r)] ?? typeKey(r));
 
           const unitOf = (t: string) => ({ TEMP: '°C', HUMI: '%', GAS: 'ppm' }[t] || '');

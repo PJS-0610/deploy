@@ -542,7 +542,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                         <th>TIME</th>
                         <th>TEMPERATURE</th>
                         <th>HUMIDITY</th>
-                        <th>GAS CONCENTRATION</th>
+                        <th>CO₂ CONCENTRATION</th>
                       </tr>
                     </thead>
                         <tbody>

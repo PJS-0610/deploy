@@ -55,34 +55,21 @@ export const useAppRouter = () => {
   }, []);
 
   // 인증 상태 확인
-  const checkAuthenticationState = () => {
-    const savedRole = RoleSelectUtils.getSavedRole();
-    const isLoggedIn = sessionStorage.getItem('isAuthenticated') === 'true';
+const checkAuthenticationState = () => {
+  // 새로고침 시 항상 loading으로 이동
+  setAppState(prev => ({
+    ...prev,
+    currentRoute: 'loading',
+    selectedRole: null,
+    isAuthenticated: false
+  }));
 
-    if (savedRole && isLoggedIn) {
-      // 이미 로그인된 상태라면 대시보드로 직접 이동
-      setAppState({
-        currentRoute: 'dashboard',
-        selectedRole: savedRole,
-        isAuthenticated: true,
-        activeMenu: 'Dashboard'
-      });
-    } else if (savedRole) {
-      // 역할은 선택되었지만 로그인이 안된 상태라면 해당 역할의 인증 화면으로
-      const authRoute = savedRole === 'admin' ? 'adminLogin' : 'dashboard';
-      setAppState(prev => ({
-        ...prev,
-        currentRoute: authRoute,
-        selectedRole: savedRole
-      }));
-    }
-
-    // 첫 방문 여부 확인
-    const hasVisited = sessionStorage.getItem('aws_iot_visited');
-    if (!hasVisited) {
-      sessionStorage.setItem('aws_iot_visited', 'true');
-    }
-  };
+  // 첫 방문 여부 확인
+  const hasVisited = sessionStorage.getItem('aws_iot_visited');
+  if (!hasVisited) {
+    sessionStorage.setItem('aws_iot_visited', 'true');
+  }
+};
 
   // 이벤트 리스너 설정
   const setupEventListeners = () => {
