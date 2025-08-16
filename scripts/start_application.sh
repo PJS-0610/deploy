@@ -125,6 +125,8 @@ echo "- PORT=$PORT"
 echo "- DOMAIN_NAME=$DOMAIN_NAME"
 
 # 백엔드 .env 파일 생성
+echo "백엔드 .env 파일 생성 중..."
+mkdir -p /home/ec2-user/app/aws2-api
 cat > /home/ec2-user/app/aws2-api/.env << EOF
 NODE_ENV=production
 PORT=$BACKEND_PORT
@@ -145,7 +147,18 @@ METRICS_ENABLED=true
 DOMAIN_NAME=$DOMAIN_NAME
 EOF
 
+# .env 파일 생성 확인
+if [ -f "/home/ec2-user/app/aws2-api/.env" ]; then
+    echo "백엔드 .env 파일 생성 성공"
+    ls -la /home/ec2-user/app/aws2-api/.env
+else
+    echo "백엔드 .env 파일 생성 실패"
+    exit 1
+fi
+
 # 프론트엔드 .env 파일 생성
+echo "프론트엔드 .env 파일 생성 중..."
+mkdir -p /home/ec2-user/app/frontend_backup
 cat > /home/ec2-user/app/frontend_backup/.env << EOF
 REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
 REACT_APP_DEBUG=$REACT_APP_DEBUG
@@ -154,6 +167,15 @@ PORT=$PORT
 BROWSER=none
 CI=true
 EOF
+
+# .env 파일 생성 확인
+if [ -f "/home/ec2-user/app/frontend_backup/.env" ]; then
+    echo "프론트엔드 .env 파일 생성 성공"
+    ls -la /home/ec2-user/app/frontend_backup/.env
+else
+    echo "프론트엔드 .env 파일 생성 실패"
+    exit 1
+fi
 
 # 루트 .env 파일 생성
 cat > /home/ec2-user/app/.env << EOF
@@ -164,9 +186,25 @@ DOMAIN_NAME=$DOMAIN_NAME
 EOF
 
 # 권한 설정
+echo "환경변수 파일 권한 설정 중..."
 chown ec2-user:ec2-user /home/ec2-user/app/.env
-chown ec2-user:ec2-user /home/ec2-user/app/aws2-api/.env 2>/dev/null || true
-chown ec2-user:ec2-user /home/ec2-user/app/frontend_backup/.env 2>/dev/null || true
+
+# 백엔드 .env 파일 권한 설정
+if [ -f "/home/ec2-user/app/aws2-api/.env" ]; then
+    chown ec2-user:ec2-user /home/ec2-user/app/aws2-api/.env
+    echo "백엔드 .env 파일 권한 설정 완료"
+else
+    echo "경고: 백엔드 .env 파일이 존재하지 않습니다"
+fi
+
+# 프론트엔드 .env 파일 권한 설정
+if [ -f "/home/ec2-user/app/frontend_backup/.env" ]; then
+    chown ec2-user:ec2-user /home/ec2-user/app/frontend_backup/.env
+    echo "프론트엔드 .env 파일 권한 설정 완료"
+else
+    echo "오류: 프론트엔드 .env 파일이 존재하지 않습니다"
+    exit 1
+fi
 
 # 백엔드 의존성 설치 및 빌드
 if [ -d "aws2-api" ] && [ -f "aws2-api/package.json" ]; then
@@ -217,8 +255,12 @@ su - ec2-user -c "npm cache clean --force" 2>/dev/null || true
 # 프론트엔드 의존성 설치
 if [ -d "frontend_backup" ] && [ -f "frontend_backup/package.json" ]; then
     echo "프론트엔드 의존성 설치 중..."
+    echo "현재 디렉토리: $(pwd)"
+    echo "frontend_backup 디렉토리 확인: $(ls -la frontend_backup/ | head -3)"
+    
     cd frontend_backup
     chown -R ec2-user:ec2-user .
+    echo "프론트엔드 디렉토리로 이동 완료: $(pwd)"
     
     # 기존 node_modules와 캐시 완전 정리
     rm -rf node_modules package-lock.json
@@ -257,6 +299,7 @@ if [ -d "frontend_backup" ] && [ -f "frontend_backup/package.json" ]; then
         exit 1
     fi
     
+    echo "프론트엔드 처리 완료, 상위 디렉토리로 이동"
     cd ..
 fi
 
@@ -341,14 +384,24 @@ EOF
 echo "애플리케이션 시작 중..."
 export HOME=/home/ec2-user
 
-if [ -f "ecosystem.config.js" ]; then
-    echo "ecosystem.config.js로 PM2 시작..."
+echo "현재 디렉토리: $(pwd)"
+echo "파일 목록 확인:"
+ls -la | grep -E "(ecosystem|package)"
+
+if [ -f "/home/ec2-user/app/ecosystem.config.js" ]; then
+    echo "ecosystem.config.js 파일 확인됨, PM2로 시작..."
+    echo "ecosystem.config.js 내용 미리보기:"
+    head -10 /home/ec2-user/app/ecosystem.config.js
+    
     su - ec2-user -c "cd /home/ec2-user/app && pm2 start ecosystem.config.js" || {
-        echo "ecosystem.config.js 시작 실패. package.json으로 시도..."
+        echo "ecosystem.config.js 시작 실패. 상세 로그:"
+        su - ec2-user -c "cd /home/ec2-user/app && pm2 logs" || true
+        echo "package.json으로 대체 시도..."
         su - ec2-user -c "cd /home/ec2-user/app && pm2 start npm --name 'app' -- start"
     }
 else
-    echo "ecosystem.config.js가 없습니다. package.json으로 시작..."
+    echo "ecosystem.config.js가 없습니다: $(ls -la /home/ec2-user/app/ | grep ecosystem || echo 'ecosystem 파일 없음')"
+    echo "package.json으로 시작..."
     su - ec2-user -c "cd /home/ec2-user/app && pm2 start npm --name 'app' -- start"
 fi
 
