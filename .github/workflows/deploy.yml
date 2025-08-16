@@ -102,8 +102,16 @@ jobs:
         rm -rf frontend_backup/build || true
         
         # .env 파일들이 있다면 제거 (배포 시 자동 생성되므로)
-        rm -f aws2-api/.env || true
+        # 심볼릭 링크와 실제 파일 모두 제거
+        rm -f .env || true
+        rm -f aws2-api/.env || true  
         rm -f frontend_backup/.env || true
+        
+        # 혹시 남아있는 심볼릭 링크 확인 및 제거
+        find . -name ".env" -type l -delete || true
+        
+        echo "Cleaned .env files and symlinks:"
+        find . -name ".env*" -type f -o -name ".env*" -type l || echo "No .env files found"
         
         # .env.example 파일들이 있는지 확인
         echo "Environment template files:"
@@ -135,7 +143,7 @@ jobs:
         
         echo "Creating deployment package: $DEPLOYMENT_PACKAGE"
         
-        # 배포에 필요한 파일들만 포함하여 압축
+        # 배포에 필요한 파일들만 포함하여 압축 (심볼릭 링크 제외)
         zip -r $DEPLOYMENT_PACKAGE \
           appspec.yml \
           scripts/ \
@@ -149,6 +157,7 @@ jobs:
           -x "**/dist/**" \
           -x "**/build/**" \
           -x "**/.env" \
+          -x "**/.env.*" \
           -x "**/*.log" \
           -x "**/coverage/**" \
           -x "**/.nyc_output/**" \
@@ -156,7 +165,16 @@ jobs:
           -x "**/__pycache__/**" \
           -x "**/*.pyc" \
           -x "**/아카이브.zip" \
-          -x "**/.DS_Store"
+          -x "**/.DS_Store" \
+        
+        # 심볼릭 링크가 있는지 확인 (있으면 경고)
+        echo "Checking for symlinks in package..."
+        if unzip -l $DEPLOYMENT_PACKAGE | grep -E "^.*l.*\.env.*"; then
+          echo "⚠️  Warning: Found symlinks in deployment package"
+          unzip -l $DEPLOYMENT_PACKAGE | grep -E "^.*l.*\.env.*"
+        else
+          echo "✅ No problematic symlinks found"
+        fi
         
         echo "Package created successfully"
         echo "Package size: $(ls -lh $DEPLOYMENT_PACKAGE | awk '{print $5}')"
