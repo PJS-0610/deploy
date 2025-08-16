@@ -108,6 +108,9 @@ S3_BUCKET_NAME=$(aws ssm get-parameter --name "/test_pjs/backend/S3_BUCKET_NAME"
 QUICKSIGHT_NAMESPACE=$(aws ssm get-parameter --name "/test_pjs/backend/QUICKSIGHT_NAMESPACE" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "default")
 BACKEND_PORT=$(aws ssm get-parameter --name "/test_pjs/backend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3001")
 
+# 보안 관련 환경변수 가져오기
+ADMIN_API_KEY=$(aws ssm get-parameter --name "/test_pjs/backend/ADMIN_API_KEY" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "admin-default-key")
+
 # 프론트엔드 환경변수 가져오기
 PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3002")
 REACT_APP_API_BASE_URL=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE_URL" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "http://localhost:3001")
@@ -123,6 +126,7 @@ echo "- AWS_REGION=$AWS_REGION"
 echo "- BACKEND_PORT=$BACKEND_PORT"
 echo "- PORT=$PORT"
 echo "- DOMAIN_NAME=$DOMAIN_NAME"
+echo "- ADMIN_API_KEY=***[SECURED]***"
 
 # 백엔드 .env 파일 생성
 echo "백엔드 .env 파일 생성 중..."
@@ -145,6 +149,9 @@ LOG_FILE_PATH=/var/log/aws2-giot-app
 HEALTH_CHECK_TIMEOUT=5000
 METRICS_ENABLED=true
 DOMAIN_NAME=$DOMAIN_NAME
+ADMIN_API_KEY=$ADMIN_API_KEY
+RATE_LIMIT_TTL=60
+RATE_LIMIT_LIMIT=20
 EOF
 
 # .env 파일 생성 확인
