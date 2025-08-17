@@ -24,6 +24,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, User } from 'lucide-react';
 import { Sidebar } from '../../components/common/Sidebar';
+import DashboardHeader from '../../components/common/dashboard/Header';
 import NotificationDropdown from '../../components/common/dropdown/NotificationDropdown';
 import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
 import { HistoryUtils } from '../../services/HistoryTypes';
@@ -38,7 +39,7 @@ import HistoryFilter from '../../components/history/HistoryFilter';
  * 🎯 히스토리 화면 메인 컴포넌트
  * 센서 데이터 이력을 조회하고 필터링할 수 있는 화면을 제공
  */
-const HistoryScreen: React.FC<HistoryScreenProps> = ({ 
+const HistoryScreen: React.FC<HistoryScreenProps> = ({
   onNavigateBack,           // 뒤로가기 (사용하지 않음 - 향후 확장용)
   onNavigateToChatbot,      // 챗봇 화면으로 이동
   onNavigateToHistory,      // 히스토리 화면으로 이동 (현재 화면)
@@ -75,28 +76,28 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null); // 활성화된 드롭다운 추적
 
   // === timestamp별 그룹 계산 (동일 timestamp 묶고, 그룹 ID는 1부터) ===
-const groups = React.useMemo(() => {
-  const map = new Map<string, any[]>();
-  (historyState.events || []).forEach((row: any) => {
-    const ts = row.timestamp ?? '-';
-    if (!map.has(ts)) map.set(ts, []);
-    map.get(ts)!.push(row);
-  });
+  const groups = React.useMemo(() => {
+    const map = new Map<string, any[]>();
+    (historyState.events || []).forEach((row: any) => {
+      const ts = row.timestamp ?? '-';
+      if (!map.has(ts)) map.set(ts, []);
+      map.get(ts)!.push(row);
+    });
 
-  // TEMP → HUMI → GAS 순서
-  const order: Record<string, number> = { TEMP: 0, HUMI: 1, GAS: 2 };
-  const norm = (t: any) => String(t || '').toUpperCase();
+    // TEMP → HUMI → GAS 순서
+    const order: Record<string, number> = { TEMP: 0, HUMI: 1, GAS: 2 };
+    const norm = (t: any) => String(t || '').toUpperCase();
 
-  // timestamp 내림차순 정렬
-  const orderedTs = Array.from(map.keys()).sort((a, b) => b.localeCompare(a));
+    // timestamp 내림차순 정렬
+    const orderedTs = Array.from(map.keys()).sort((a, b) => b.localeCompare(a));
 
-  return orderedTs.map((ts, idx) => {
-    const rows = (map.get(ts) || []).slice().sort((a, b) =>
-      (order[norm(a.sensorType || a.type)] ?? 99) - (order[norm(b.sensorType || b.type)] ?? 99)
-    );
-    return { gid: idx + 1, timestamp: ts, rows }; // ✅ ID 1부터
-  });
-}, [historyState.events]);
+    return orderedTs.map((ts, idx) => {
+      const rows = (map.get(ts) || []).slice().sort((a, b) =>
+        (order[norm(a.sensorType || a.type)] ?? 99) - (order[norm(b.sensorType || b.type)] ?? 99)
+      );
+      return { gid: idx + 1, timestamp: ts, rows }; // ✅ ID 1부터
+    });
+  }, [historyState.events]);
 
 
   /**
@@ -105,22 +106,22 @@ const groups = React.useMemo(() => {
    */
   const handleMenuClick = (label: string, path: string) => {
     setActiveMenu(label);
-    
+
     switch (label) {
-    case 'Dashboard':
-      onNavigateToDashboard();     // 대시보드 화면으로 이동
-      break;
-    case 'Chatbot':
-      onNavigateToChatbot();       // 챗봇 화면으로 이동
-      break;
-    case 'History':
-      onNavigateToHistory();       // 현재 히스토리 화면 (새로고침)
-      break;
-    case 'Logout':
-      onNavigateToRole?.();        // 로그아웃 - 역할 선택 화면으로
-      break;
-    default:
-      break;
+      case 'Dashboard':
+        onNavigateToDashboard();     // 대시보드 화면으로 이동
+        break;
+      case 'Chatbot':
+        onNavigateToChatbot();       // 챗봇 화면으로 이동
+        break;
+      case 'History':
+        onNavigateToHistory();       // 현재 히스토리 화면 (새로고침)
+        break;
+      case 'Logout':
+        onNavigateToRole?.();        // 로그아웃 - 역할 선택 화면으로
+        break;
+      default:
+        break;
     }
   };
 
@@ -154,89 +155,35 @@ const groups = React.useMemo(() => {
   }, [historyState.showFilters, updateHistoryState]);
 
   /**
-   * 🎬 컴포넌트 초기화
-   * 화면 진입 시 최초 히스토리 데이터 로드
-   */
-  useEffect(() => {
-    loadHistoryData();  // 초기 데이터 로드 (필터 없이 전체 데이터)
-  }, []);
-
-  /**
    * 🔄 필터 변경 감지 및 자동 적용
    * 날짜, 센서 타입, 상태 필터가 변경될 때마다 자동으로 데이터 갱신
    */
-  useEffect(() => {
-    if (historyState.filters.date || historyState.filters.sensorType || historyState.filters.status) {
-      applyFilters();
-    }
-  }, [historyState.filters, applyFilters]);
+useEffect(() => {
+  // 필터가 모두 null이 아닐 때만 데이터 로드
+  if (historyState.filters.date || historyState.filters.sensorType || historyState.filters.status) {
+    applyFilters();
+  }
+}, [historyState.filters, applyFilters]);
 
   return (
     <div className={styles.container}>
       {/* 사이드바 */}
-      <Sidebar 
+      <Sidebar
         activeMenu={activeMenu}
         onMenuClick={handleMenuClick}
       />
 
       {/* 메인 컨텐츠 영역 */}
       <div className={styles.mainContent}>
-        {/* 상단 헤더 */}
-        <header className={styles.header}>
-          <div className={styles.headerContent}>
-            <div>
-              <h1 className={styles.headerTitle}>History</h1>
-              <p className={styles.headerSubtitle}>{new Date().toLocaleString('ko-KR')}</p>
-            </div>
-
-            <div className={styles.headerActions}>
-              {/* 알림 아이콘 */}
-              <div className={styles.notificationContainer}>
-                <button
-                  onClick={() => {
-                    setIsNotificationOpen(!isNotificationOpen);
-                    setIsAdminMenuOpen(false);
-                  }}
-                  className={styles.notificationButton}
-                >
-                  <Bell size={24} />
-                  {notificationData.count > 0 && (
-                    <span className={styles.notificationBadge}>
-                      {notificationData.count > 99 ? '99+' : notificationData.count}
-                    </span>
-                  )}
-                </button>
-
-                <NotificationDropdown
-                  isOpen={isNotificationOpen}
-                  onClose={() => setIsNotificationOpen(false)}
-                  notifications={notificationData.notifications}
-                />
-              </div>
-
-              {/* 관리자 프로필 */}
-              <div className={styles.adminContainer}>
-                <button
-                  onClick={() => {
-                    setIsAdminMenuOpen(!isAdminMenuOpen);
-                    setIsNotificationOpen(false);
-                  }}
-                  className={styles.adminButton}
-                >
-                  <div className={styles.adminAvatar}>
-                    <User size={18} style={{ color: 'white' }} />
-                  </div>
-                  <span className={styles.adminLabel}>Admin</span>
-                </button>
-
-                <AdminDropdown
-                  isOpen={isAdminMenuOpen}
-                  onClose={() => setIsAdminMenuOpen(false)}
-                />
-              </div>
-            </div>
-          </div>
-        </header>
+        <DashboardHeader
+          activeMenu={activeMenu}
+          currentTime={new Date().toLocaleString('ko-KR')}
+          notificationData={notificationData}
+          isNotificationOpen={isNotificationOpen}
+          isAdminMenuOpen={isAdminMenuOpen}
+          setIsNotificationOpen={setIsNotificationOpen}
+          setIsAdminMenuOpen={setIsAdminMenuOpen}
+        />
 
         {/* 히스토리 메인 */}
         <main className={styles.historyMain}>
@@ -262,58 +209,58 @@ const groups = React.useMemo(() => {
 
             {/* 테이블 섹션 */}
             <section className={styles.tableSection}>
-  <div className={styles.tableWrapper}>
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Timestamp</th>
-          <th>Sensor Type</th>
-          <th>Value</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {groups.map((g) => {
-          const [first, ...rest] = g.rows;
-          const fmt = (n: any) => (typeof n === 'number' ? n.toFixed(2) : (n ?? '-'));
-          const typeKey = (r: any) => String(r?.sensorType || r?.type || '').toUpperCase();
-const getTypeLabel = (r: any) => ({
-  TEMP: 'Temperature',
-  HUMI: 'Humidity',
-  GAS:  'CO₂ Concentration'
-}[typeKey(r)] ?? typeKey(r));
+              <div className={styles.tableWrapper}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Timestamp</th>
+                      <th>Sensor Type</th>
+                      <th>Value</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map((g) => {
+                      const [first, ...rest] = g.rows;
+                      const fmt = (n: any) => (typeof n === 'number' ? n.toFixed(2) : (n ?? '-'));
+                      const typeKey = (r: any) => String(r?.sensorType || r?.type || '').toUpperCase();
+                      const getTypeLabel = (r: any) => ({
+                        TEMP: 'Temperature',
+                        HUMI: 'Humidity',
+                        GAS: 'CO₂ Concentration'
+                      }[typeKey(r)] ?? typeKey(r));
 
-          const unitOf = (t: string) => ({ TEMP: '°C', HUMI: '%', GAS: 'ppm' }[t] || '');
+                      const unitOf = (t: string) => ({ TEMP: '°C', HUMI: '%', GAS: 'ppm' }[t] || '');
 
-          return (
-            <React.Fragment key={`grp-${g.gid}`}>
-              <tr>
-                {/* ✅ 같은 timestamp 묶기: ID / Timestamp는 rowSpan으로 한 번만 표시 */}
-                <td rowSpan={g.rows.length}>{g.gid}</td>
-                <td rowSpan={g.rows.length}>{g.timestamp}</td>
+                      return (
+                        <React.Fragment key={`grp-${g.gid}`}>
+                          <tr>
+                            {/* ✅ 같은 timestamp 묶기: ID / Timestamp는 rowSpan으로 한 번만 표시 */}
+                            <td rowSpan={g.rows.length}>{g.gid}</td>
+                            <td rowSpan={g.rows.length}>{g.timestamp}</td>
 
-                <td>{getTypeLabel(first)}</td>
-<td>{fmt(first?.value)} {unitOf(typeKey(first))}</td>
+                            <td>{getTypeLabel(first)}</td>
+                            <td>{fmt(first?.value)} {unitOf(typeKey(first))}</td>
 
-                <td>{String(first?.status || '-').toUpperCase()}</td>
-              </tr>
+                            <td>{String(first?.status || '-').toUpperCase()}</td>
+                          </tr>
 
-              {rest.map((r: any, i: number) => (
-                <tr key={`grp-${g.gid}-${i}`}>
-                  <td>{getTypeLabel(r)}</td>
-<td>{fmt(r?.value)} {unitOf(typeKey(r))}</td>
+                          {rest.map((r: any, i: number) => (
+                            <tr key={`grp-${g.gid}-${i}`}>
+                              <td>{getTypeLabel(r)}</td>
+                              <td>{fmt(r?.value)} {unitOf(typeKey(r))}</td>
 
-                  <td>{String(r?.status || '-').toUpperCase()}</td>
-                </tr>
-              ))}
-            </React.Fragment>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
-</section>
+                              <td>{String(r?.status || '-').toUpperCase()}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
           </div>
         </main>

@@ -25,13 +25,22 @@ export default function useHistoryData() {
     }));
   }, []);
 
-  const resetFilters = useCallback(() => {
-    setHistoryState((prev) => ({
-      ...prev,
-      selectedDate: null,
-      filters: { date: null, sensorType: null, status: null },
-    }));
-  }, []);
+const resetFilters = useCallback(() => {
+  setHistoryState({
+    isLoading: false,
+    error: null,
+    showFilters: false,        // ✅ 필터 UI도 닫기
+    showDatePicker: false,
+    selectedDate: null,
+    filters: { date: null, sensorType: null, status: null },
+    events: [],
+    totalPages: 1,
+    currentPage: 1,
+  });
+  
+  // ✅ 드롭다운도 초기화
+  setActiveDropdown(null);
+}, []);
 
   const handleDateSelect = useCallback((date: Date) => {
     setHistoryState((prev) => ({
@@ -43,28 +52,34 @@ export default function useHistoryData() {
   }, []);
 
   const applyFilters = useCallback(async (page: number = 1) => {
-    setHistoryState((prev) => ({ ...prev, isLoading: true, error: null }));
-    try {
-      // ✅ 수정: fetchEvents 메서드 사용
-      const { events, totalPages } = await HistoryAPI.fetchEvents(historyState.filters, page);
-      setHistoryState((prev) => ({
-        ...prev,
-        events,
-        totalPages,
-        currentPage: page,
-        isLoading: false,
-      }));
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : '데이터 로드 실패';
-      setHistoryState((prev) => ({ 
-        ...prev, 
-        isLoading: false, 
-        error: errorMessage,
-        events: [],
-        totalPages: 1
-      }));
-    }
-  }, [historyState.filters]);
+  setHistoryState((prev) => ({ ...prev, isLoading: true, error: null }));
+  try {
+    // ✅ 현재 상태에서 필터를 직접 읽어오기
+    setHistoryState((current) => {
+      HistoryAPI.fetchEvents(current.filters, page).then(({ events, totalPages }) => {
+        setHistoryState((prev) => ({
+          ...prev,
+          events,
+          totalPages,
+          currentPage: page,
+          isLoading: false,
+        }));
+      }).catch((e) => {
+        const errorMessage = e instanceof Error ? e.message : '데이터 로드 실패';
+        setHistoryState((prev) => ({ 
+          ...prev, 
+          isLoading: false, 
+          error: errorMessage,
+          events: [],
+          totalPages: 1
+        }));
+      });
+      return current;
+    });
+  } catch (e) {
+    // 에러 처리
+  }
+}, []); // ✅ 의존성 배열 비우기
 
   const changePage = useCallback(async (page: number) => {
     setHistoryState((prev) => ({ ...prev, isLoading: true, error: null }));
@@ -99,11 +114,6 @@ export default function useHistoryData() {
   const updateHistoryState = useCallback((patch: Partial<HistoryState>) => {
     setHistoryState((prev) => ({ ...prev, ...patch }));
   }, []);
-
-  useEffect(() => {
-    // 초기 로드
-    void applyFilters();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     historyState,

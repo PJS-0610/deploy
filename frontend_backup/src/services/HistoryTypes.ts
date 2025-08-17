@@ -68,7 +68,7 @@ export interface HistoryState {
   events: any[];
   totalPages: number;
   currentPage: number;
-  
+
   // ✅ 이 4줄만 추가
   items?: any[];
   page?: number;
@@ -123,102 +123,112 @@ export class HistoryAPI {
 
   // 🔧 실제 API 호출 (기존 코드와 호환성 유지)
   static async fetchEvents(filters: HistoryFilters, page: number = 1): Promise<{
-  events: HistoryEvent[];
-  totalPages: number;
-}> {
-  try {
-    const targetDate = filters.date || HistoryUtils.formatDateToString(new Date());
-    
-    console.log('🔄 HistoryAPI.fetchEvents 호출:', { filters, page, targetDate });
-    
-    const formattedDate = targetDate.replace(/-/g, '');
-    const response = await fetch(`${this.BASE_URL}/s3/history/${formattedDate}`);
-    
-    if (response.status === 404) {
-      return { events: [], totalPages: 1 };
-    }
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    
-    let events: HistoryEvent[] = [];
-    
-    if (data.files && Array.isArray(data.files)) {
-      data.files.forEach((file: any, index: number) => {
-        const fileData = file.data;
-        if (fileData) {
-          events.push({
-            id: `${index}-temp`,
-            timestamp: fileData.timestamp,
-            sensorType: 'TEMP',
-            value: fileData.mintemp,
-            status: (fileData.mintemp_status || 'normal').toUpperCase()
-          });
-          
-          events.push({
-            id: `${index}-humi`,
-            timestamp: fileData.timestamp,
-            sensorType: 'HUMI',
-            value: fileData.minhum,
-            status: (fileData.minhum_status || 'normal').toUpperCase()
-          });
-          
-          events.push({
-            id: `${index}-gas`,
-            timestamp: fileData.timestamp,
-            sensorType: 'GAS',
-            value: fileData.mingas,
-            status: (fileData.mingas_status || 'normal').toUpperCase()
-          });
-        }
-      });
-    }
-    
-    // 필터 적용
-    if (filters.sensorType) {
-      events = events.filter(event => event.sensorType === filters.sensorType);
-    }
-    
-    if (filters.status) {
-      events = events.filter(event => event.status.toUpperCase() === filters.status.toUpperCase());
-    }
-    
-    // 정렬 (최신순)
-    events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    
-    // ✅ 수정: 페이징 제거하고 모든 데이터 반환
-    console.log('✅ HistoryAPI.fetchEvents 완료:', {
-      totalEvents: events.length,
-      returnedCount: events.length // 모든 데이터 반환
-    });
-    
-    return {
-      events: events, // 모든 이벤트 반환
-      totalPages: 1   // 페이지는 1개만
-    };
-    
-  } catch (error) {
-    console.error('❌ HistoryAPI.fetchEvents 실패:', error);
-    
-    if (error instanceof TypeError || (error as any)?.code === 'ECONNREFUSED') {
-      console.log('🔄 네트워크 오류 - 더미 데이터로 대체');
-      return this.generateMockEvents(filters, page);
-    }
-    
-    throw error;
-  }
-}
+    events: HistoryEvent[];
+    totalPages: number;
+  }> {
+    try {
+      const targetDate = filters.date || HistoryUtils.formatDateToString(new Date());
+
+      console.log('🔄 HistoryAPI.fetchEvents 호출:', { filters, page, targetDate });
+
+      const formattedDate = targetDate.replace(/-/g, '');
+      const response = await fetch(`${this.BASE_URL}/s3/history/${formattedDate}`);
+
+      if (response.status === 404) {
+        return { events: [], totalPages: 1 };
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      let events: HistoryEvent[] = [];
+
+      if (data.files && Array.isArray(data.files)) {
+        data.files.forEach((file: any, index: number) => {
+          const fileData = file.data;
+          if (fileData) {
+            events.push({
+              id: `${index}-temp`,
+              timestamp: fileData.timestamp,
+              sensorType: 'TEMP',
+              value: fileData.mintemp,
+              status: (fileData.mintemp_status || 'normal').toUpperCase()
+            });
+
+            events.push({
+              id: `${index}-humi`,
+              timestamp: fileData.timestamp,
+              sensorType: 'HUMI',
+              value: fileData.minhum,
+              status: (fileData.minhum_status || 'normal').toUpperCase()
+            });
+
+            events.push({
+              id: `${index}-gas`,
+              timestamp: fileData.timestamp,
+              sensorType: 'GAS',
+              value: fileData.mingas,
+              status: (fileData.mingas_status || 'normal').toUpperCase()
+            });
+          }
+        });
+      }
+
+      // 필터 적용
+// 필터 적용
+if (filters.sensorType) {
+  // 드롭다운 선택값을 실제 데이터 값으로 변환
+  const sensorTypeMapping: Record<string, string> = {
+    'Temperature': 'TEMP',
+    'Humidity': 'HUMI',
+    'Gas Concentration': 'GAS',
+    'CO₂ Concentration': 'GAS'
+  };
   
+  const actualSensorType = sensorTypeMapping[filters.sensorType] || filters.sensorType;
+  events = events.filter(event => event.sensorType === actualSensorType);
+}
+
+      if (filters.status) {
+        events = events.filter(event => event.status.toUpperCase() === filters.status.toUpperCase());
+      }
+
+      // 정렬 (최신순)
+      events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      // ✅ 수정: 페이징 제거하고 모든 데이터 반환
+      console.log('✅ HistoryAPI.fetchEvents 완료:', {
+        totalEvents: events.length,
+        returnedCount: events.length // 모든 데이터 반환
+      });
+
+      return {
+        events: events, // 모든 이벤트 반환
+        totalPages: 1   // 페이지는 1개만
+      };
+
+    } catch (error) {
+      console.error('❌ HistoryAPI.fetchEvents 실패:', error);
+
+      if (error instanceof TypeError || (error as any)?.code === 'ECONNREFUSED') {
+        console.log('🔄 네트워크 오류 - 더미 데이터로 대체');
+        return this.generateMockEvents(filters, page);
+      }
+
+      throw error;
+    }
+  }
+
   // 더미 데이터 생성
   private static generateMockEvents(filters: HistoryFilters, page: number): {
     events: HistoryEvent[];
     totalPages: number;
   } {
     const mockEvents: HistoryEvent[] = [];
-    
+
     // 오늘부터 7일간 더미 데이터 생성
     for (let day = 0; day < 7; day++) {
       for (let hour = 9; hour <= 17; hour++) {
@@ -226,10 +236,10 @@ export class HistoryAPI {
           const date = new Date();
           date.setDate(date.getDate() - day);
           date.setHours(hour, minute, 0, 0);
-          
+
           const timestamp = date.toISOString();
           const index = day * 100 + hour * 10 + minute;
-          
+
           mockEvents.push({
             id: `${index}-temp`,
             timestamp,
@@ -237,7 +247,7 @@ export class HistoryAPI {
             value: 20 + Math.random() * 10,
             status: ['GOOD', 'NORMAL', 'WARNING'][Math.floor(Math.random() * 3)]
           });
-          
+
           mockEvents.push({
             id: `${index}-humi`,
             timestamp,
@@ -245,7 +255,7 @@ export class HistoryAPI {
             value: 50 + Math.random() * 20,
             status: ['GOOD', 'NORMAL', 'WARNING'][Math.floor(Math.random() * 3)]
           });
-          
+
           mockEvents.push({
             id: `${index}-gas`,
             timestamp,
@@ -256,16 +266,16 @@ export class HistoryAPI {
         }
       }
     }
-    
+
     // 정렬
     mockEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    
+
     // 페이징
     const itemsPerPage = 30;
     const totalPages = Math.ceil(mockEvents.length / itemsPerPage);
     const startIndex = (page - 1) * itemsPerPage;
     const paginatedEvents = mockEvents.slice(startIndex, startIndex + itemsPerPage);
-    
+
     return {
       events: paginatedEvents,
       totalPages
@@ -285,7 +295,7 @@ export class HistoryUtils {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
-  
+
   // Date 또는 string 모두 받는 formatDate 함수 추가
   static formatDate(date: Date | string): string {
     if (typeof date === 'string') {
@@ -316,7 +326,7 @@ export class HistoryUtils {
       hour12: false
     });
   }
-  
+
   // 상태에 따른 CSS 클래스 반환 (누락된 함수 추가)
   static getStatusClass(status: string): string {
     switch (status.toLowerCase()) {
@@ -392,16 +402,16 @@ export class HistoryUtils {
     const past = new Date(timestamp);
     const diffMs = now.getTime() - past.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 1) return '방금 전';
     if (diffMins < 60) return `${diffMins}분 전`;
-    
+
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `${diffHours}시간 전`;
-    
+
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `${diffDays}일 전`;
-    
+
     const diffWeeks = Math.floor(diffDays / 7);
     return `${diffWeeks}주 전`;
   }

@@ -266,7 +266,7 @@ body {
   font-family: 'Courier New', monospace;
   letter-spacing: 2px;
   text-align: center;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .input:focus {

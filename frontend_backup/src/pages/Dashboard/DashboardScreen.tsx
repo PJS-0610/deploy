@@ -621,10 +621,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <>
               {/* 시간평균 데이터 차트 섹션 */}
               <section className={styles.summarySection}>
-                <div className={styles.sectionHeader}>
-                  <h2 className={styles.sectionTitle}>CURRENT DATA</h2>
-                  <div className={styles.infoIcon}>
-                    <Info size={16} />
+                <div className={styles.sectionTitleRow}>
+                  <div className={styles.sectionHeader}>
+                    <h2 className={styles.sectionTitle}>CURRENT DATA</h2>
+                    <div className={styles.infoIcon}>
+                      <Info size={16} />
+                    </div>
                   </div>
                 </div>
 
@@ -638,169 +640,171 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                         <th>CO₂ CONCENTRATION</th>
                       </tr>
                     </thead>
-                        <tbody>
-                          <tr>
-                            <td>
-                              {(() => {
-                                // 1순위: mintrendData 타임스탬프
-                                if (mintrendData?.data?.timestamp) {
-                                  return new Date(mintrendData.data.timestamp).toLocaleString('ko-KR', { hour12: false });
-                                }
-                                // 2순위: allSensorData 타임스탬프
-                                const ts =
-                                  allSensorData.temperature?.timestamp ||
-                                  allSensorData.humidity?.timestamp ||
-                                  allSensorData.gas?.timestamp;
-                                return ts ? new Date(ts).toLocaleString('ko-KR', { hour12: false }) : '-';
-                              })()}
-                            </td>
+                    <tbody>
+                      <tr>
+                        <td>
+                          {(() => {
+                            // 1순위: mintrendData 타임스탬프
+                            if (mintrendData?.data?.timestamp) {
+                              return new Date(mintrendData.data.timestamp).toLocaleString('ko-KR', { hour12: false });
+                            }
+                            // 2순위: allSensorData 타임스탬프
+                            const ts =
+                              allSensorData.temperature?.timestamp ||
+                              allSensorData.humidity?.timestamp ||
+                              allSensorData.gas?.timestamp;
+                            return ts ? new Date(ts).toLocaleString('ko-KR', { hour12: false }) : '-';
+                          })()}
+                        </td>
 
-                            <td>
-                              {(() => {
-                                // 온도: 1순위 mintrendData, 2순위 allSensorData
-                                if (mintrendData?.data?.mintemp !== undefined) {
-                                  const tempStatus = MintrendService.getTemperatureStatus(mintrendData.data.mintemp);
-                                  return (
-                                    <span className={MintrendService.getStatusColorClass(tempStatus)}>
-                                      {mintrendData.data.mintemp.toFixed(2)}°C
-                                    </span>
-                                  );
-                                }
-                                if (allSensorData.temperature) {
-                                  return (
-                                    <span className={DashboardUtils.getStatusClass(allSensorData.temperature.current.status)}>
-                                      {allSensorData.temperature.current.value.toFixed(2)}{allSensorData.temperature.unit}
-                                    </span>
-                                  );
-                                }
-                                return <span>로딩 중...</span>;
-                              })()}
-                            </td>
+                        <td>
+                          {(() => {
+                            // 온도: 1순위 mintrendData, 2순위 allSensorData
+                            if (mintrendData?.data?.mintemp !== undefined) {
+                              const tempStatus = MintrendService.getTemperatureStatus(mintrendData.data.mintemp);
+                              return (
+                                <span className={MintrendService.getStatusColorClass(tempStatus)}>
+                                  {mintrendData.data.mintemp.toFixed(2)}°C
+                                </span>
+                              );
+                            }
+                            if (allSensorData.temperature) {
+                              return (
+                                <span className={DashboardUtils.getStatusClass(allSensorData.temperature.current.status)}>
+                                  {allSensorData.temperature.current.value.toFixed(2)}{allSensorData.temperature.unit}
+                                </span>
+                              );
+                            }
+                            return <span>로딩 중...</span>;
+                          })()}
+                        </td>
 
-                            <td>
-                              {(() => {
-                                // 습도: 1순위 mintrendData, 2순위 allSensorData
-                                if (mintrendData?.data?.minhum !== undefined) {
-                                  const humStatus = MintrendService.getHumidityStatus(mintrendData.data.minhum);
-                                  return (
-                                    <span className={MintrendService.getStatusColorClass(humStatus)}>
-                                      {mintrendData.data.minhum.toFixed(2)}%
-                                    </span>
-                                  );
-                                }
-                                if (allSensorData.humidity) {
-                                  return (
-                                    <span className={DashboardUtils.getStatusClass(allSensorData.humidity.current.status)}>
-                                      {allSensorData.humidity.current.value.toFixed(2)}{allSensorData.humidity.unit}
-                                    </span>
-                                  );
-                                }
-                                return <span>로딩 중...</span>;
-                              })()}
-                            </td>
+                        <td>
+                          {(() => {
+                            // 습도: 1순위 mintrendData, 2순위 allSensorData
+                            if (mintrendData?.data?.minhum !== undefined) {
+                              const humStatus = MintrendService.getHumidityStatus(mintrendData.data.minhum);
+                              return (
+                                <span className={MintrendService.getStatusColorClass(humStatus)}>
+                                  {mintrendData.data.minhum.toFixed(2)}%
+                                </span>
+                              );
+                            }
+                            if (allSensorData.humidity) {
+                              return (
+                                <span className={DashboardUtils.getStatusClass(allSensorData.humidity.current.status)}>
+                                  {allSensorData.humidity.current.value.toFixed(2)}{allSensorData.humidity.unit}
+                                </span>
+                              );
+                            }
+                            return <span>로딩 중...</span>;
+                          })()}
+                        </td>
 
-                            <td>
-                              {(() => {
-                                // 가스: 1순위 mintrendData, 2순위 allSensorData
-                                if (mintrendData?.data?.mingas !== undefined) {
-                                  const gasStatus = MintrendService.getGasStatus(mintrendData.data.mingas);
-                                  return (
-                                    <span className={MintrendService.getStatusColorClass(gasStatus)}>
-                                      {mintrendData.data.mingas.toFixed(2)}ppm
-                                    </span>
-                                  );
-                                }
-                                if (allSensorData.gas) {
-                                  return (
-                                    <span className={DashboardUtils.getStatusClass(allSensorData.gas.current.status)}>
-                                      {allSensorData.gas.current.value.toFixed(2)}{allSensorData.gas.unit}
-                                    </span>
-                                  );
-                                }
-                                return <span>로딩 중...</span>;
-                              })()}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      </div>
-                      </section>
-
-                  {/* 현재 & 예측 데이터 테이블 섹션 */}
-
-
-                  {/* 🆕 QuickSight 대시보드 섹션 */}
-                  <section className={styles.quicksightSection}>
-                    <div className={styles.sectionHeader}>
-                      <h2 className={styles.sectionTitle}>QUICKSIGHT ANALYTICS DASHBOARD</h2>
-
-                      {/* QuickSight 센서 선택 드롭다운 */}
-                      <div className={styles.sensorSelector}>
-                        <select
-                          value={selectedQuickSightSensor}
-                          onChange={(e) => handleQuickSightSensorSelect(e.target.value as QuickSightSensorType)}
-                          className={styles.sensorSelect}
-                        >
-                          {QUICKSIGHT_SENSOR_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className={styles.quicksightCard}>
-                      <QuickSightDashboard
-                        dashboardData={quickSightData}
-                        isLoading={quickSightLoading}
-                        error={quickSightError}
-                        onRetry={() => fetchQuickSightData(selectedQuickSightSensor)}
-                      />
-                    </div>
-                  </section>
-                </>
-                ) : (
-                // 다른 메뉴 선택 시 플레이스홀더
-                <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-                  <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#374151', marginBottom: '16px' }}>
-                    {activeMenu} 페이지
-                  </h2>
-                  <p style={{ color: '#6b7280', marginBottom: '8px' }}>
-                    현재 선택된 메뉴: {activeMenu}
-                  </p>
-                  <p style={{ fontSize: '14px', color: '#9ca3af' }}>
-                    실제 페이지 컨텐츠를 여기에 구현하세요.
-                  </p>
+                        <td>
+                          {(() => {
+                            // 가스: 1순위 mintrendData, 2순위 allSensorData
+                            if (mintrendData?.data?.mingas !== undefined) {
+                              const gasStatus = MintrendService.getGasStatus(mintrendData.data.mingas);
+                              return (
+                                <span className={MintrendService.getStatusColorClass(gasStatus)}>
+                                  {mintrendData.data.mingas.toFixed(2)}ppm
+                                </span>
+                              );
+                            }
+                            if (allSensorData.gas) {
+                              return (
+                                <span className={DashboardUtils.getStatusClass(allSensorData.gas.current.status)}>
+                                  {allSensorData.gas.current.value.toFixed(2)}{allSensorData.gas.unit}
+                                </span>
+                              );
+                            }
+                            return <span>로딩 중...</span>;
+                          })()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-          )}
-              </div>
-            </main >
+              </section>
 
-          {/* 🚨 이상치 알림 컴포넌트 추가 - 화면 우상단에 팝업으로 표시 */}
-          < AnomalyAlert
-            interval={60000}        // 60초마다 체크
-            autoHideDelay={60000}   // 60초 표시
-            s3ApiEndpoint="/s3/file/last/mintrend"  // 기존 S3 API 사용
-            enabled={activeMenu === 'Dashboard'}    // 대시보드 화면에서만 활성화
-            maxAlerts={3}           // 최대 3개까지만 표시
-            thresholds={{           // 커스텀 임계값 (선택사항)
-              temperature: {
-                warningMax: 28,     // 28도 이상 경고
-                dangerMax: 32,      // 32도 이상 위험
-              },
-              humidity: {
-                warningMax: 75,     // 75% 이상 경고
-                dangerMax: 85,      // 85% 이상 위험
-              },
-              gas: {
-                warningMax: 800,    // 800ppm 이상 경고
-                dangerMax: 1200,    // 1200ppm 이상 위험
-              }
-            }}
-          />
-        </div >
-        );
+              {/* 현재 & 예측 데이터 테이블 섹션 */}
+
+
+              {/* 🆕 QuickSight 대시보드 섹션 */}
+              <section className={styles.quicksightSection}>
+                <div className={styles.sectionHeader}>
+                  <div className={styles.sectionTitleRow}>
+                    <h2 className={styles.sectionTitle}>QUICKSIGHT ANALYTICS DASHBOARD</h2>
+
+                    {/* QuickSight 센서 선택 드롭다운 */}
+                    <div className={styles.sensorSelector}>
+                      <select
+                        value={selectedQuickSightSensor}
+                        onChange={(e) => handleQuickSightSensorSelect(e.target.value as QuickSightSensorType)}
+                        className={styles.sensorSelect}
+                      >
+                        {QUICKSIGHT_SENSOR_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.quicksightCard}>
+                  <QuickSightDashboard
+                    dashboardData={quickSightData}
+                    isLoading={quickSightLoading}
+                    error={quickSightError}
+                    onRetry={() => fetchQuickSightData(selectedQuickSightSensor)}
+                  />
+                </div>
+              </section>
+            </>
+          ) : (
+            // 다른 메뉴 선택 시 플레이스홀더
+            <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#374151', marginBottom: '16px' }}>
+                {activeMenu} 페이지
+              </h2>
+              <p style={{ color: '#6b7280', marginBottom: '8px' }}>
+                현재 선택된 메뉴: {activeMenu}
+              </p>
+              <p style={{ fontSize: '14px', color: '#9ca3af' }}>
+                실제 페이지 컨텐츠를 여기에 구현하세요.
+              </p>
+            </div>
+          )}
+        </div>
+      </main >
+
+      {/* 🚨 이상치 알림 컴포넌트 추가 - 화면 우상단에 팝업으로 표시 */}
+      < AnomalyAlert
+        interval={60000}        // 60초마다 체크
+        autoHideDelay={60000}   // 60초 표시
+        s3ApiEndpoint="/s3/file/last/mintrend"  // 기존 S3 API 사용
+        enabled={activeMenu === 'Dashboard'}    // 대시보드 화면에서만 활성화
+        maxAlerts={3}           // 최대 3개까지만 표시
+        thresholds={{           // 커스텀 임계값 (선택사항)
+          temperature: {
+            warningMax: 28,     // 28도 이상 경고
+            dangerMax: 32,      // 32도 이상 위험
+          },
+          humidity: {
+            warningMax: 75,     // 75% 이상 경고
+            dangerMax: 85,      // 85% 이상 위험
+          },
+          gas: {
+            warningMax: 800,    // 800ppm 이상 경고
+            dangerMax: 1200,    // 1200ppm 이상 위험
+          }
+        }}
+      />
+    </div >
+  );
 };
 
-        export default DashboardScreen;
+export default DashboardScreen;

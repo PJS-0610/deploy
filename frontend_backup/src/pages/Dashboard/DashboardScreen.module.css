@@ -50,7 +50,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  position: relative;   
+  position: relative;
 }
 
 .headerItem {
@@ -419,9 +419,11 @@
   }
 
   .sectionTitle {
-  margin-top: 0; /* 기본 margin 제거 */
-  padding-top: 4px; /* 필요 시 최소 여백 */
-}
+    margin-top: 0;
+    /* 기본 margin 제거 */
+    padding-top: 4px;
+    /* 필요 시 최소 여백 */
+  }
 
   .chartContainer {
     height: 250px;
@@ -480,7 +482,7 @@
 /* DashboardScreen.module.css에 추가할 QuickSight 관련 스타일 */
 
 /* ===========================================
-   📊 QuickSight 섹션 스타일
+  📊 QuickSight 섹션 스타일
    =========================================== */
 
 .quicksightSection {
@@ -489,10 +491,11 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-bottom: 24px;
   overflow: hidden;
+  padding: 24px;
 }
 
 .quicksightCard {
-  padding: 24px;
+  padding: 0;  /* 또는 이 줄 삭제 */
 }
 
 .quicksightContainer {
@@ -585,30 +588,102 @@
   font-size: 14px;
   margin: 0;
 }
+/* QuickSight 센서 선택 드롭다운 */
+.sensorSelector {
+  position: relative;
+  display: inline-block;
+}
+
+.sensorSelect {
+  appearance: none;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 32px 8px 12px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 160px;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.sensorSelect:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.sensorSelect:focus {
+  background: #fff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sensorSelect option {
+  background: #fff;
+  color: #374151;
+  padding: 8px 12px;
+  font-weight: 500;
+}
+
+/* 드롭다운 화살표 */
+.sensorSelector::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #6b7280;
+  pointer-events: none;
+  transition: transform 0.2s ease;
+}
+
+.sensorSelect:focus + .sensorSelector::after,
+.sensorSelector:hover::after {
+  border-top-color: #374151;
+}
 
 /* ===========================================
   📱 반응형 디자인 (QuickSight)
    =========================================== */
 
 @media (max-width: 768px) {
-  .quicksightCard {
-    padding: 16px;
-  }
-  
   .quicksightIframe iframe {
-    height: 400px;
+    height: 350px;  /* 400px → 350px */
   }
-  
+}
+
+  .quicksightIframe {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  max-height: 500px;  /* 최대 높이 제한 */
+}
+
+.quicksightIframe iframe {
+  width: 100%;
+  height: 60vh;  /* viewport 높이의 60% */
+  border: none;
+  border-radius: 8px;
+}
+
   .quicksightPlaceholder {
     height: 300px;
   }
-}
+
 
 @media (max-width: 480px) {
   .quicksightIframe iframe {
     height: 300px;
   }
-  
+
   .quicksightLink {
     font-size: 12px;
     padding: 4px 8px;
@@ -617,28 +692,34 @@
 
 /* Mintrend 상태별 색상 클래스 */
 .status-good {
-  color: #10b981; /* 녹색 */
+  color: #10b981;
+  /* 녹색 */
   font-weight: 600;
 }
 
 .status-moderate {
-  color: #f59e0b; /* 주황색 */
+  color: #f59e0b;
+  /* 주황색 */
   font-weight: 600;
 }
 
 .status-poor {
-  color: #ef4444; /* 빨간색 */
+  color: #ef4444;
+  /* 빨간색 */
   font-weight: 600;
 }
 
 .status-danger {
-  color: #dc2626; /* 진한 빨간색 */
+  color: #dc2626;
+  /* 진한 빨간색 */
   font-weight: 700;
-  background-color: #fee2e2; /* 연한 빨간 배경 */
+  background-color: #fee2e2;
+  /* 연한 빨간 배경 */
   padding: 2px 6px;
   border-radius: 4px;
 }
 
 .status-default {
-  color: #6b7280; /* 회색 */
+  color: #6b7280;
+  /* 회색 */
 }

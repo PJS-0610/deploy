@@ -50,6 +50,7 @@ import styles from './HistoryFilter.module.css';
  * @param applyFilters - 필터 적용 및 데이터 조회 함수
  * @param toggleFilters - 필터 영역 표시/숨기기 토글 함수
  */
+
 const HistoryFilter: React.FC<HistoryFilterProps> = ({
   historyState,
   activeDropdown,
@@ -58,7 +59,7 @@ const HistoryFilter: React.FC<HistoryFilterProps> = ({
   resetFilters,
   handleDateSelect,
   applyFilters,
-  toggleFilters   
+  toggleFilters
 }) => {
   /**
    * 🔗 드롭다운 DOM 참조 관리
@@ -90,7 +91,7 @@ const HistoryFilter: React.FC<HistoryFilterProps> = ({
    * 시스템에서 지원하는 센서 종류들
    */
   const sensorTypeOptions = ['Temperature', 'Humidity', 'CO Concentration'];
-  
+
   /**
    * 🚨 상태 필터 옵션
    * 센서 데이터의 상태 분류
@@ -114,12 +115,16 @@ const HistoryFilter: React.FC<HistoryFilterProps> = ({
         </button>
 
         <button
-className={styles.filterToggle}
-onClick={toggleFilters}   
->
+          className={styles.resetButton}  // 선택: 빨간 테두리 스타일 쓰고 싶으면
+          onClick={() => {
+            resetFilters();         // ✅ 필터 값/데이터 초기화
+            setActiveDropdown(null); // ✅ 열려있던 드롭다운 닫기(옵션)
+          }}
+        >
           <RotateCcw size={14} />
           Reset Filter
         </button>
+
       </div>
 
       {historyState.showFilters && (

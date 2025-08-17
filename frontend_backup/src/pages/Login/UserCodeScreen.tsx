@@ -33,6 +33,8 @@
  */
 import React, { useState } from 'react';
 import styles from './UserCodeScreen.module.css';
+import TransitionScreen from "../Transition/TransitionScreen";
+import { verifyCodeApi } from '../../services/LoginTypes'; // 또는 해당 파일의 상대 경로
 
 /**
  * 🎭 사용자 코드 화면 Props 인터페이스
@@ -59,7 +61,7 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
   const [code, setCode] = useState('');             // 사용자가 입력한 접근 코드
   const [isLoading, setIsLoading] = useState(false); // 코드 검증 중 로딩 상태
   const [error, setError] = useState('');           // 에러 메시지 표시용
-
+const [showTransition, setShowTransition] = useState(false);
   /**
    * 🎫 유효한 접근 코드 목록
    * 
@@ -70,7 +72,7 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
    * - USER001, USER002, USER003: 일반 사용자 코드
    * - DEMO2024: 데모 및 테스트용 코드
    */
-  const validCodes = ['USER001', 'USER002', 'USER003', 'DEMO2024'];
+  // const validCodes = ['USER001', 'USER002', 'USER003', 'DEMO2024'];
 
   /**
    * 📋 폼 제출 핸들러
@@ -81,32 +83,65 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
    * 
    * @param e - 폼 제출 이벤트
    */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();  // 기본 폼 제출 동작 방지
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();  // 기본 폼 제출 동작 방지
     
-    // 📝 입력값 검증
-    if (!code.trim()) {
-      setError('코드를 입력해주세요.');
-      return;
-    }
+//     // 📝 입력값 검증
+//     if (!code.trim()) {
+//       setError('코드를 입력해주세요.');
+//       return;
+//     }
 
-    // 🔄 로딩 상태 시작
-    setIsLoading(true);
-    setError('');
+//     // 🔄 로딩 상태 시작
+//     setIsLoading(true);
+//     setError('');
 
-    // 🔍 코드 검증 시뮬레이션 (실제로는 API 호출)
-    // TODO: 실제 환경에서는 POST /auth/verify-code API 호출
-    setTimeout(() => {
-      if (validCodes.includes(code.toUpperCase())) {
-        // ✅ 유효한 코드인 경우
-        onCodeSuccess();  // 대시보드로 이동
-      } else {
-        // ❌ 유효하지 않은 코드인 경우
-        setError('유효하지 않은 코드입니다. 다시 시도해주세요.');
+//     // 🔍 코드 검증 시뮬레이션 (실제로는 API 호출)
+//     // TODO: 실제 환경에서는 POST /auth/verify-code API 호출
+//     setTimeout(() => {
+//       if (validCodes.includes(code.toUpperCase())) {
+//   // ✅ 유효한 코드 → 트랜지션 먼저
+//   setShowTransition(true);
+// } else {
+//   setError('유효하지 않은 코드입니다. 다시 시도해주세요.');
+// }
+
+//       setIsLoading(false);  // 로딩 상태 종료
+//     }, 1000);  // 1초 지연으로 API 호출 시뮬레이션
+//   };
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!code.trim()) {
+    setError('코드를 입력해주세요.');
+    return;
+  }
+
+  setIsLoading(true);
+  setError('');
+
+  try {
+    await verifyCodeApi({ code: code.trim() });
+    setShowTransition(true);
+  } catch (error) {
+    if (error instanceof Error) {
+      switch (error.message) {
+        case 'INVALID_CODE':
+          setError('유효하지 않은 코드입니다. 다시 시도해주세요.');
+          break;
+        case 'NETWORK_ERROR':
+          setError('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
+          break;
+        default:
+          setError('코드 검증 중 오류가 발생했습니다.');
       }
-      setIsLoading(false);  // 로딩 상태 종료
-    }, 1000);  // 1초 지연으로 API 호출 시뮬레이션
-  };
+    } else {
+      setError('코드 검증 중 오류가 발생했습니다.');
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   /**
    * ⌨️ 입력 필드 변경 핸들러
@@ -117,9 +152,9 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
    * @param e - 입력 필드 변경 이벤트
    */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCode(e.target.value.toUpperCase());  // 자동 대문자 변환
-    setError('');                           // 입력 시작하면 에러 메시지 제거
-  };
+  setCode(e.target.value);   // ✅ 대문자 강제 제거 → 소문자도 그대로 입력됨
+  setError('');
+};
 
   return (
     <div className={`${styles.container} ${isLoading ? styles.loading : ""}`}>
@@ -227,9 +262,8 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
             <h3 className={styles.helpTitle}>💡 도움말</h3>
             <ul className={styles.helpList}>
               <li>접근 코드는 시스템 관리자로부터 받을 수 있습니다</li>
-              <li>코드는 대문자로 입력해주세요</li>
               <li>문제가 있다면 관리자에게 문의하세요</li>
-              <li><strong>테스트 코드:</strong> USER001, DEMO2024</li>
+              <li><strong>테스트 코드:</strong> admin0610, admin0816, admin0331</li>
             </ul>
           </div>
         </div>
@@ -237,6 +271,15 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
         {/* 🎨 사이드 패널 - LoginScreen과 일관된 오렌지 그라데이션 디자인 */}
         <div className={styles.sidePanel}></div>
       </div>
+{showTransition && (
+  <TransitionScreen
+    targetRole="user"
+    onTransitionComplete={() => {
+      setShowTransition(false);
+      onCodeSuccess();        // ✅ 트랜지션 끝난 뒤 최종 이동
+    }}
+  />
+)}
 
       {/* 🏛️ 푸터 - 2025 GBSA AWS 브랜딩 */}
       <footer className={styles.footer}>2025 GBSA AWS</footer>
