@@ -1,4 +1,38 @@
-// Dashboard.tsx - 메인 대시보드 컴포넌트 (QuickSight 추가)
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * 📊 DashboardScreen - 메인 대시보드 화면 컴포넌트
+ * ═══════════════════════════════════════════════════════════════
+ * 
+ * AWS IoT 환경 모니터링 시스템의 중심이 되는 대시보드 화면입니다.
+ * 실시간 센서 데이터, 알림, QuickSight 분석, 이상치 탐지 등을 통합 제공합니다.
+ * 
+ * 주요 기능:
+ * - 📈 실시간 센서 데이터 시각화 (온도, 습도, 가스)
+ * - 📋 현재 데이터 테이블 표시 (Mintrend 우선 데이터)
+ * - 📊 AWS QuickSight 대시보드 임베딩
+ * - 🔔 실시간 알림 시스템
+ * - 🚨 이상치 자동 감지 및 알림
+ * - 🕐 실시간 시간 표시
+ * - 👤 관리자 메뉴 (프로필, 로그아웃)
+ * - 🧭 사이드바 네비게이션
+ * 
+ * 데이터 소스:
+ * - 🔥 Mintrend API: S3에서 최신 센서 데이터 가져오기 (우선순위 1)
+ * - 📡 Dashboard API: 센서별 시계열 데이터 (우선순위 2)
+ * - ☁️ QuickSight API: AWS 분석 대시보드 임베딩 URL
+ * 
+ * 실시간 업데이트:
+ * - ⏱️ 30초마다 Mintrend 데이터 자동 갱신
+ * - 🔔 60초마다 이상치 체크 및 알림
+ * - 🕐 30초마다 현재 시간 업데이트
+ * 
+ * UI 구성:
+ * 왼쪽: 사이드바 (Dashboard, Chatbot, History, 로그아웃)
+ * 상단: 헤더 (페이지 제목, 시간, 알림, 관리자 메뉴)
+ * 중앙: 현재 데이터 테이블 + QuickSight 대시보드
+ * 우상단: 이상치 알림 팝업 (조건부 표시)
+ */
+
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Bell, User, ChevronDown, Info, ExternalLink, BarChart3 } from 'lucide-react';
@@ -29,14 +63,27 @@ import NotificationDropdown from '../../components/common/dropdown/NotificationD
 import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
 import AnomalyAlert from './hooks/AnomalyAlert';
 
+/**
+ * 🔧 DashboardScreen 컴포넌트 Props 인터페이스
+ * 상위 AppRouter에서 전달받는 네비게이션 함수들을 정의
+ */
 interface DashboardScreenProps {
-  onNavigateToChatbot: () => void;
-  onNavigateToHistory: () => void;
-  onNavigateToRole?: () => void;
+  onNavigateToChatbot: () => void;   // 챗봇 화면으로 이동하는 콜백 함수
+  onNavigateToHistory: () => void;   // 히스토리 화면으로 이동하는 콜백 함수
+  onNavigateToRole?: () => void;     // 역할 선택(로그아웃) 화면으로 이동하는 콜백 함수 (선택적)
 }
 
 
-// 센서 차트 컴포넌트
+/**
+ * 📊 SensorChart - 센서 데이터 시각화 차트 컴포넌트
+ * 
+ * Recharts 라이브러리를 사용하여 센서 데이터를 시각화합니다.
+ * 센서 타입에 따라 LineChart(온도, 습도) 또는 AreaChart(가스)를 사용합니다.
+ * 
+ * @param sensorData - 표시할 센서 데이터 (라벨과 값 배열 포함)
+ * @param isLoading - 로딩 상태 (로딩 중 스피너 표시)
+ * @param error - 에러 메시지 (에러 발생 시 에러 화면 표시)
+ */
 const SensorChart: React.FC<{
   sensorData: SensorData | null;
   isLoading: boolean;
@@ -79,16 +126,20 @@ const SensorChart: React.FC<{
       <ResponsiveContainer width="100%" height="100%">
         {sensorData.sensorType === 'gas' ? (
           <AreaChart data={chartData}>
+            {/* 🗂️ 격자 배경 */}
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            {/* 📅 X축: 시간 */}
             <XAxis
               dataKey="time"
               stroke="#666"
               fontSize={12}
             />
+            {/* 📊 Y축: 센서 값 */}
             <YAxis
               stroke="#666"
               fontSize={12}
             />
+            {/* 💬 마우스 호버 툴팡 */}
             <Tooltip
               contentStyle={{
                 backgroundColor: 'white',
@@ -107,16 +158,20 @@ const SensorChart: React.FC<{
           </AreaChart>
         ) : (
           <LineChart data={chartData}>
+            {/* 🗂️ 격자 배경 */}
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            {/* 📅 X축: 시간 */}
             <XAxis
               dataKey="time"
               stroke="#666"
               fontSize={12}
             />
+            {/* 📊 Y축: 센서 값 */}
             <YAxis
               stroke="#666"
               fontSize={12}
             />
+            {/* 💬 마우스 호버 툴팡 */}
             <Tooltip
               contentStyle={{
                 backgroundColor: 'white',
@@ -218,7 +273,25 @@ const QuickSightDashboard: React.FC<{
   );
 };
 
-// 메인 대시보드 컴포넌트
+/**
+ * 📊 DashboardScreen - 메인 대시보드 컴포넌트
+ * 
+ * AWS IoT 모니터링 시스템의 중심 화면입니다.
+ * 실시간 센서 데이터 모니터링, 알림 관리, QuickSight 분석 등을 제공합니다.
+ * 
+ * 상태 관리:
+ * - 🧭 activeMenu: 현재 활성 메뉴 (사이드바 하이라이트)
+ * - 🔔 notificationData: 알림 목록 및 개수
+ * - 📊 sensorData: 현재 선택된 센서의 차트 데이터
+ * - 📋 allSensorData: 모든 센서의 현재값 (테이블 표시용)
+ * - 🔥 mintrendData: S3에서 가져온 최신 센서 데이터 (우선 표시)
+ * - ☁️ quickSightData: AWS QuickSight 대시보드 임베딩 데이터
+ * 
+ * 자동 업데이트:
+ * - 30초마다 Mintrend 데이터 갱신
+ * - 실시간 시간 표시 업데이트
+ * - 60초마다 이상치 감지 및 알림
+ */
 const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onNavigateToChatbot,
   onNavigateToHistory,
@@ -313,7 +386,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
       setMintrendError(errorMessage);
       console.error('❌ Mintrend 데이터 로드 실패:', err);
 
-      // 🔧 개발 시 디버깅용 정보 출력
+      // 🔧 개발 환경에서만 디버깅 정보 제공
       if (process.env.NODE_ENV === 'development') {
         console.log('🔍 디버깅 정보:');
         console.log('- API_BASE_URL:', process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001');
@@ -325,41 +398,59 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
         console.log('🔗 브라우저에서 테스트해보세요:', testUrl);
       }
     } finally {
-      setMintrendLoading(false);
+      setMintrendLoading(false);   // 🏁 Mintrend 로딩 종료
     }
   };
 
-  // 🆕 QuickSight 데이터 가져오기
+  /**
+   * 📊 QuickSight 대시보드 데이터 가져오기 함수
+   * 
+   * AWS QuickSight에서 센서 타입별 대시보드 임베딩 URL을 요청합니다.
+   * 백엔드에서 인증된 QuickSight 세션을 통해 임베딩 URL을 생성합니다.
+   * 
+   * @param sensorType - QuickSight 대시보드 센서 타입 ('TEMPERATURE' | 'HUMIDITY' | 'GAS')
+   */
   const fetchQuickSightData = async (sensorType: QuickSightSensorType) => {
-    setQuickSightLoading(true);
-    setQuickSightError(null);
+    setQuickSightLoading(true);  // 📥 QuickSight 로딩 시작
+    setQuickSightError(null);    // 🧹 이전 에러 초기화
 
     try {
+      // 📞 QuickSight 서비스 호출
       const data = await QuickSightService.getDashboardByType(sensorType);
-      setQuickSightData(data);
+      setQuickSightData(data);  // ✅ 데이터 상태 업데이트
       console.log('✅ QuickSight 대시보드 로드 성공:', data);
     } catch (err) {
+      // ❌ QuickSight 에러 처리
       const errorMessage = err instanceof Error ? err.message : 'QuickSight 대시보드를 가져오는 중 오류가 발생했습니다.';
       setQuickSightError(errorMessage);
       console.error('❌ QuickSight 대시보드 로드 실패:', err);
     } finally {
-      setQuickSightLoading(false);
+      setQuickSightLoading(false);  // 🏁 QuickSight 로딩 종료
     }
   };
 
-  // 전체 함수
+  /**
+   * 📊 모든 센서 데이터 일괄 가져오기 함수
+   * 
+   * 온도, 습도, 가스 센서의 데이터를 동시에 가져와서 캠시에 저장합니다.
+   * Promise.all을 사용하여 병렬 처리로 성능을 최적화합니다.
+   * 주로 페이지 로드 시 호출되며, 테이블 표시용 데이터를 준비합니다.
+   */
   const fetchAllSensorData = async () => {
     try {
+      // 🚀 병렬 처리로 모든 센서 데이터 동시 요청
       const results = await Promise.all(
         SENSOR_OPTIONS.map(opt => DashboardAPI.getSensorData(opt.value as SensorType))
       );
 
+      // 💾 새로운 센서 데이터 캠시 객체 초기화
       const newAllSensorData: Record<SensorType, SensorData | null> = {
         temperature: null,
         humidity: null,
         gas: null,
       };
 
+      // 🔄 API 응답 결과를 센서 타입별로 분류하여 저장
       results.forEach((result, index) => {
         if (result.success) {
           const sensorType = SENSOR_OPTIONS[index].value as SensorType;
@@ -367,8 +458,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
         }
       });
 
+      // ✅ 전체 센서 데이터 상태 업데이트
       setAllSensorData(newAllSensorData);
     } catch (err) {
+      // ❌ 전체 센서 데이터 로드 실패
       console.error('전체 센서 데이터 가져오기 실패:', err);
     }
   };

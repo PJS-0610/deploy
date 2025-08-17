@@ -1,50 +1,129 @@
-// pages/UserCode/UserCodeScreen.tsx - 사용자 코드 입력 화면 (LoginScreen과 일관성 맞춤)
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * 🔑 UserCodeScreen - 사용자 접근 코드 입력 화면
+ * ═══════════════════════════════════════════════════════════════
+ * 
+ * 🎯 주요 기능:
+ * - 일반 사용자의 시스템 접근을 위한 코드 기반 인증
+ * - 관리자가 발급한 접근 코드를 통한 간편 로그인
+ * - LoginScreen과 동일한 디자인 언어 사용
+ * - 실시간 코드 검증 및 사용자 피드백
+ * 
+ * 🔐 보안 특징:
+ * - 사전 정의된 유효 코드 목록을 통한 접근 제어
+ * - 대소문자 자동 변환으로 입력 편의성 제공
+ * - 클라이언트 사이드 검증 (실제 환경에서는 서버 검증 필요)
+ * 
+ * 🎨 UI/UX:
+ * - LoginScreen과 일관된 시각적 디자인
+ * - 반응형 레이아웃 및 모바일 최적화
+ * - 로딩 스피너 및 에러 메시지 표시
+ * - 도움말 섹션으로 사용자 가이드 제공
+ * 
+ * 🔄 데이터 플로우:
+ * 1. 사용자가 접근 코드 입력
+ * 2. 클라이언트 사이드 검증 (validCodes 배열 확인)
+ * 3. 성공 시 onCodeSuccess 콜백 호출
+ * 4. 실패 시 에러 메시지 표시
+ * 
+ * 📝 향후 개선사항:
+ * - 서버 사이드 코드 검증 API 연동
+ * - 코드 만료 시간 및 사용 횟수 제한
+ * - 접근 로그 기록 및 감사 추적
+ */
 import React, { useState } from 'react';
 import styles from './UserCodeScreen.module.css';
 
+/**
+ * 🎭 사용자 코드 화면 Props 인터페이스
+ * 부모 컴포넌트(AppRouter)와의 상호작용을 위한 콜백 함수들을 정의합니다.
+ */
 interface UserCodeScreenProps {
-  onCodeSuccess: () => void;
-  onGoBack: () => void;
+  onCodeSuccess: () => void;    // 코드 인증 성공 시 호출될 콜백 (대시보드로 이동)
+  onGoBack: () => void;         // 역할 선택 화면으로 돌아가기 콜백
 }
 
+/**
+ * 🎯 메인 사용자 코드 입력 화면 컴포넌트
+ * 
+ * 일반 사용자가 관리자로부터 받은 접근 코드를 입력하여
+ * 시스템에 접근할 수 있도록 하는 인증 화면입니다.
+ * 
+ * @param onCodeSuccess - 코드 인증 성공 시 실행될 콜백
+ * @param onGoBack - 이전 화면(역할 선택)으로 돌아가기 콜백
+ */
 const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack }) => {
-  const [code, setCode] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  /**
+   * 📝 컴포넌트 상태 관리
+   */
+  const [code, setCode] = useState('');             // 사용자가 입력한 접근 코드
+  const [isLoading, setIsLoading] = useState(false); // 코드 검증 중 로딩 상태
+  const [error, setError] = useState('');           // 에러 메시지 표시용
 
-  // 유효한 코드 목록 (실제로는 서버에서 검증해야 함)
+  /**
+   * 🎫 유효한 접근 코드 목록
+   * 
+   * ⚠️ 현재는 클라이언트 사이드 검증용 하드코딩
+   * 실제 프로덕션 환경에서는 서버 API를 통해 검증해야 합니다.
+   * 
+   * 포함된 테스트 코드:
+   * - USER001, USER002, USER003: 일반 사용자 코드
+   * - DEMO2024: 데모 및 테스트용 코드
+   */
   const validCodes = ['USER001', 'USER002', 'USER003', 'DEMO2024'];
 
+  /**
+   * 📋 폼 제출 핸들러
+   * 
+   * 사용자가 입력한 접근 코드를 검증하고 결과에 따라 적절한 액션을 수행합니다.
+   * 현재는 클라이언트 사이드 검증을 시뮬레이션하지만,
+   * 실제 환경에서는 서버 API를 호출해야 합니다.
+   * 
+   * @param e - 폼 제출 이벤트
+   */
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault();  // 기본 폼 제출 동작 방지
     
+    // 📝 입력값 검증
     if (!code.trim()) {
       setError('코드를 입력해주세요.');
       return;
     }
 
+    // 🔄 로딩 상태 시작
     setIsLoading(true);
     setError('');
 
-    // 코드 검증 시뮬레이션 (실제로는 API 호출)
+    // 🔍 코드 검증 시뮬레이션 (실제로는 API 호출)
+    // TODO: 실제 환경에서는 POST /auth/verify-code API 호출
     setTimeout(() => {
       if (validCodes.includes(code.toUpperCase())) {
-        onCodeSuccess();
+        // ✅ 유효한 코드인 경우
+        onCodeSuccess();  // 대시보드로 이동
       } else {
+        // ❌ 유효하지 않은 코드인 경우
         setError('유효하지 않은 코드입니다. 다시 시도해주세요.');
       }
-      setIsLoading(false);
-    }, 1000);
+      setIsLoading(false);  // 로딩 상태 종료
+    }, 1000);  // 1초 지연으로 API 호출 시뮬레이션
   };
 
+  /**
+   * ⌨️ 입력 필드 변경 핸들러
+   * 
+   * 사용자가 코드를 입력할 때마다 호출되며,
+   * 자동으로 대문자로 변환하고 기존 에러 메시지를 제거합니다.
+   * 
+   * @param e - 입력 필드 변경 이벤트
+   */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCode(e.target.value.toUpperCase());
-    setError('');
+    setCode(e.target.value.toUpperCase());  // 자동 대문자 변환
+    setError('');                           // 입력 시작하면 에러 메시지 제거
   };
 
   return (
     <div className={`${styles.container} ${isLoading ? styles.loading : ""}`}>
-      {/* 배경 패턴 - LoginScreen과 동일한 패턴 */}
+      {/* 🎨 배경 패턴 - LoginScreen과 동일한 기하학적 패턴으로 일관성 유지 */}
       <div className={styles.backgroundPattern} aria-hidden="true">
         <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -59,7 +138,7 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
         </svg>
       </div>
 
-      {/* 헤더 - LoginScreen과 동일한 구조 */}
+      {/* 🏢 헤더 - AWS² GIOT 브랜딩과 Air Watch System 서브타이틀 */}
       <header className={styles.header}>
         <div className={styles.logo}>
           <span className={styles.logoText}>AWS²</span>
@@ -71,10 +150,10 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
         <div className={styles.subtitle}>Air Watch System</div>
       </header>
 
-      {/* 메인 카드 - LoginScreen의 authContainer와 동일한 구조 */}
+      {/* 🏠 메인 카드 - 코드 입력 폼을 포함한 중앙 컨테이너 */}
       <div className={styles.card}>
         <div className={styles.cardPanel}>
-          {/* 뒤로가기 버튼 */}
+          {/* ⬅️ 뒤로가기 버튼 - 역할 선택 화면으로 돌아가기 */}
           <button 
             type="button"
             className={styles.backButton}
@@ -84,13 +163,13 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
             ← 역할 선택으로 돌아가기
           </button>
 
-          {/* 역할 표시기 */}
+          {/* 👤 역할 표시기 - 현재 선택된 역할(사용자) 표시 */}
           <div className={styles.roleIndicator}>
             <span className={styles.roleLabel}>선택된 역할:</span>
             <span className={styles.roleValue}>사용자</span>
           </div>
 
-          {/* 아이콘과 제목 */}
+          {/* 🔑 아이콘과 제목 - 코드 입력 화면임을 시각적으로 표현 */}
           <div className={styles.iconContainer}>
             <span className={styles.icon}>🔑</span>
           </div>
@@ -98,7 +177,7 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
           <h2 className={styles.title}>사용자 코드 입력</h2>
           <p className={styles.subtitle}>관리자로부터 받은 접근 코드를 입력해주세요</p>
 
-          {/* 코드 입력 폼 */}
+          {/* 📝 코드 입력 폼 - 메인 인증 인터페이스 */}
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.formGroup}>
               <label className={styles.label}>접근 코드</label>
@@ -115,7 +194,7 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
               )}
             </div>
 
-            {/* 버튼들 */}
+            {/* 🎛️ 액션 버튼들 - 뒤로가기와 접속하기 버튼 */}
             <div className={styles.buttonGroup}>
               <button
                 type="button"
@@ -143,7 +222,7 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
             </div>
           </form>
 
-          {/* 도움말 */}
+          {/* 💡 도움말 섹션 - 사용자 가이드 및 테스트 코드 정보 */}
           <div className={styles.helpSection}>
             <h3 className={styles.helpTitle}>💡 도움말</h3>
             <ul className={styles.helpList}>
@@ -155,11 +234,11 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
           </div>
         </div>
 
-        {/* 사이드 패널 - LoginScreen과 동일한 오렌지 그라데이션 */}
+        {/* 🎨 사이드 패널 - LoginScreen과 일관된 오렌지 그라데이션 디자인 */}
         <div className={styles.sidePanel}></div>
       </div>
 
-      {/* 푸터 - LoginScreen과 동일 */}
+      {/* 🏛️ 푸터 - 2025 GBSA AWS 브랜딩 */}
       <footer className={styles.footer}>2025 GBSA AWS</footer>
     </div>
   );
