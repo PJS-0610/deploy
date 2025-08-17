@@ -171,7 +171,7 @@ const SensorChart: React.FC<{
               stroke="#666"
               fontSize={12}
             />
-            {/* 💬 마우스 호버 툴팡 */}
+            {/* 💬 마우스 호버 툴 */}
             <Tooltip
               contentStyle={{
                 backgroundColor: 'white',
