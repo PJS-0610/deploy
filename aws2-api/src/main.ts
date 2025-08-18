@@ -37,7 +37,8 @@ async function bootstrap() {
       'X-CSRF-Token',
       'x-amz-date',
       'x-amz-security-token',
-      'x-amz-content-sha256'
+      'x-amz-content-sha256',
+      'x-api-key'//희연이가 추가함
     ],
     exposedHeaders: ['Content-Length', 'Content-Type'],
   });
@@ -59,8 +60,8 @@ async function bootstrap() {
         res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
         res.header(
           'Access-Control-Allow-Headers',
-          'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, x-amz-date, x-amz-security-token, x-amz-content-sha256'
-        );
+          'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, x-amz-date, x-amz-security-token, x-amz-content-sha256, x-api-key'
+        );//희연이가 추가함
         return res.sendStatus(204);
       }
     }
