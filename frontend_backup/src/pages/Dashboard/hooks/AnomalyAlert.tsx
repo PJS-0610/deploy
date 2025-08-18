@@ -38,6 +38,15 @@
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
+// 백엔드 API 주소와 키 (env에서 주입)
+const API_BASE =
+  process.env.REACT_APP_API_BASE_URL || '';
+const API_KEY =
+  process.env.REACT_APP_ADMIN_API_KEY ||
+  process.env.REACT_APP_API_KEY ||
+  '';
+
+
 // ========== 타입 정의 ==========
 
 /**
@@ -346,13 +355,31 @@ const useAnomalyDetection = (options: {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(config.s3ApiEndpoint);
+      // 키가 없으면 바로 에러 안내(개발중 원인 파악 쉬움)
+      if (!API_KEY) {
+        setError('API 키가 없습니다. .env에 REACT_APP_ADMIN_API_KEY(또는 REACT_APP_API_KEY)를 설정하세요.');
+        return null;
+      }
+
+      // 상대경로면 API_BASE와 합쳐 절대 URL로
+      const fullUrl =
+        config.s3ApiEndpoint && config.s3ApiEndpoint.startsWith('http')
+          ? config.s3ApiEndpoint
+          : `${API_BASE}${config.s3ApiEndpoint.startsWith('/') ? '' : '/'}${config.s3ApiEndpoint}`;
+
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          'x-api-key': API_KEY,   // ✅ 오직 1개만 (api-key/X-API-Key/Authorization 등 금지)
+        },
+      });
       if (!response.ok) throw new Error(`S3 API 호출 실패: ${response.status}`);
 
       const data: S3ApiResponse = await response.json();
       setLastCheck(new Date().toISOString());
 
       return data;
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류';
       setError(errorMessage);
@@ -542,23 +569,24 @@ const useAnomalyDetection = (options: {
 
   const startedRef = useRef(false);
 
-  // useEffect(() => {
-  //   if (!config.enabled) return;
+  useEffect(() => {
+    if (!config.enabled) return;
 
-  //   // 즉시 한 번 실행
-  //   processAnomalies();
+    // 주기적 실행
+    intervalRef.current = setInterval(() => {
+      if (document.hidden) return;   // ✅ 탭이 가려져 있으면 호출 스킵
+      processAnomalies();
+    }, config.interval);
 
-  //   // 주기적 실행
-  //   intervalRef.current = setInterval(processAnomalies, config.interval);
 
-  //   return () => {
-  //     if (intervalRef.current) clearInterval(intervalRef.current);
-  //     alertTimersRef.current.forEach(timer => clearTimeout(timer));
-  //     alertTimersRef.current.clear();
-  //   };
-  // }, [config.enabled, config.interval, processAnomalies]);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      alertTimersRef.current.forEach(timer => clearTimeout(timer));
+      alertTimersRef.current.clear();
+    };
+  }, [config.enabled, config.interval, processAnomalies]);
 
-  
+
 
   return {
     alerts,

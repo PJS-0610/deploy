@@ -46,11 +46,15 @@ import {
   SENSOR_OPTIONS,
   MENU_ITEMS
 } from '../../services/DashboardTypes';
+// 기존 (잘못된 import)
+// 수정 후 (올바른 import)
 import {
-  MintrendService,
+  MintrendService
+} from './hooks/MintrendService';
+
+import {
   MintrendResponse
 } from '../../services/MintrendTypes';
-// 🆕 QuickSight 관련 import 추가
 import {
   QuickSightService,
   QuickSightDashboardResponse,
@@ -325,82 +329,21 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [quickSightLoading, setQuickSightLoading] = useState(false);
   const [quickSightError, setQuickSightError] = useState<string | null>(null);
 
-  // 센서 데이터 가져오기
-  const fetchSensorData = async (sensorType: SensorType) => {
-    setIsLoading(true);
-    setError(null);
+  // DashboardScreen.tsx에서
+const fetchMintrendData = async () => {
+  setMintrendLoading(true);
+  setMintrendError(null);
 
-    try {
-      const data = await DashboardAPI.getSensorData(sensorType);
-
-      if (data.success) {
-        setSensorData(data as SensorData);
-        setAllSensorData(prev => ({
-          ...prev,
-          [sensorType]: data as SensorData
-        }));
-      } else {
-        setError('데이터를 불러올 수 없습니다.');
-      }
-    } catch (err) {
-      setError('데이터를 가져오는 중 오류가 발생했습니다.');
-      console.error('센서 데이터 가져오기 실패:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Mintrend 데이터 가져오기 - 개선된 디버깅 버전
-  const fetchMintrendData = async () => {
-    setMintrendLoading(true);
-    setMintrendError(null);
-
-    try {
-      const data = await MintrendService.getLatestMintrendData();
-
-      // 🔍 상세한 디버깅 정보 출력
-      console.log('✅ Mintrend 데이터 로드 성공 (상세):', JSON.stringify(data, null, 2));
-      console.log('📊 받은 데이터 분석:');
-      console.log('  - 파일명:', data.filename);
-      console.log('  - 타임스탬프:', data.data?.timestamp);
-      console.log('  - 온도:', data.data?.mintemp + '°C');
-      console.log('  - 습도:', data.data?.minhum + '%');
-      console.log('  - 가스:', data.data?.mingas + 'ppm');
-
-      // 🎯 상태 계산 및 출력
-      if (data.data) {
-        const tempStatus = MintrendService.getTemperatureStatus(data.data.mintemp);
-        const humStatus = MintrendService.getHumidityStatus(data.data.minhum);
-        const gasStatus = MintrendService.getGasStatus(data.data.mingas);
-
-        console.log('🚦 계산된 상태:');
-        console.log('  - 온도 상태:', tempStatus);
-        console.log('  - 습도 상태:', humStatus);
-        console.log('  - 가스 상태:', gasStatus);
-      }
-
-      setMintrendData(data);
-
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Mintrend 데이터를 가져오는 중 오류가 발생했습니다.';
-      setMintrendError(errorMessage);
-      console.error('❌ Mintrend 데이터 로드 실패:', err);
-
-      // 🔧 개발 환경에서만 디버깅 정보 제공
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 디버깅 정보:');
-        console.log('- API_BASE_URL:', process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001');
-        console.log('- 백엔드 서버가 실행 중인지 확인하세요');
-        console.log('- http://localhost:3001/s3/file/last/mintrend 에 직접 접속해보세요');
-
-        // 🌐 브라우저에서 직접 테스트할 수 있는 링크 제공
-        const testUrl = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001') + '/s3/file/last/mintrend';
-        console.log('🔗 브라우저에서 테스트해보세요:', testUrl);
-      }
-    } finally {
-      setMintrendLoading(false);   // 🏁 Mintrend 로딩 종료
-    }
-  };
+  try {
+    const data = await MintrendService.getLatestMintrendData();
+    setMintrendData(data);
+  } catch (error) {
+    console.error('Mintrend 데이터 로드 실패:', error);
+    setMintrendError('API 호출에 실패했습니다.');
+  } finally {
+    setMintrendLoading(false);
+  }
+};
 
   /**
    * 📊 QuickSight 대시보드 데이터 가져오기 함수
@@ -426,43 +369,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
       console.error('❌ QuickSight 대시보드 로드 실패:', err);
     } finally {
       setQuickSightLoading(false);  // 🏁 QuickSight 로딩 종료
-    }
-  };
-
-  /**
-   * 📊 모든 센서 데이터 일괄 가져오기 함수
-   * 
-   * 온도, 습도, 가스 센서의 데이터를 동시에 가져와서 캠시에 저장합니다.
-   * Promise.all을 사용하여 병렬 처리로 성능을 최적화합니다.
-   * 주로 페이지 로드 시 호출되며, 테이블 표시용 데이터를 준비합니다.
-   */
-  const fetchAllSensorData = async () => {
-    try {
-      // 🚀 병렬 처리로 모든 센서 데이터 동시 요청
-      const results = await Promise.all(
-        SENSOR_OPTIONS.map(opt => DashboardAPI.getSensorData(opt.value as SensorType))
-      );
-
-      // 💾 새로운 센서 데이터 캠시 객체 초기화
-      const newAllSensorData: Record<SensorType, SensorData | null> = {
-        temperature: null,
-        humidity: null,
-        gas: null,
-      };
-
-      // 🔄 API 응답 결과를 센서 타입별로 분류하여 저장
-      results.forEach((result, index) => {
-        if (result.success) {
-          const sensorType = SENSOR_OPTIONS[index].value as SensorType;
-          newAllSensorData[sensorType] = result as SensorData;
-        }
-      });
-
-      // ✅ 전체 센서 데이터 상태 업데이트
-      setAllSensorData(newAllSensorData);
-    } catch (err) {
-      // ❌ 전체 센서 데이터 로드 실패
-      console.error('전체 센서 데이터 가져오기 실패:', err);
     }
   };
 
@@ -501,7 +407,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   // 센서 선택 핸들러
   const handleSensorSelect = (sensorType: SensorType) => {
     setSelectedSensor(sensorType);
-    fetchSensorData(sensorType);
+    // fetchSensorData(sensorType);
   };
 
   // 🆕 QuickSight 센서 선택 핸들러
@@ -513,8 +419,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   // 컴포넌트 마운트 시 초기 데이터 로딩
   useEffect(() => {
     fetchNotifications();
-    fetchSensorData('temperature'); // 기본값
-    fetchAllSensorData(); // 테이블용 전체 데이터
+    // fetchSensorData('temperature'); // 기본값
+    // fetchAllSensorData(); // 테이블용 전체 데이터
     fetchMintrendData(); // Mintrend 데이터 가져오기
     fetchQuickSightData('TEMPERATURE'); // 🆕 QuickSight 데이터 가져오기
 

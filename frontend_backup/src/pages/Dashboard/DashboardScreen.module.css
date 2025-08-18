@@ -6,7 +6,7 @@
   height: 100vh;
   background-color: #f8f9fa;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-}
+} 
 
 /* 메인 영역 */
 .mainContent {
@@ -722,4 +722,13 @@
 .status-default {
   color: #6b7280;
   /* 회색 */
+}
+
+.dashboard {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

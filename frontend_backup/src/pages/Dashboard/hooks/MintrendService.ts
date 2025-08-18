@@ -1,7 +1,4 @@
 // services/MintrendTypes.ts - Mintrend API 관련 타입 정의
-/**
- * 📡 Mintrend API 응답 타입
- */
 export interface MintrendResponse {
   filename: string;
   data: {
@@ -15,57 +12,67 @@ export interface MintrendResponse {
   };
 }
 
-/**
- * 🔄 API 응답 상태 타입
- */
 export interface MintrendApiResponse {
   success: boolean;
   data?: MintrendResponse;
   error?: string;
 }
 
-/**
- * 📊 Mintrend 서비스 클래스
- */
 export class MintrendService {
-  private static readonly API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
+  private static readonly API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
   private static readonly MINTREND_ENDPOINT = '/s3/file/last/mintrend';
 
-  /**
-   * 🌐 최신 Mintrend 데이터 가져오기
-   */
-  static async getLatestMintrendData(): Promise<MintrendResponse> {
-    try {
-      console.log('🔄 Mintrend API 호출 시작...');
-      
-      const response = await fetch(`${this.API_BASE_URL}${this.MINTREND_ENDPOINT}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+static async getLatestMintrendData(): Promise<MintrendResponse> {
+  const fullUrl = `${this.API_BASE_URL}${this.MINTREND_ENDPOINT}`;
+  
+  try {
+    console.log('🔄 Mintrend API 호출:', fullUrl);
+    
+    // API 키 가져오기
+    const apiKey = process.env.REACT_APP_ADMIN_API_KEY;
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: MintrendResponse = await response.json();
-      
-      console.log('✅ Mintrend 데이터 수신 성공:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Mintrend API 호출 실패:', error);
-      throw new Error(
-        error instanceof Error 
-          ? `Mintrend 데이터 로드 실패: ${error.message}`
-          : 'Mintrend 데이터를 가져오는 중 알 수 없는 오류가 발생했습니다.'
-      );
+    if (!apiKey) {
+      console.error('❌ REACT_APP_ADMIN_API_KEY 환경변수가 설정되지 않았습니다!');
+      throw new Error('API 키가 설정되지 않았습니다. .env 파일을 확인하세요.');
     }
-  }
 
-  /**
-   * 🌡️ 온도 상태 판정
-   */
+    console.log('🔑 환경변수에서 API 키 로드 성공:', apiKey.substring(0, 8) + '...');
+    
+    const response = await fetch(fullUrl, {
+  method: 'GET',
+  headers: {
+    'x-api-key': apiKey,   // ✅ 이것만!
+  },
+});
+
+
+    console.log(`📡 응답 상태: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data: MintrendResponse = await response.json();
+    console.log('✅ Mintrend 데이터 수신 성공:', data);
+    
+    return data;
+    
+  } catch (error) {
+    console.error('❌ Mintrend API 호출 실패:', error);
+    throw error;
+  }
+}
+
+
+// // 수정할 코드
+// const apiKey = process.env.REACT_APP_ADMIN_API_KEY;
+
+// if (!apiKey) {
+//   console.error('❌ REACT_APP_ADMIN_API_KEY 환경변수가 설정되지 않았습니다!');
+//   throw new Error('API 키가 설정되지 않았습니다. .env 파일을 확인하세요.');
+// }
+
+  // 다른 메서드들은 그대로 유지...
   static getTemperatureStatus(temperature: number): string {
     if (temperature < 15) return 'COLD';
     if (temperature < 20) return 'COOL';
@@ -74,9 +81,6 @@ export class MintrendService {
     return 'HOT';
   }
 
-  /**
-   * 💧 습도 상태 판정
-   */
   static getHumidityStatus(humidity: number): string {
     if (humidity < 30) return 'DRY';
     if (humidity < 40) return 'LOW';
@@ -85,9 +89,6 @@ export class MintrendService {
     return 'WET';
   }
 
-  /**
-   * 💨 가스 상태 판정
-   */
   static getGasStatus(gas: number): string {
     if (gas < 400) return 'EXCELLENT';
     if (gas < 800) return 'GOOD';
@@ -96,9 +97,6 @@ export class MintrendService {
     return 'DANGEROUS';
   }
 
-  /**
-   * 📊 상태별 색상 클래스 반환
-   */
   static getStatusColorClass(status: string): string {
     switch (status.toUpperCase()) {
       case 'EXCELLENT':
@@ -121,9 +119,6 @@ export class MintrendService {
     }
   }
 
-  /**
-   * 🔄 데이터 유효성 검증
-   */
   static validateMintrendData(data: any): data is MintrendResponse {
     return (
       data &&

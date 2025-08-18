@@ -41,11 +41,15 @@ export class QuickSightService {
       console.log(`🔄 QuickSight 대시보드 조회 시작: ${sensorType}`);
 
       const response = await fetch(
-        `${this.API_BASE_URL}/quicksight/dashboards/${sensorType}?includeEmbedUrl=true`,
-        {
-          method: 'GET',
-        }
-      );
+  `${this.API_BASE_URL}/quicksight/dashboards/${sensorType}?includeEmbedUrl=true`,
+  {
+    method: 'GET',
+    headers: {
+  'x-api-key': process.env.REACT_APP_ADMIN_API_KEY as string, // ✅ Mintrend와 동일
+},
+  }
+);
+
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

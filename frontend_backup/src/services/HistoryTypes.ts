@@ -119,7 +119,7 @@ export interface HistoryFilterProps {
 // ============================================
 
 export class HistoryAPI {
-  private static readonly BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
+  private static readonly BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
   // 🔧 실제 API 호출 (기존 코드와 호환성 유지)
   static async fetchEvents(filters: HistoryFilters, page: number = 1): Promise<{
@@ -132,7 +132,17 @@ export class HistoryAPI {
       console.log('🔄 HistoryAPI.fetchEvents 호출:', { filters, page, targetDate });
 
       const formattedDate = targetDate.replace(/-/g, '');
-      const response = await fetch(`${this.BASE_URL}/s3/history/${formattedDate}`);
+      const apiKey =
+  process.env.REACT_APP_ADMIN_API_KEY ||
+  process.env.REACT_APP_API_KEY ||
+  '';
+
+const response = await fetch(`${this.BASE_URL}/s3/history/${formattedDate}`, {
+  method: 'GET',
+  headers: {
+    'x-api-key': apiKey,        // ✅ 이것만!
+  },
+});
 
       if (response.status === 404) {
         return { events: [], totalPages: 1 };

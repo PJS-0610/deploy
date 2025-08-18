@@ -48,20 +48,25 @@ export interface MinTrendHistoryState {
 
 // API 클래스
 export class MinTrendHistoryAPI {
-  private static readonly BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
+  private static readonly BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
   static async getHistoryByDate(date: string): Promise<MinTrendHistoryResponse> {
     try {
       // YYYY-MM-DD를 YYYYMMDD로 변환
       const formattedDate = date.replace(/-/g, '');
 
-      const response = await fetch(`${this.BASE_URL}/s3/history/${formattedDate}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        }
-      });
+      const apiKey =
+  process.env.REACT_APP_ADMIN_API_KEY ||
+  process.env.REACT_APP_API_KEY ||
+  '';
+
+const response = await fetch(`${this.BASE_URL}/s3/history/${formattedDate}`, {
+  method: 'GET',
+  headers: {
+    'x-api-key': apiKey,      // ✅ 이것만!
+  }
+});
+
 
       if (!response.ok) {
         const errorData: MinTrendHistoryError = await response.json();
