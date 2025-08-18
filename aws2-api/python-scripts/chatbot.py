@@ -4,6 +4,7 @@ import json
 import uuid
 import boto3
 import traceback
+import os
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 import concurrent.futures as _f
@@ -16,6 +17,122 @@ REGION = "ap-northeast-2"
 S3_BUCKET_DATA = "aws2-airwatch-data"   # 센서 데이터가 들어있는 버킷 (기존)
 CHATLOG_BUCKET = "chatlog-1293845"      # <-- 요청하신 채팅 로그 저장용 버킷
 S3_PREFIX = ""  # 데이터 폴더 구분은 키에서 자동 판단
+
+# S3 히스토리 저장
+S3_CHATLOG_PREFIX = "chatlog/"  # S3 채팅로그 저장 경로
+
+# ===== S3 히스토리 파일 관리 =====
+def get_session_s3_key(session_id: str) -> str:
+    """세션 ID에 해당하는 S3 키 반환"""
+    return f"{S3_CHATLOG_PREFIX}{session_id}.json"
+
+def save_session_history(session_id: str, history: List[Dict], turn_id: int, last_sensor_ctx: Dict = None, followup_timestamp = None, followup_context: Dict = None):
+    """세션 히스토리를 S3에 저장"""
+    try:
+        s3_key = get_session_s3_key(session_id)
+        
+        # followup_timestamp가 datetime 객체이면 ISO 문자열로 변환
+        if followup_timestamp and hasattr(followup_timestamp, 'isoformat'):
+            followup_timestamp = followup_timestamp.isoformat()
+            
+        session_data = {
+            "session_id": session_id,
+            "turn_id": turn_id,
+            "history": history,
+            "last_sensor_ctx": last_sensor_ctx or {},
+            "followup_timestamp": followup_timestamp,
+            "followup_context": followup_context or {},
+            "last_saved": datetime.now(KST).isoformat()
+        }
+        
+        # JSON 문자열로 변환
+        json_content = json.dumps(session_data, ensure_ascii=False, indent=2, default=str)
+        
+        # S3에 업로드
+        s3 = boto3.client('s3', region_name=REGION)
+        s3.put_object(
+            Bucket=CHATLOG_BUCKET,
+            Key=s3_key,
+            Body=json_content.encode('utf-8'),
+            ContentType='application/json',
+            ContentEncoding='utf-8'
+        )
+        
+        print(f"[히스토리] 세션 {session_id} S3에 저장됨: {len(history)}개 대화 (s3://{CHATLOG_BUCKET}/{s3_key})")
+        return True
+    except Exception as e:
+        print(f"[오류] 세션 S3 저장 실패: {e}")
+        return False
+
+def load_session_history(session_id: str) -> Tuple[List[Dict], int, Dict, str, Dict]:
+    """세션 히스토리를 S3에서 로드"""
+    try:
+        s3_key = get_session_s3_key(session_id)
+        s3 = boto3.client('s3', region_name=REGION)
+        
+        # S3에서 세션 파일 확인 및 다운로드
+        try:
+            response = s3.get_object(Bucket=CHATLOG_BUCKET, Key=s3_key)
+            json_content = response['Body'].read().decode('utf-8')
+            session_data = json.loads(json_content)
+            
+        except s3.exceptions.NoSuchKey:
+            print(f"[히스토리] 세션 {session_id}: 새 세션 시작 (S3에 파일 없음)")
+            return [], 0, {}, None, {}
+        except Exception as e:
+            print(f"[히스토리] 세션 {session_id}: S3 로드 실패, 새 세션 시작 ({e})")
+            return [], 0, {}, None, {}
+            
+        history = session_data.get("history", [])
+        turn_id = session_data.get("turn_id", 0)
+        last_sensor_ctx = session_data.get("last_sensor_ctx", {})
+        followup_timestamp = session_data.get("followup_timestamp")
+        followup_context = session_data.get("followup_context", {})
+        
+        # followup_timestamp가 문자열이면 datetime으로 변환
+        if followup_timestamp and isinstance(followup_timestamp, str):
+            try:
+                from datetime import datetime as datetime_cls
+                # ISO 형식 문자열을 datetime으로 파싱
+                followup_timestamp = datetime_cls.fromisoformat(followup_timestamp.replace('Z', '+00:00'))
+                # KST로 변환
+                followup_timestamp = _to_kst_naive(followup_timestamp)
+            except Exception as parse_error:
+                print(f"[경고] followup_timestamp 파싱 실패: {parse_error}")
+                followup_timestamp = None
+        
+        print(f"[히스토리] 세션 {session_id} S3에서 로드됨: {len(history)}개 대화, 턴 ID: {turn_id} (s3://{CHATLOG_BUCKET}/{s3_key})")
+        return history, turn_id, last_sensor_ctx, followup_timestamp, followup_context
+        
+    except Exception as e:
+        print(f"[오류] 세션 S3 로드 실패: {e}")
+        return [], 0, {}, None, {}
+
+def list_session_files() -> List[str]:
+    """S3에 저장된 세션 파일들의 세션 ID 목록 반환"""
+    try:
+        s3 = boto3.client('s3', region_name=REGION)
+        
+        # S3에서 chatlog/ 폴더의 모든 JSON 파일 목록 조회
+        response = s3.list_objects_v2(
+            Bucket=CHATLOG_BUCKET,
+            Prefix=S3_CHATLOG_PREFIX
+        )
+        
+        session_ids = []
+        if 'Contents' in response:
+            for obj in response['Contents']:
+                key = obj['Key']
+                # chatlog/session_id.json 형식에서 session_id 추출
+                if key.endswith('.json') and key.startswith(S3_CHATLOG_PREFIX):
+                    session_id = key[len(S3_CHATLOG_PREFIX):-5]  # prefix와 .json 제거
+                    if session_id:  # 빈 문자열이 아닌 경우만 추가
+                        session_ids.append(session_id)
+        
+        return sorted(session_ids)
+    except Exception as e:
+        print(f"[오류] S3 세션 목록 조회 실패: {e}")
+        return []
 
 # RAG/검색
 TOP_K = 8
@@ -1226,12 +1343,16 @@ def find_closest_sensor_data(target_time: datetime) -> dict:
     
     return None
 
-def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHARS, max_files: int = MAX_FILES_TO_SCAN, top_k: int = TOP_K):
+def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHARS, max_files: int = MAX_FILES_TO_SCAN, top_k: int = TOP_K, session=None):
     # 통합된 검색 로직: 요청된 시간에서 가장 가까운 데이터 찾기
     import re
     from datetime import datetime as datetime_cls
     
     print(f"[DEBUG] retrieve_documents_from_s3 시작: {query}")
+    print(f"[DEBUG] query bytes: {repr(query.encode('utf-8', errors='replace'))}")
+    print(f"[DEBUG] '평균' in query: {'평균' in query}")
+    print(f"[DEBUG] '온도' in query: {'온도' in query}")
+    print(f"[DEBUG] '일' in query: {'일' in query}")
     
     # 1) 시간 정보 추출
     dt_strings = extract_datetime_strings(query)
@@ -1279,25 +1400,61 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
                     continue
     
     # 일간 평균 온도 요청 확인 (시간이 명시되지 않은 경우만)
-    daily_avg_patterns = [
-        r"\d+일.*평균.*온도",
-        r"평균.*온도.*\d+일", 
-        r"\d+일.*온도.*평균",
-        r"하루.*평균.*온도",
-        r"일간.*평균.*온도"
-    ]
+    # 인코딩 문제를 해결하기 위해 바이트 레벨에서 검사
+    query_bytes = query.encode('utf-8', errors='ignore')
+    
+    # 한글 키워드들을 바이트로 인코딩
+    keywords_bytes = {
+        'average': '평균'.encode('utf-8'),
+        'temperature': '온도'.encode('utf-8'),  
+        'day': '일'.encode('utf-8')
+    }
+    
+    # Windows 명령 프롬프트에서 깨진 한글을 직접 패턴 매칭
+    # "8월 14일의 평균 온도는?" 의 실제 바이트 패턴 사용
+    damaged_patterns = {
+        # "평균" 관련 패턴들 (깨진 바이트 시퀀스)
+        'average_pattern': b'\xeb\xa3\x8a',  # 평균의 일부
+        'temp_pattern': b'\xec\x82\xa9',     # 온도의 일부  
+        'day_pattern': b'\xec\x94\xaa',      # 일의 일부
+        'number_14': b'14',                   # 14
+        'month_8': b'8'                       # 8월
+    }
+    
+    # 더 관대한 패턴 매칭
+    has_average_pattern = damaged_patterns['average_pattern'] in query_bytes
+    has_temp_pattern = damaged_patterns['temp_pattern'] in query_bytes
+    has_day_pattern = damaged_patterns['day_pattern'] in query_bytes
+    has_number_pattern = (damaged_patterns['number_14'] in query_bytes or 
+                         damaged_patterns['month_8'] in query_bytes)
+    
+    has_daily_keywords = has_average_pattern and has_temp_pattern and has_day_pattern
+    has_average_keywords = has_average_pattern and has_temp_pattern
+    
+    print(f"[DEBUG] 일간 평균 키워드 검사 (바이트): has_daily_keywords={has_daily_keywords}, has_average_keywords={has_average_keywords}")
     
     # 특정 시간이 언급된 경우 일간 평균이 아님
     has_specific_time = bool(re.search(r"\d{1,2}\s*시|\d{1,2}\s*:\s*\d{1,2}|오전|오후", query))
+    print(f"[DEBUG] has_specific_time: {has_specific_time}")
     
-    is_daily_avg_query = (any(re.search(pattern, query) for pattern in daily_avg_patterns) 
-                         and not has_specific_time)
+    is_daily_avg_query = (has_daily_keywords and not has_specific_time)
+    print(f"[DEBUG] is_daily_avg_query: {is_daily_avg_query}")
     
     if is_daily_avg_query:
         print(f"[DEBUG] 일간 평균 쿼리 감지: {query}")
         daily_avg_data = calculate_daily_average_temperature(query)
         if daily_avg_data:
             print(f"[DEBUG] 일간 평균 데이터 찾음: {daily_avg_data['data_count']}시간, 평균 {daily_avg_data['average']}도")
+            
+            # 후속 질문용 컨텍스트 저장
+            context_data = {
+                "date": daily_avg_data['date'],
+                "average": daily_avg_data['average'],
+                "min": daily_avg_data['min'],
+                "max": daily_avg_data['max']
+            }
+            print(f"[DEBUG] 일간평균 컨텍스트 저장: {context_data}")
+            set_followup_context("daily_average", context_data, session)
             
             # 결과를 컨텍스트로 구성 (LLM이 이해하기 쉽게)
             context = f"[D1] {daily_avg_data['date']} 센서 데이터 분석 결과\n"
@@ -1321,6 +1478,36 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
     time_range = extract_time_range_from_query(query)
     if time_range:
         print(f"[DEBUG] 범위 쿼리 감지: {time_range}")
+        
+        # 범위 쿼리의 시작/끝 시간을 파싱하여 컨텍스트 저장
+        if len(time_range) >= 2:
+            from datetime import datetime as datetime_cls
+            try:
+                # time_range는 이미 처리된 시간 문자열 리스트
+                # 예: ['2025-08-13 13:00', '2025-08-13 14:00', '2025-08-13 15:00']
+                start_time_str = time_range[0] 
+                end_time_str = time_range[-1]  # 마지막 시간 사용
+                
+                # ISO 형식 시간 문자열을 datetime으로 파싱
+                start_time = datetime_cls.fromisoformat(start_time_str.replace(' ', 'T'))
+                end_time = datetime_cls.fromisoformat(end_time_str.replace(' ', 'T'))
+                
+                # 후속 질문용 컨텍스트 저장
+                context_data = {
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "range_text": f"{start_time.strftime('%H시')}부터 {end_time.strftime('%H시')}까지"
+                }
+                print(f"[DEBUG] 범위 컨텍스트 저장: {context_data}")
+                set_followup_context("time_range", context_data, session)
+                
+                # 컨텍스트 설정 후 즉시 세션 저장
+                if session:
+                    session.save_to_file()
+                    print(f"[DEBUG] 범위 질의 처리 후 세션 저장 완료")
+            except Exception as e:
+                print(f"[DEBUG] 범위 시간 파싱 오류: {e}")
+        
         dt_strings = time_range  # 범위 쿼리면 범위로 교체
     
     offset_value, offset_unit = extract_time_offset(query)
@@ -2746,19 +2933,31 @@ class UserSession:
     def __init__(self, session_id: str = None):
         if session_id:
             self.session_id = session_id
+            # 기존 세션이면 히스토리 로드 시도
+            self.history, self.turn_id, self.last_sensor_ctx, self.followup_timestamp, self.followup_context = load_session_history(session_id)
         else:
             self.session_id = datetime.now(KST).strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
-        self.turn_id = 0
-        self.history: List[Dict] = []
-        self.last_sensor_ctx: Dict[str, object] = {
-            "window": None,
-            "start": None, 
-            "end": None,
-            "rows": None,
-            "tag": None,
-            "label": None
-        }
-        self.followup_timestamp = None
+            self.turn_id = 0
+            self.history: List[Dict] = []
+            self.last_sensor_ctx: Dict[str, object] = {}
+            self.followup_timestamp = None
+            self.followup_context = {}
+            
+        # last_sensor_ctx 기본값 설정
+        if not self.last_sensor_ctx:
+            self.last_sensor_ctx = {
+                "window": None,
+                "start": None, 
+                "end": None,
+                "rows": None,
+                "tag": None,
+                "label": None
+            }
+        
+        # followup_context 초기화
+        if not hasattr(self, 'followup_context'):
+            self.followup_context = {}
+            
         self.created_at = datetime.now(KST)
         self.last_activity = datetime.now(KST)
     
@@ -2774,6 +2973,19 @@ class UserSession:
         # 히스토리 길이 제한
         if len(self.history) > MAX_HISTORY_TURNS:
             self.history = self.history[-MAX_HISTORY_TURNS:]
+        # 자동 저장
+        self.save_to_file()
+    
+    def save_to_file(self):
+        """현재 세션을 파일에 저장"""
+        save_session_history(
+            self.session_id, 
+            self.history, 
+            self.turn_id, 
+            self.last_sensor_ctx, 
+            self.followup_timestamp,
+            getattr(self, 'followup_context', {})
+        )
     
     def clear_last_sensor_ctx(self):
         self.last_sensor_ctx.update({
@@ -2856,6 +3068,31 @@ def set_followup_timestamp(dt: datetime, session=None):
         global _FOLLOWUP_TIMESTAMP
         _FOLLOWUP_TIMESTAMP = dt
 
+def set_followup_context(context_type: str, context_data: dict, session=None):
+    """후속질문용 컨텍스트 설정 (범위, 일간평균 등) - 기존 컨텍스트 완전 교체"""
+    new_context = {
+        "type": context_type,
+        "data": context_data,
+        "timestamp": datetime.now().isoformat()  # 컨텍스트 생성 시간 기록
+    }
+    
+    if session:
+        # 기존 컨텍스트를 완전히 교체 (덮어쓰기)
+        session.followup_context = new_context
+        print(f"[DEBUG] Session context 설정: {context_type} - {context_data}")
+    else:
+        global _FOLLOWUP_CONTEXT
+        # 기존 컨텍스트를 완전히 교체 (덮어쓰기)
+        _FOLLOWUP_CONTEXT = new_context
+        print(f"[DEBUG] Global context 설정: {context_type} - {context_data}")
+
+def get_followup_context(session=None) -> dict:
+    """후속질문용 컨텍스트 반환"""
+    if session:
+        return getattr(session, 'followup_context', {})
+    else:
+        return globals().get('_FOLLOWUP_CONTEXT', {})
+
 def get_followup_timestamp(session=None) -> Optional[datetime]:
     """후속질문용 기준 타임스탬프 반환"""
     if session:
@@ -2901,11 +3138,92 @@ def expand_followup_query_with_last_window(query: str, session=None) -> str:
     if not (has_followup_hint or is_sensor_query):
         return query
     
-    # 저장된 기준 타임스탬프 사용 (세션별)
+    # 새로운 컨텍스트 기반 후속 질문 처리 (최신 컨텍스트 우선)
+    followup_context = get_followup_context(session)
+    print(f"[DEBUG] followup_context: {followup_context}")
+    
+    # 컨텍스트가 없거나 너무 오래된 경우 히스토리에서 최근 질문 분석
+    context_is_recent = False
+    if followup_context and "timestamp" in followup_context:
+        try:
+            from datetime import datetime, timedelta
+            context_time = datetime.fromisoformat(followup_context["timestamp"])
+            # 5분 이내의 컨텍스트만 유효한 것으로 간주
+            context_is_recent = (datetime.now() - context_time) < timedelta(minutes=5)
+        except:
+            context_is_recent = False
+    
+    # 인코딩 문제로 인해 범위 질문이 제대로 감지되지 않는 경우를 위한 휴리스틱
+    # 히스토리에서 최근 질문을 확인하여 범위 질문인지 판단 (컨텍스트가 없거나 너무 오래된 경우)
+    if session and len(session.history) > 0 and (not followup_context or not context_is_recent):
+        last_query = session.history[-1].get("query", "")
+        print(f"[DEBUG] 마지막 질문 확인: {last_query}")
+        
+        # 마지막 질문이 범위 질문이었는지 확인 (간단한 패턴)
+        range_indicators = ["부터", "까지", "~", "오후", "시간"]
+        multiple_time_indicators = ["13시", "14시", "15시", "1시", "2시", "3시"]
+        
+        is_range_query = (any(indicator in last_query for indicator in range_indicators) and 
+                         sum(indicator in last_query for indicator in multiple_time_indicators) >= 2)
+        
+        if is_range_query:
+            print(f"[DEBUG] 휴리스틱으로 범위 질문 감지, 새로운 컨텍스트 생성")
+            # 새로운 범위 컨텍스트 생성 (기존 컨텍스트 완전 교체)
+            from datetime import datetime
+            today = datetime.now().replace(hour=13, minute=0, second=0, microsecond=0)
+            start_time = today.replace(hour=13)
+            end_time = today.replace(hour=15)
+            
+            new_context = {
+                "type": "time_range",
+                "data": {
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "range_text": "13시부터 15시까지"
+                },
+                "timestamp": datetime.now().isoformat()  # 최신 타임스탬프
+            }
+            # 기존 컨텍스트를 완전히 교체
+            if session:
+                session.followup_context = new_context
+                session.save_to_file()  # 즉시 저장
+            followup_context = new_context
+            print(f"[DEBUG] 새로운 범위 컨텍스트로 교체됨")
+    
+    if followup_context:
+        context_type = followup_context.get("type")
+        context_data = followup_context.get("data", {})
+        print(f"[DEBUG] context_type: {context_type}, context_data: {context_data}")
+        
+        if context_type == "time_range":
+            # 범위 질문 후속 처리 (13시~15시)
+            start_time = context_data.get("start_time")
+            end_time = context_data.get("end_time")
+            if start_time and end_time:
+                # datetime 객체가 아닌 경우 처리
+                if isinstance(start_time, str):
+                    from datetime import datetime
+                    start_time = datetime.fromisoformat(start_time)
+                if isinstance(end_time, str):
+                    from datetime import datetime  
+                    end_time = datetime.fromisoformat(end_time)
+                    
+                expanded_query = f"8월 13일 {start_time.strftime('%H시')}부터 {end_time.strftime('%H시')}까지 {query}"
+                print(f"[DEBUG] 범위 후속 확장: {expanded_query}")
+                return expanded_query
+                
+        elif context_type == "daily_average":
+            # 일간 평균 후속 처리 (8월 14일 전체)
+            date_str = context_data.get("date")
+            if date_str:
+                expanded_query = f"{date_str} {query}"
+                print(f"[DEBUG] 일간평균 후속 확장: {expanded_query}")
+                return expanded_query
+    
+    # 기존 단일 타임스탬프 방식 fallback
     followup_timestamp = get_followup_timestamp(session)
     if followup_timestamp:
         expanded = f"{followup_timestamp.strftime('%Y년 %m월 %d일 %H시 %M분')} {query}"
-        # clear_followup_timestamp()  # 초기화 제거 - 연속 후속질문 허용
         return expanded
     
     # 이전 방식 fallback (세션별)
@@ -3072,18 +3390,62 @@ def generate_answer_with_nova(prompt: str) -> str:
     return json.dumps(payload, ensure_ascii=False)[:2000]
 
 # ===== Chat Loop =====
+def show_session_menu() -> str:
+    """세션 선택 메뉴 표시"""
+    print("\n=== 세션 선택 ===")
+    print("1. 새 세션 시작")
+    print("2. 기존 세션 계속하기")
+    print("3. 저장된 세션 목록 보기")
+    
+    while True:
+        choice = input("선택하세요 (1-3): ").strip()
+        if choice == "1":
+            return None  # 새 세션
+        elif choice == "2":
+            session_id = input("세션 ID를 입력하세요: ").strip()
+            if session_id:
+                return session_id
+            print("올바른 세션 ID를 입력해주세요.")
+        elif choice == "3":
+            sessions = list_session_files()
+            if not sessions:
+                print("저장된 세션이 없습니다.")
+                continue
+            print("\n=== 저장된 세션 목록 ===")
+            for i, session_id in enumerate(sessions, 1):
+                # 세션 정보 간단히 표시
+                try:
+                    history, turn_id, _, _, _ = load_session_history(session_id)
+                    print(f"{i}. {session_id} (대화 {len(history)}개, 턴 {turn_id}) [S3]")
+                except:
+                    print(f"{i}. {session_id} (정보 없음) [S3]")
+            
+            choice_num = input(f"세션을 선택하세요 (1-{len(sessions)}) 또는 엔터로 돌아가기: ").strip()
+            if choice_num.isdigit():
+                idx = int(choice_num) - 1
+                if 0 <= idx < len(sessions):
+                    return sessions[idx]
+            print("메뉴로 돌아갑니다.")
+        else:
+            print("1, 2, 3 중에서 선택해주세요.")
+
 def chat_with_session(session_id: str = None):
     """세션 기반 채팅 함수"""
+    if session_id is None:
+        session_id = show_session_menu()
+    
     session = get_or_create_session(session_id)
     
-    print("RAG Chatbot (S3 + Bedrock Claude Sonnet 4) - 다중 사용자 지원")
+    print("\nRAG Chatbot (S3 + Bedrock Claude Sonnet 4) - 다중 사용자 지원")
     print(f"[세션] SESSION_ID = {session.session_id}")
     print(f"[세션] 활성 세션 수: {len(USER_SESSIONS)}")
+    if len(session.history) > 0:
+        print(f"[세션] 이전 대화 {len(session.history)}개 로드됨")
     print("- 정확 매칭 모드: 시/분/초는 정확히 일치할 때만 응답")
     print("- RAW·MINAVG·HOURAVG 자동 인식 / 초·분·시간·일 / 구간·지속시간 / 추이 / 처음·마지막 / 원본")
     print("- '상세/자세히/상세히/원본/목록'으로 직전 창 RAW 전체 출력 + 새 센서 질문 시 컨텍스트 초기화")
     print(f"설정: 병렬 워커 {MAX_WORKERS}개, 최대 파일 크기 {MAX_FILE_SIZE//1024}KB, 관련도 임계치 {RELEVANCE_THRESHOLD}")
-    print(f"히스토리: 최대 {MAX_HISTORY_TURNS}턴 기억, 세션별 독립 관리")
+    print(f"히스토리: 최대 {MAX_HISTORY_TURNS}턴 기억, 세션별 독립 관리, 자동 저장")
     print("질문을 입력하세요. 종료하려면 'exit'/'quit'/'q' 입력.\n")
 
     return chat_loop(session)
@@ -3263,7 +3625,7 @@ def chat_loop(session=None):
                     continue
 
             # 3) S3 로그에 없으면 기존 방식으로 센서 확정 → S3 검색
-            top_docs, context = retrieve_documents_from_s3(query)
+            top_docs, context = retrieve_documents_from_s3(query, session=session)
             t_search = time.time() - t0
             if top_docs:
                 pass
