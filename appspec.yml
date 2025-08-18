@@ -4,6 +4,7 @@ files:
   - source: /
     destination: /home/ec2-user/app
     overwrite: yes
+    file_exists_behavior: OVERWRITE
 permissions:
   - object: /home/ec2-user/app
     owner: ec2-user
@@ -11,6 +12,9 @@ permissions:
     mode: 755
 hooks:
   BeforeInstall:
+    - location: scripts/before_install.sh
+      timeout: 300
+      runas: root
     - location: scripts/stop_application.sh
       timeout: 300
       runas: root
