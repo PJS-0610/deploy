@@ -5,13 +5,13 @@ export class ControlHistoryService {
   process.env.REACT_APP_CONTROL_API_BASE_URL
   || process.env.REACT_APP_API_BASE_URL
   || (window.location.hostname === 'localhost'
-        ? ''
-        : '');  // ✅ 기본값 설정
+        ? 'http://localhost:3000'  // 로컬 개발용
+        : 'https://aws2aws2.com');  // 실제 AWS API URL
 
   // 끝에 / 가 여러 개 붙어있으면 제거 (중복 경로 방지)
 private static readonly NORMALIZED_BASE_URL = ControlHistoryService.API_BASE_URL.replace(/\/+$/, '');
 
-  private static readonly CONTROL_ENDPOINT = "/control";  // ✅ 수정됨 (/control/log → /control)
+  private static readonly CONTROL_ENDPOINT = "/control";
   private static readonly API_KEY =
     process.env.REACT_APP_ADMIN_API_KEY || '';  // ✅ 기본값 설정
 
@@ -25,44 +25,48 @@ private static readonly NORMALIZED_BASE_URL = ControlHistoryService.API_BASE_URL
     }
   }
 
-  /** 제어 로그 히스토리 조회 */
-  static async fetchControlHistory( 
-    limit: number = 50,
-    sensorType?: string,
-    date?: string
-  ): Promise<HistoryResponseDto> {
-    this.validateApiKey();
+ // ControlApiHistory.ts (또는 실제 호출 서비스 클래스 내부)
 
+private static getDateStrKST(offsetDays = 0): string {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const kst = new Date(utc + 9 * 60 * 60000 + offsetDays * 86400000);
+  const y = kst.getFullYear();
+  const m = String(kst.getMonth() + 1).padStart(2, '0');
+  const d = String(kst.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+static async fetchControlHistory(
+  limit: number = 50,
+  sensorType?: string,
+  date?: string
+) {
+  const tryDates = date ? [date] : [this.getDateStrKST(0), this.getDateStrKST(-1)];
+  let last: any = null;
+
+  for (const d of tryDates) {
     const params = new URLSearchParams();
-    if (limit) params.append("limit", limit.toString());
-    if (sensorType) params.append("sensor_type", sensorType);
-    if (date) params.append("date", date);
+    params.append('limit', String(limit));
+    if (sensorType && sensorType !== 'all') params.append('sensor_type', sensorType);
+    params.append('date', d);
+    params.append('_', String(Date.now())); // 캐시 우회
 
-    // ✅ 올바른 엔드포인트: /control/history
-    const url = `${this.NORMALIZED_BASE_URL}${this.CONTROL_ENDPOINT}/history${
-      params.toString() ? `?${params.toString()}` : ""
-    }`;
-
+    const url = `${this.NORMALIZED_BASE_URL}${this.CONTROL_ENDPOINT}/history?${params.toString()}`;
     console.log('🔍 API 요청:', url);
-    console.log('🔑 API Key:', this.API_KEY);
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: this.getHeaders(),
-    });
+    const res = await fetch(url, { method: 'GET', headers: this.getHeaders(), cache: 'no-store' });
+    const data = await res.json();
+    last = data;
 
-    console.log('📡 응답 상태:', response.status, response.statusText);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ API 오류:', errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-    }
-
-    const data = await response.json() as HistoryResponseDto;
-    console.log('✅ 성공 응답:', data);
-    return data;
+    const count = data?.totalCount ?? data?.logs?.length ?? 0;
+    console.log(`📅 date=${d} → totalCount=${count}`);
+    if (count > 0) return data;         // ✅ 데이터 있으면 즉시 반환
   }
+  return last ?? { success: true, totalCount: 0, logs: [] }; // 둘 다 비면 빈 결과
+}
+
+
 
   /** 연결 테스트 */
   static async testConnection(): Promise<boolean> {
