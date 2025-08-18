@@ -181,7 +181,7 @@ export class DashboardUtils {
 // ============================================
 
 export class DashboardAPI {
-  private static readonly BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
+  private static readonly BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 
   /**
    * 센서 데이터 가져오기

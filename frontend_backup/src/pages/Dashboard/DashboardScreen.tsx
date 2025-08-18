@@ -199,83 +199,167 @@ const SensorChart: React.FC<{
 };
 
 // 🆕 QuickSight 대시보드 컴포넌트
+// 🆕 개선된 QuickSight 대시보드 컴포넌트
 const QuickSightDashboard: React.FC<{
   dashboardData: QuickSightDashboardResponse | null;
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
-}> = ({ dashboardData, isLoading, error, onRetry }) => {
+  onRefresh: () => void;
+  selectedSensor: QuickSightSensorType;
+}> = ({ dashboardData, isLoading, error, onRetry, onRefresh, selectedSensor }) => {
+
+  // 🔄 로딩 상태
   if (isLoading) {
     return (
       <div className={styles.loadingContainer}>
-        <div>QuickSight 대시보드를 불러오는 중...</div>
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <div style={{ fontSize: '18px', marginBottom: '8px' }}>
+            📊 QuickSight 대시보드를 불러오는 중...
+          </div>
+          <div style={{ fontSize: '14px', color: '#6b7280' }}>
+            잠시만 기다려주세요
+          </div>
+        </div>
       </div>
     );
   }
 
+  // ❌ 에러 상태
   if (error) {
     return (
       <div className={styles.errorContainer}>
-        <div className={styles.errorTitle}>QuickSight 대시보드 로딩 실패</div>
+        <div className={styles.errorTitle}>⚠️ QuickSight 대시보드 로딩 실패</div>
         <div className={styles.errorMessage}>{error}</div>
-        <button onClick={onRetry} className={styles.retryButton}>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'center' }}>
+          <button
+            onClick={onRetry}
+            className={styles.retryButton}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            🔄 다시 시도
+          </button>
+          <button
+            onClick={onRefresh}
+            className={styles.refreshButton}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#6b7280',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            🔄 새로고침
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 📊 데이터 없음 상태
+  if (!dashboardData) {
+    return (
+      <div className={styles.quicksightPlaceholder}>
+        <BarChart3 size={48} />
+        <h4>QuickSight 대시보드</h4>
+        <p>대시보드 데이터가 없습니다.</p>
+        <button
+          onClick={onRetry}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+        >
           다시 시도
         </button>
       </div>
     );
   }
 
-  if (!dashboardData) {
-    return (
-      <div className={styles.noDataState}>
-        <p>QuickSight 대시보드 데이터가 없습니다.</p>
-      </div>
-    );
-  }
-
+  // ✅ 정상 렌더링
   return (
     <div className={styles.quicksightContainer}>
+      {/* 🔗 대시보드 정보 헤더 */}
       <div className={styles.quicksightHeader}>
         <h3 className={styles.quicksightTitle}>
+          {QuickSightService.getSensorTypeLabel(selectedSensor)}
         </h3>
+        <div className={styles.quicksightDescription}>
+          대시보드: {dashboardData.dashboard?.name || dashboardData.dashboardId}
+          {dashboardData.embedExpirationTime && (
+            <span style={{ marginLeft: '12px', fontSize: '12px', color: '#6b7280' }}>
+              만료: {new Date(dashboardData.embedExpirationTime).toLocaleString('ko-KR')}
+            </span>
+          )}
+        </div>
       </div>
 
-      {dashboardData.embedUrl ? (
+      {/* 📊 임베드 iframe 또는 오류 메시지 */}
+      {dashboardData.embedUrl && /\/embed\//.test(dashboardData.embedUrl) ? (
         <div className={styles.quicksightIframe}>
-          {dashboardData?.embedUrl && /\/embed\//.test(dashboardData.embedUrl) ? (
-            <iframe
-              src={dashboardData.embedUrl}
-              width="100%"
-              height="600"
-              frameBorder="0"
-              title={`QuickSight Dashboard - ${dashboardData.dashboard?.name ?? 'QuickSight'}`}
-              allow="fullscreen"
-            />
-          ) : (
-            <div style={{ padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
-              <strong>임베드 URL이 아니라서 표시할 수 없어요.</strong>
-              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
-                백엔드가 <code>/embed/</code> 경로의 URL을 반환해야 iframe으로 표시 가능합니다.
-              </div>
-              {dashboardData?.embedUrl && (
-                <div style={{ marginTop: 6, wordBreak: 'break-all', fontSize: 12, opacity: 0.7 }}>
-                  현재 URL: <code>{dashboardData.embedUrl}</code>
-                </div>
-              )}
-            </div>
-          )}
-
+          <iframe
+            src={dashboardData.embedUrl}
+            width="100%"
+            height="600"
+            frameBorder="0"
+            title={`QuickSight Dashboard - ${dashboardData.dashboard?.name ?? 'QuickSight'}`}
+            allow="fullscreen"
+            loading="lazy"
+            onLoad={() => console.log('✅ QuickSight iframe 로드 완료')}
+            onError={() => console.error('❌ QuickSight iframe 로드 실패')}
+          />
         </div>
       ) : (
-        <div className={styles.quicksightPlaceholder}>
-          <BarChart3 size={48} />
-          <h4>QuickSight 대시보드</h4>
-          <p>임베드 URL을 생성하는 중입니다...</p>
+        <div style={{
+          padding: '20px',
+          border: '2px dashed #e5e7eb',
+          borderRadius: '8px',
+          textAlign: 'center',
+          backgroundColor: '#f9fafb'
+        }}>
+          <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#dc2626' }}>
+            ⚠️ 임베드 URL 형식 오류
+          </div>
+          <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
+            백엔드에서 <code>/embed/</code> 경로의 URL을 반환해야 iframe으로 표시 가능합니다.
+          </div>
+          {dashboardData.embedUrl && (
+            <details style={{ marginTop: '8px' }}>
+              <summary style={{ cursor: 'pointer', fontSize: '12px' }}>현재 URL 확인</summary>
+              <code style={{
+                display: 'block',
+                marginTop: '8px',
+                padding: '8px',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '4px',
+                wordBreak: 'break-all',
+                fontSize: '11px'
+              }}>
+                {dashboardData.embedUrl}
+              </code>
+            </details>
+          )}
         </div>
       )}
     </div>
   );
 };
+
 
 /**
  * 📊 DashboardScreen - 메인 대시보드 컴포넌트
@@ -330,20 +414,20 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [quickSightError, setQuickSightError] = useState<string | null>(null);
 
   // DashboardScreen.tsx에서
-const fetchMintrendData = async () => {
-  setMintrendLoading(true);
-  setMintrendError(null);
+  const fetchMintrendData = async () => {
+    setMintrendLoading(true);
+    setMintrendError(null);
 
-  try {
-    const data = await MintrendService.getLatestMintrendData();
-    setMintrendData(data);
-  } catch (error) {
-    console.error('Mintrend 데이터 로드 실패:', error);
-    setMintrendError('API 호출에 실패했습니다.');
-  } finally {
-    setMintrendLoading(false);
-  }
-};
+    try {
+      const data = await MintrendService.getLatestMintrendData();
+      setMintrendData(data);
+    } catch (error) {
+      console.error('Mintrend 데이터 로드 실패:', error);
+      setMintrendError('API 호출에 실패했습니다.');
+    } finally {
+      setMintrendLoading(false);
+    }
+  };
 
   /**
    * 📊 QuickSight 대시보드 데이터 가져오기 함수
@@ -353,22 +437,61 @@ const fetchMintrendData = async () => {
    * 
    * @param sensorType - QuickSight 대시보드 센서 타입 ('TEMPERATURE' | 'HUMIDITY' | 'GAS')
    */
-  const fetchQuickSightData = async (sensorType: QuickSightSensorType) => {
-    setQuickSightLoading(true);  // 📥 QuickSight 로딩 시작
-    setQuickSightError(null);    // 🧹 이전 에러 초기화
+  /**
+ * 📊 QuickSight 대시보드 데이터 가져오기 함수 (개선된 버전)
+ * 
+ * @param sensorType - QuickSight 대시보드 센서 타입
+ * @param retryCount - 재시도 횟수 (선택사항)
+ */
+  const fetchQuickSightData = async (sensorType: QuickSightSensorType, retryCount: number = 0) => {
+    console.log(`🎯 QuickSight 데이터 요청 시작: ${sensorType}${retryCount > 0 ? ` (재시도 ${retryCount}회)` : ''}`);
+
+    setQuickSightLoading(true);
+    setQuickSightError(null);
 
     try {
       // 📞 QuickSight 서비스 호출
       const data = await QuickSightService.getDashboardByType(sensorType);
-      setQuickSightData(data);  // ✅ 데이터 상태 업데이트
-      console.log('✅ QuickSight 대시보드 로드 성공:', data);
+
+      // ✅ 응답 데이터 유효성 검증
+      if (!QuickSightService.validateQuickSightResponse(data)) {
+        throw new Error('QuickSight API로부터 유효하지 않은 응답을 받았습니다.');
+      }
+
+      setQuickSightData(data);
+      console.log(`✅ QuickSight 상태 업데이트 완료: ${data.dashboard?.name || data.dashboardId}`);
+
     } catch (err) {
-      // ❌ QuickSight 에러 처리
-      const errorMessage = err instanceof Error ? err.message : 'QuickSight 대시보드를 가져오는 중 오류가 발생했습니다.';
-      setQuickSightError(errorMessage);
-      console.error('❌ QuickSight 대시보드 로드 실패:', err);
+      console.error(`❌ QuickSight 에러 발생:`, err);
+
+      // 🔄 자동 재시도 로직 (최대 2회)
+      if (retryCount < 2 && err instanceof Error && err.message.includes('네트워크')) {
+        console.log(`🔄 ${3000}ms 후 자동 재시도...`);
+        setTimeout(() => {
+          fetchQuickSightData(sensorType, retryCount + 1);
+        }, 3000);
+        return;
+      }
+
+      // 🎨 사용자 친화적 에러 메시지
+      let userFriendlyMessage = 'QuickSight 대시보드를 가져오는 중 오류가 발생했습니다.';
+
+      if (err instanceof Error) {
+        if (err.message.includes('네트워크') || err.message.includes('Failed to fetch')) {
+          userFriendlyMessage = '네트워크 연결을 확인하고 다시 시도해주세요.';
+        } else if (err.message.includes('임베드 URL')) {
+          userFriendlyMessage = '대시보드 설정에 문제가 있습니다. 관리자에게 문의하세요.';
+        } else if (err.message.includes('401') || err.message.includes('인증')) {
+          userFriendlyMessage = 'API 인증에 실패했습니다. 관리자에게 문의하세요.';
+        } else {
+          userFriendlyMessage = err.message;
+        }
+      }
+
+      setQuickSightError(userFriendlyMessage);
+
     } finally {
-      setQuickSightLoading(false);  // 🏁 QuickSight 로딩 종료
+      setQuickSightLoading(false);
     }
   };
 
@@ -411,10 +534,30 @@ const fetchMintrendData = async () => {
   };
 
   // 🆕 QuickSight 센서 선택 핸들러
+  /**
+ * 🔄 QuickSight 센서 선택 핸들러 (개선된 버전)
+ */
   const handleQuickSightSensorSelect = (sensorType: QuickSightSensorType) => {
+    console.log(`🎛️ QuickSight 센서 변경: ${selectedQuickSightSensor} → ${sensorType}`);
+
+    // 이미 선택된 센서와 같다면 데이터 다시 가져오지 않음
+    if (selectedQuickSightSensor === sensorType && quickSightData && !quickSightError) {
+      console.log('✅ 동일한 센서 타입 - 기존 데이터 유지');
+      return;
+    }
+
     setSelectedQuickSightSensor(sensorType);
     fetchQuickSightData(sensorType);
   };
+
+  /**
+   * 🔧 QuickSight 대시보드 새로고침 함수
+   */
+  const refreshQuickSightDashboard = () => {
+    console.log('🔄 QuickSight 대시보드 수동 새로고침');
+    fetchQuickSightData(selectedQuickSightSensor);
+  };
+
 
   // 컴포넌트 마운트 시 초기 데이터 로딩
   useEffect(() => {
@@ -666,6 +809,8 @@ const fetchMintrendData = async () => {
                     isLoading={quickSightLoading}
                     error={quickSightError}
                     onRetry={() => fetchQuickSightData(selectedQuickSightSensor)}
+                    onRefresh={refreshQuickSightDashboard}
+                    selectedSensor={selectedQuickSightSensor}
                   />
                 </div>
               </section>

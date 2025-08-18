@@ -54,14 +54,16 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
    * - 필터링 및 페이지네이션 상태 관리
    * - 날짜, 센서 타입, 상태별 필터링 지원
    */
-  const {
-    historyState,         // 전체 히스토리 상태 (데이터, 필터, 페이징 등)
-    loadHistoryData,      // API를 통한 히스토리 데이터 로딩
-    updateFilter,         // 필터 조건 업데이트
-    resetFilters,         // 모든 필터 초기화
-    changePage,           // 페이지 변경
-    updateHistoryState    // 상태 직접 업데이트
-  } = useHistoryData();
+const {
+  historyState,
+  loadHistoryData,
+  updateFilter,
+  resetFilters,
+  changePage,
+  updateHistoryState,
+  handleDateSelect,    // ✅ 훅에서 가져오기
+  applyFilters         // ✅ 이것도 가져오기
+} = useHistoryData();
 
   /**
    * 🔔 UI 상태 관리 (알림, 드롭다운 등)
@@ -124,27 +126,6 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
         break;
     }
   };
-
-  /**
-   * 🔍 필터 적용 함수
-   * 필터 조건이 변경될 때 첫 페이지로 이동하고 데이터를 다시 로드
-   */
-  const applyFilters = useCallback(() => {
-    updateHistoryState({ currentPage: 1 });   // 첫 페이지로 이동
-    loadHistoryData(1);                       // API 호출하여 필터된 데이터 로드
-  }, [loadHistoryData, updateHistoryState]);
-
-  /**
-   * 📅 날짜 선택 핸들러
-   * 달력에서 날짜를 선택했을 때 필터에 반영
-   */
-  const handleDateSelect = useCallback((date: Date) => {
-    const dateString = HistoryUtils.formatDateToString(date);
-    updateHistoryState({
-      selectedDate: date,
-      filters: { ...historyState.filters, date: dateString }
-    });
-  }, [historyState.filters, updateHistoryState]);
 
   /**
    * 🔧 필터 표시/숨김 토글

@@ -36,6 +36,7 @@
 import React from 'react';
 import AppRouter from './components/AppRouter/AppRouter';
 import { useAppRouter } from './hooks/useAppRouter';
+import AnomalyAlert from './pages/Dashboard/hooks/AnomalyAlert';
 import './App.css';
 
 /**
@@ -55,6 +56,18 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
+      {/* ✅ 전역 알림 트리거: 어떤 라우트(history 포함)에서도 ANOMALY_TRIGGER 사용 가능 */}
+      <AnomalyAlert
+        enabled={true}
+        interval={60000}
+        autoHideDelay={60000}
+        s3ApiEndpoint={process.env.REACT_APP_S3_API_ENDPOINT}
+        thresholds={{
+          temperature: { dangerMax: 35 }, // 최소 필요 필드만 지정해도 OK
+          humidity: { dangerMax: 80 },
+          gas: { dangerMax: 1000 },
+        }}
+      />
       {/* 🛠️ 개발 환경 전용 디버그 패널 */}
       {process.env.NODE_ENV === 'development' && (
         <div className="debug-info">
@@ -64,7 +77,7 @@ const App: React.FC = () => {
           <div>Menu: {appState.activeMenu}</div>             {/* 활성 메뉴 */}
         </div>
       )}
-      
+
       {/* 🧭 중앙 라우터 컴포넌트 */}
       {/* 
         AppRouter가 현재 상태에 따라 적절한 화면 컴포넌트를 렌더링
@@ -72,7 +85,7 @@ const App: React.FC = () => {
         - 이벤트 핸들러 Props 전달
         - 네비게이션 함수 제공
       */}
-      <AppRouter 
+      <AppRouter
         appState={appState}       // 현재 애플리케이션 상태
         handlers={handlers}       // 이벤트 핸들러 모음
         navigation={navigation}   // 네비게이션 함수 모음

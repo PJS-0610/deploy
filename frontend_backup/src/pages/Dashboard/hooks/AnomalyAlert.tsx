@@ -38,6 +38,16 @@
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
+declare global {
+  interface Window {
+    ANOMALY_TRIGGER?: {
+      checkNow: () => void;
+      pushAnomaly: (a: any) => void;
+      pushPreset: (p: any) => void;
+    };
+  }
+}
+
 // 백엔드 API 주소와 키 (env에서 주입)
 const API_BASE =
   process.env.REACT_APP_API_BASE_URL || '';
@@ -370,7 +380,8 @@ const useAnomalyDetection = (options: {
       const response = await fetch(fullUrl, {
         method: 'GET',
         headers: {
-          'x-api-key': API_KEY,   // ✅ 오직 1개만 (api-key/X-API-Key/Authorization 등 금지)
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`,  // ✅ 이렇게!
         },
       });
       if (!response.ok) throw new Error(`S3 API 호출 실패: ${response.status}`);
@@ -586,8 +597,6 @@ const useAnomalyDetection = (options: {
     };
   }, [config.enabled, config.interval, processAnomalies]);
 
-
-
   return {
     alerts,
     isLoading,
@@ -597,6 +606,32 @@ const useAnomalyDetection = (options: {
     hasActiveAlerts: alerts.length > 0,
     warningCount: alerts.filter(a => a.data.severity === 'warning').length,
     dangerCount: alerts.filter(a => a.data.severity === 'danger').length,
+    checkNow: processAnomalies,
+    pushAnomaly: (a: AnomalyData) => addAlert(a),
+    pushPreset: (p: {
+      type: AnomalyType;
+      severity: AnomalySeverity;
+      value: number;
+      threshold: number;
+      timestamp?: string;
+      location?: string;
+    }) => {
+      const units = { temperature: '°C', humidity: '%', gas: 'ppm' } as const;
+      const names = { temperature: '온도', humidity: '습도', gas: '가스' } as const;
+      const isAbove = p.value >= p.threshold;
+      const msg = `${p.severity === 'danger' ? '위험' : '경고'}: ${names[p.type]}가 ${p.value}${units[p.type]}로 ${p.threshold}${units[p.type]} ${isAbove ? '이상' : '이하'}입니다.`;
+      const ts = p.timestamp ?? new Date().toISOString();
+      const data = createAnomalyData(
+        p.type,
+        p.severity,
+        p.value,
+        p.threshold,
+        msg,
+        ts,
+        p.location
+      );
+      addAlert(data);
+    },
   };
 };
 
@@ -691,7 +726,7 @@ const AnomalyAlert: React.FC<AnomalyAlertProps> = ({
   maxAlerts = 5,
   thresholds,
 }) => {
-  const { alerts, hideAlert } = useAnomalyDetection({
+  const { alerts, hideAlert, checkNow, pushAnomaly, pushPreset } = useAnomalyDetection({
     interval,
     autoHideDelay,
     s3ApiEndpoint,
@@ -704,6 +739,35 @@ const AnomalyAlert: React.FC<AnomalyAlertProps> = ({
     addGlobalStyles();
   }, []);
 
+  // AnomalyAlert 컴포넌트 내부
+  // 글로벌 스타일 추가
+  useEffect(() => {
+    addGlobalStyles();
+  }, []);
+
+  // ✅ 전역 트리거 브리지: DevTools에서 바로 쓸 수 있게 설치
+  useEffect(() => {
+    (window as any).ANOMALY_TRIGGER = {
+      checkNow: () => checkNow(),
+      pushAnomaly: (a: any) => pushAnomaly(a),
+      pushPreset: (p: any) => pushPreset(p),
+    };
+
+    const handler = (e: any) => {
+      const { cmd, payload } = e?.detail || {};
+      if (cmd === 'checkNow') checkNow();
+      else if (cmd === 'pushAnomaly') pushAnomaly(payload);
+      else if (cmd === 'pushPreset') pushPreset(payload);
+    };
+    window.addEventListener('ANOMALY:TRIGGER', handler);
+
+    return () => {
+      window.removeEventListener('ANOMALY:TRIGGER', handler);
+      try { delete (window as any).ANOMALY_TRIGGER; } catch { }
+    };
+  }, [checkNow, pushAnomaly, pushPreset]);
+
+  // ⛔ 이 줄(초기 렌더 차단)은 위 useEffect들 “뒤에” 있어야 합니다.
   if (alerts.length === 0) return null;
 
   const displayAlerts = alerts.slice(0, maxAlerts);

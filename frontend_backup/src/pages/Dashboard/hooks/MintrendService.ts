@@ -1,4 +1,4 @@
-// services/MintrendTypes.ts - Mintrend API 관련 타입 정의
+// 📋 Mintrend API 관련 타입 정의
 export interface MintrendResponse {
   filename: string;
   data: {
@@ -19,60 +19,53 @@ export interface MintrendApiResponse {
 }
 
 export class MintrendService {
-  private static readonly API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+  private static readonly API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
   private static readonly MINTREND_ENDPOINT = '/s3/file/last/mintrend';
 
-static async getLatestMintrendData(): Promise<MintrendResponse> {
-  const fullUrl = `${this.API_BASE_URL}${this.MINTREND_ENDPOINT}`;
-  
-  try {
-    console.log('🔄 Mintrend API 호출:', fullUrl);
+  static async getLatestMintrendData(): Promise<MintrendResponse> {
+    const fullUrl = `${this.API_BASE_URL}${this.MINTREND_ENDPOINT}`;
     
-    // API 키 가져오기
-    const apiKey = process.env.REACT_APP_ADMIN_API_KEY;
+    try {
+      console.log('🔄 Mintrend API 호출:', fullUrl);
+      
+      const apiKey = process.env.REACT_APP_ADMIN_API_KEY;
+      if (!apiKey) {
+        throw new Error('API 키가 설정되지 않았습니다. .env 파일을 확인하세요.');
+      }
 
-    if (!apiKey) {
-      console.error('❌ REACT_APP_ADMIN_API_KEY 환경변수가 설정되지 않았습니다!');
-      throw new Error('API 키가 설정되지 않았습니다. .env 파일을 확인하세요.');
+      console.log('🔑 환경변수에서 API 키 로드 성공:', apiKey.substring(0, 8) + '...');
+      
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // 방법 2A: Authorization 헤더 사용 (일반적으로 CORS에서 허용됨)
+          'Authorization': `Bearer ${apiKey}`,
+          
+          // 방법 2B: 또는 x-api-key 대신 다른 표준 헤더 사용
+          // 'X-API-KEY': apiKey,  // 대문자로 시도
+        },
+      });
+
+      console.log(`📡 응답 상태: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data: MintrendResponse = await response.json();
+      console.log('✅ Mintrend 데이터 수신 성공:', data);
+      
+      return data;
+      
+    } catch (error) {
+      console.error('❌ Mintrend API 호출 실패:', error);
+      throw error;
     }
-
-    console.log('🔑 환경변수에서 API 키 로드 성공:', apiKey.substring(0, 8) + '...');
-    
-    const response = await fetch(fullUrl, {
-  method: 'GET',
-  headers: {
-    'x-api-key': apiKey,   // ✅ 이것만!
-  },
-});
-
-
-    console.log(`📡 응답 상태: ${response.status} ${response.statusText}`);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data: MintrendResponse = await response.json();
-    console.log('✅ Mintrend 데이터 수신 성공:', data);
-    
-    return data;
-    
-  } catch (error) {
-    console.error('❌ Mintrend API 호출 실패:', error);
-    throw error;
   }
-}
 
-
-// // 수정할 코드
-// const apiKey = process.env.REACT_APP_ADMIN_API_KEY;
-
-// if (!apiKey) {
-//   console.error('❌ REACT_APP_ADMIN_API_KEY 환경변수가 설정되지 않았습니다!');
-//   throw new Error('API 키가 설정되지 않았습니다. .env 파일을 확인하세요.');
-// }
-
-  // 다른 메서드들은 그대로 유지...
+  // 기존 메서드들은 그대로 유지
   static getTemperatureStatus(temperature: number): string {
     if (temperature < 15) return 'COLD';
     if (temperature < 20) return 'COOL';

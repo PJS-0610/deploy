@@ -10,7 +10,8 @@
 
 # production
 /build
-.env
+# 루트 .gitignore 예시
+frontend_backup/.env
 
 # misc
 .DS_Store

@@ -140,7 +140,8 @@ export class HistoryAPI {
 const response = await fetch(`${this.BASE_URL}/s3/history/${formattedDate}`, {
   method: 'GET',
   headers: {
-    'x-api-key': apiKey,        // ✅ 이것만!
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`,
   },
 });
 
