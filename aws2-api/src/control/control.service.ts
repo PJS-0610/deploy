@@ -1,7 +1,7 @@
 // 환경 제어 서비스
 
 import { Injectable, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
-import { EnvironmentControlDto, ControlResponseDto, ControlLogSummaryDto } from './dto/control.dto';
+import { ControlLogDto, ControlResponseDto, ControlLogSummaryDto, HistoryQueryDto, HistoryResponseDto } from './dto/control.dto';
 import { DynamoDBControlDatabase } from './entities/dynamodb-control.entity';
 import { IoTService } from './services/iot.service';
 
@@ -25,58 +25,35 @@ export class ControlService implements OnModuleInit {
   }
 
   /**
-   * 환경 제어 명령 처리
+   * 제어 로그 처리
    */
-  async processEnvironmentControl(controlDto: EnvironmentControlDto): Promise<ControlResponseDto> {
-    const { temperature, humidity, gas } = controlDto;
+  async processControlLog(controlDto: ControlLogDto): Promise<ControlResponseDto> {
     const controlLogs: ControlLogSummaryDto[] = [];
     let iotMessagesSent = 0;
 
     try {
-      // 각 센서별로 제어 처리
-      const sensors = [
-        { type: 'temp', value: temperature, unit: '°C' },
-        { type: 'humidity', value: humidity, unit: '%' },
-        { type: 'gas', value: gas, unit: 'ppm' }
-      ];
+      // 제어 로그 생성
+      const controlLog = await this.createControlLog(controlDto);
 
-      for (const sensor of sensors) {
-        try {
-          // 제어 로그 생성
-          const controlLog = await this.createControlLog(
-            sensor.type,
-            sensor.value,
-            sensor.unit
-          );
-
-          // DynamoDB에 저장
-          const savedLog = await this.controlDb.create(controlLog);
-          
-          // IoT Core로 전송
-          await this.iotService.publishControlMessage(savedLog);
-          
-          controlLogs.push({
-            id: savedLog.id,
-            sensor_type: savedLog.sensor_type,
-            result: savedLog.result
-          });
-          
-          iotMessagesSent++;
-          
-          this.logger.log(
-            `제어 명령 처리 완료: ${sensor.type} = ${sensor.value}${sensor.unit}`
-          );
-          
-        } catch (error) {
-          this.logger.error(`센서 ${sensor.type} 제어 실패:`, error);
-          // 개별 센서 실패는 전체 실패로 이어지지 않음
-          controlLogs.push({
-            id: '',
-            sensor_type: sensor.type,
-            result: 'FAILED'
-          });
-        }
-      }
+      // DynamoDB에 저장
+      const savedLog = await this.controlDb.create(controlLog);
+      
+      // IoT Core로 전송
+      await this.iotService.publishControlMessage(savedLog);
+      
+      controlLogs.push({
+        id: savedLog.id,
+        sensor_type: savedLog.sensor_type,
+        before_value: savedLog.before_value,
+        status: savedLog.status,
+        after_value: savedLog.after_value
+      });
+      
+      iotMessagesSent++;
+      
+      this.logger.log(
+        `제어 로그 처리 완료: ${controlDto.sensor_type} ${controlDto.before_value} -> ${controlDto.after_value} (${controlDto.status})`
+      );
 
       return {
         success: true,
@@ -85,84 +62,72 @@ export class ControlService implements OnModuleInit {
       };
 
     } catch (error) {
-      this.logger.error('환경 제어 처리 실패:', error);
-      throw new BadRequestException('환경 제어 처리에 실패했습니다.');
+      this.logger.error('제어 로그 처리 실패:', error);
+      throw new BadRequestException('제어 로그 처리에 실패했습니다.');
     }
   }
 
   /**
    * 제어 로그 데이터 생성
    */
-  private async createControlLog(sensorType: string, value: number, unit: string) {
-    const timestamp = new Date().toISOString().slice(0, 19); // 2025-08-18T14:59:00
+  private async createControlLog(controlDto: ControlLogDto) {
     const id = await this.controlDb.getNextControlId(); // 순차 ID 생성
     
-    // 현재값 대비 액션 및 상태 판단 (시뮬레이션)
-    const currentValue = await this.getCurrentSensorValue(sensorType);
-    const action = this.calculateAction(currentValue, value);
-    const status = this.determineStatus(value, sensorType);
-
     return {
       id,
-      timestamp,
-      sensor_type: sensorType,
-      value: parseFloat(value.toFixed(1)),
-      status,
-      action,
-      result: 'OK'
+      timestamp: controlDto.timestamp,
+      sensor_type: controlDto.sensor_type,
+      before_value: parseFloat(controlDto.before_value.toFixed(1)),
+      status: controlDto.status,
+      after_value: parseFloat(controlDto.after_value.toFixed(1))
     };
   }
 
   /**
-   * 현재 센서 값 조회 (시뮬레이션)
+   * 제어 로그 히스토리 조회
    */
-  private async getCurrentSensorValue(sensorType: string): Promise<number> {
-    // 실제로는 최신 센서 데이터를 S3나 다른 소스에서 조회
-    const mockCurrentValues = {
-      'temp': 27.0,
-      'humidity': 45.0,
-      'gas': 350.0
-    };
-    
-    return mockCurrentValues[sensorType] || 0;
-  }
+  async getControlHistory(queryDto: HistoryQueryDto): Promise<HistoryResponseDto> {
+    try {
+      let logs: any[] = [];
 
-  /**
-   * 액션 계산 (현재값 vs 목표값)
-   */
-  private calculateAction(currentValue: number, targetValue: number): string {
-    const diff = currentValue - targetValue;
-    
-    if (Math.abs(diff) < 0.5) {
-      return 'maintain';
-    }
-    
-    if (diff > 0) {
-      return `↓ ${Math.abs(diff).toFixed(1)}`;
-    } else {
-      return `↑ ${Math.abs(diff).toFixed(1)}`;
-    }
-  }
+      if (queryDto.date) {
+        // 특정 날짜로 필터링 (YYYY-MM-DD -> YYYY-MM-DDTHH:mm:ss 범위)
+        const startDate = `${queryDto.date}T00:00:00`;
+        const endDate = `${queryDto.date}T23:59:59`;
+        
+        logs = await this.controlDb.findLogsByDateRange(startDate, endDate);
+      } else if (queryDto.sensor_type) {
+        // 센서 타입으로 필터링
+        logs = await this.controlDb.findBySensorType(queryDto.sensor_type, queryDto.limit || 50);
+      } else {
+        // 전체 로그에서 최근순으로 조회
+        logs = await this.controlDb.findRecentLogs(queryDto.limit || 50);
+      }
 
-  /**
-   * 상태 판단
-   */
-  private determineStatus(value: number, sensorType: string): string {
-    const ranges = {
-      'temp': { good: [20, 28], warning: [15, 35] },
-      'humidity': { good: [40, 70], warning: [20, 90] },
-      'gas': { good: [0, 400], warning: [400, 800] }
-    };
+      // 센서 타입과 날짜 필터가 모두 있는 경우 추가 필터링
+      if (queryDto.sensor_type && queryDto.date) {
+        logs = logs.filter(log => log.sensor_type === queryDto.sensor_type);
+      }
 
-    const range = ranges[sensorType];
-    if (!range) return 'unknown';
+      // limit 적용 (날짜 필터링 후에도 제한)
+      if (queryDto.limit && logs.length > queryDto.limit) {
+        logs = logs.slice(0, queryDto.limit);
+      }
 
-    if (value >= range.good[0] && value <= range.good[1]) {
-      return 'good';
-    } else if (value >= range.warning[0] && value <= range.warning[1]) {
-      return 'warning';
-    } else {
-      return 'critical';
+      this.logger.log(
+        `히스토리 조회 완료: ${logs.length}개 로그, 필터 - 센서타입: ${queryDto.sensor_type || '전체'}, 날짜: ${queryDto.date || '전체'}`
+      );
+
+      return {
+        success: true,
+        totalCount: logs.length,
+        logs
+      };
+
+    } catch (error) {
+      this.logger.error('히스토리 조회 실패:', error);
+      throw new BadRequestException('히스토리 조회에 실패했습니다.');
     }
   }
+
 }
