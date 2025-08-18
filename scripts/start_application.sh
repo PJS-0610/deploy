@@ -113,7 +113,7 @@ ADMIN_API_KEY=$(aws ssm get-parameter --name "/test_pjs/backend/ADMIN_API_KEY" -
 
 # 프론트엔드 환경변수 가져오기
 PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3002")
-REACT_APP_API_BASE_URL=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE_URL" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "http://localhost:3001")
+REACT_APP_API_BASE_URL=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE_URL" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "https://aws2aws2.com")
 REACT_APP_DEBUG=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_DEBUG" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "false")
 
 # 도메인 정보
@@ -311,8 +311,9 @@ rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 cat > /etc/nginx/conf.d/app.conf << EOF
 server {
     listen 80;
-    server_name _;
+    server_name aws2aws2.com;
 
+    # Health check endpoints
     location /health {
         proxy_pass http://127.0.0.1:${BACKEND_PORT}/health;
         proxy_set_header Host \$host;
@@ -321,14 +322,48 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
-    location /api/ {
-        proxy_pass http://127.0.0.1:${BACKEND_PORT}/;
+    location /healthz {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT}/healthz;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
+    # API endpoints - backend routes
+    location /quicksight/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT}/quicksight/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /s3/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT}/s3/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /chatbot/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT}/chatbot/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /login/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT}/login/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # Frontend - React app (default fallback)
     location / {
         proxy_pass http://127.0.0.1:${PORT}/;
         proxy_set_header Host \$host;
