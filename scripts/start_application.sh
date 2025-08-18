@@ -313,6 +313,16 @@ server {
     listen 80;
     server_name aws2aws2.com;
 
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+
+    # Hide nginx version
+    server_tokens off;
+
     # Health check endpoints
     location /health {
         proxy_pass http://127.0.0.1:${BACKEND_PORT}/health;
