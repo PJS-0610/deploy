@@ -16,7 +16,7 @@ try:
         expand_followup_query_with_last_window,
         save_turn_to_s3,
         get_or_create_session,
-        start_session_cleanup_scheduler,
+        cleanup_expired_sessions,
         ENABLE_CHATLOG_SAVE,
         RELEVANCE_THRESHOLD,
         extract_datetime_strings,
@@ -27,8 +27,8 @@ try:
         _reset_last_ctx
     )
     
-    # 자동 세션 정리 스케줄러 시작 (조용하게)
-    start_session_cleanup_scheduler(silent=True)
+    # 만료된 세션 정리
+    cleanup_expired_sessions()
     
 except ImportError as e:
     print(json.dumps({

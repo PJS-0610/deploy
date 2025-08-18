@@ -4,9 +4,6 @@ import json
 import uuid
 import boto3
 import traceback
-import threading
-import atexit
-import sys
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 import concurrent.futures as _f
@@ -101,118 +98,42 @@ def extract_datetime_strings(s: str):
         # 8월 11일 14시 00분 (연도 없음)  
         r"(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(\d{1,2})\s*시\s*(\d{1,2})\s*분",
         # 8월 11일 14시 (연도 없음)
-        r"(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(\d{1,2})\s*시",
-        # 8월 11일 (연도 없음, 시간 없음)
-        r"(\d{1,2})\s*월\s*(\d{1,2})\s*일",
-        # 단독 시간 패턴 - 오후 2시, 오전 10시 등
-        r"(오전|오후)\s*(\d{1,2})\s*시",
-        # 단독 시간 패턴 - 2시, 10시 등 (숫자만)
-        r"(\d{1,2})\s*시"
+        r"(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(\d{1,2})\s*시"
     ]
     
-    # 1단계: 완전한 날짜+시간 패턴을 먼저 찾아서 기준 날짜 설정
-    base_date = None
-    found_times = set()
-    
-    # 완전한 날짜+시간 패턴들 (0-8번, 새로 추가된 월일 패턴 포함)
-    for i, pattern in enumerate(korean_patterns[:9]):
-        matches = re.findall(pattern, s)
-        for match in matches:
-            groups = match if isinstance(match, tuple) else (match,)
-            try:
-                if i < 3:  # 연도가 포함된 패턴 (0, 1, 2)
-                    y, mo, d = int(groups[0]), int(groups[1]), int(groups[2])
-                    h = int(groups[3]) if len(groups) > 3 and groups[3] else 0
-                    mi = int(groups[4]) if len(groups) > 4 and groups[4] else 0
-                elif i == 3:  # "8월 11일 14시 1분의" 패턴 (초 무시)
-                    y = datetime.now().year
-                    mo, d = int(groups[0]), int(groups[1])
-                    h = int(groups[2]) if len(groups) > 2 and groups[2] else 0
-                    mi = int(groups[3]) if len(groups) > 3 and groups[3] else 0
-                elif i >= 4 and i <= 5:  # 오전/오후 패턴 (4, 5번 패턴)
-                    y = datetime.now().year
-                    mo, d = int(groups[0]), int(groups[1])
-                    ampm = groups[2]  # 오전/오후
-                    h = int(groups[3]) if len(groups) > 3 and groups[3] else 0
-                    mi = int(groups[4]) if len(groups) > 4 and groups[4] else 0
-                    
-                    # 오전/오후 처리
-                    if ampm == "오후" and h != 12:
-                        h += 12
-                    elif ampm == "오전" and h == 12:
-                        h = 0
-                elif i >= 6 and i <= 7:  # 연도가 없는 일반 패턴
-                    y = datetime.now().year
-                    mo, d = int(groups[0]), int(groups[1])
-                    h = int(groups[2]) if len(groups) > 2 and groups[2] else 0
-                    mi = int(groups[3]) if len(groups) > 3 and groups[3] else 0
-                elif i == 8:  # 8월 11일 (연도 없음, 시간 없음)
-                    y = datetime.now().year
-                    mo, d = int(groups[0]), int(groups[1])
-                    h = 0  # 시간이 없으므로 0시로 설정
-                    mi = 0
-                
-                # 기준 날짜 설정 (첫 번째로 찾은 완전한 날짜)
-                if base_date is None:
-                    base_date = (y, mo, d)
-                
-                time_str = f"{y:04d}-{mo:02d}-{d:02d} {h:02d}:{mi:02d}"
-                if time_str not in found_times:
-                    found_times.add(time_str)
-                    out.append(time_str)
-            except (ValueError, IndexError):
-                continue
-    
-    # 2단계: 시간만 있는 패턴들을 기준 날짜와 함께 처리 (9, 10번)
-    if base_date:
-        y, mo, d = base_date
-        
-        # 9번 패턴: 오전/오후 단독 시간 (우선 처리)
-        pattern = korean_patterns[9]
-        matches = re.findall(pattern, s)
-        processed_hours = set()  # 이미 처리된 시간 추적
-        
-        for match in matches:
-            groups = match if isinstance(match, tuple) else (match,)
-            try:
-                ampm = groups[0]  # 오전/오후
-                h = int(groups[1]) if len(groups) > 1 and groups[1] else 0
-                mi = 0
+    for i, pattern in enumerate(korean_patterns):
+        m = re.search(pattern, s)
+        if m:
+            groups = m.groups()
+            if i < 3:  # 연도가 포함된 패턴 (0, 1, 2)
+                y, mo, d = int(groups[0]), int(groups[1]), int(groups[2])
+                h = int(groups[3]) if len(groups) > 3 and groups[3] else 0
+                mi = int(groups[4]) if len(groups) > 4 and groups[4] else 0
+            elif i == 3:  # "8월 11일 14시 1분의" 패턴 (초 무시)
+                y = datetime.now().year
+                mo, d = int(groups[0]), int(groups[1])
+                h = int(groups[2]) if len(groups) > 2 and groups[2] else 0
+                mi = int(groups[3]) if len(groups) > 3 and groups[3] else 0
+            elif i >= 4 and i <= 5:  # 오전/오후 패턴 (4, 5번 패턴)
+                y = datetime.now().year
+                mo, d = int(groups[0]), int(groups[1])
+                ampm = groups[2]  # 오전/오후
+                h = int(groups[3]) if len(groups) > 3 and groups[3] else 0
+                mi = int(groups[4]) if len(groups) > 4 and groups[4] else 0
                 
                 # 오전/오후 처리
                 if ampm == "오후" and h != 12:
                     h += 12
                 elif ampm == "오전" and h == 12:
                     h = 0
-                
-                processed_hours.add(h)  # 처리된 시간 기록
-                time_str = f"{y:04d}-{mo:02d}-{d:02d} {h:02d}:{mi:02d}"
-                if time_str not in found_times:
-                    found_times.add(time_str)
-                    out.append(time_str)
-            except (ValueError, IndexError):
-                continue
-        
-        # 10번 패턴: 숫자 단독 시간 (오전/오후가 명시되지 않은 경우만)
-        pattern = korean_patterns[10]
-        matches = re.findall(pattern, s)
-        
-        for match in matches:
-            try:
-                h = int(match) if match else 0
-                mi = 0
-                
-                # 이미 오전/오후로 처리된 시간은 건너뛰기
-                # 또한 오후 시간으로 처리된 것(h+12)도 고려
-                if h in processed_hours or (h + 12) in processed_hours:
-                    continue
-                
-                time_str = f"{y:04d}-{mo:02d}-{d:02d} {h:02d}:{mi:02d}"
-                if time_str not in found_times:
-                    found_times.add(time_str)
-                    out.append(time_str)
-            except (ValueError, IndexError):
-                continue
+            else:  # 연도가 없는 일반 패턴 (현재 연도로 가정)
+                y = datetime.now().year
+                mo, d = int(groups[0]), int(groups[1])
+                h = int(groups[2]) if len(groups) > 2 and groups[2] else 0
+                mi = int(groups[3]) if len(groups) > 3 and groups[3] else 0
+            
+            out.append(f"{y:04d}-{mo:02d}-{d:02d} {h:02d}:{mi:02d}")  # 시/분까지만
+            break  # 첫 번째 매치만 사용
     
     return out
 
@@ -2166,31 +2087,28 @@ class UserSession:
         self.last_sensor_ctx["tag"] = tag
         self.last_sensor_ctx["label"] = label
 
-# 전역 세션 저장소 (스레드 안전)
+# 전역 세션 저장소
 USER_SESSIONS: Dict[str, UserSession] = {}
 SESSION_TIMEOUT = 3600  # 1시간 후 세션 만료
-_session_lock = threading.RLock()  # 재진입 가능한 락
 
 def get_or_create_session(session_id: str = None):
-    """세션을 가져오거나 새로 생성 (스레드 안전)"""
-    with _session_lock:
-        if session_id and session_id in USER_SESSIONS:
-            session = USER_SESSIONS[session_id]
-            session.update_activity()
-            return session
-        
-        # 새 세션 생성 (사용자 제공 ID 사용 또는 자동 생성)
-        new_session = UserSession(session_id)
-        USER_SESSIONS[new_session.session_id] = new_session
-        
-        # 만료된 세션 정리
-        cleanup_expired_sessions()
-        
-        return new_session
+    """세션을 가져오거나 새로 생성"""
+    if session_id and session_id in USER_SESSIONS:
+        session = USER_SESSIONS[session_id]
+        session.update_activity()
+        return session
+    
+    # 새 세션 생성 (사용자 제공 ID 사용 또는 자동 생성)
+    new_session = UserSession(session_id)
+    USER_SESSIONS[new_session.session_id] = new_session
+    
+    # 만료된 세션 정리
+    cleanup_expired_sessions()
+    
+    return new_session
 
 def cleanup_expired_sessions():
-    """만료된 세션들을 정리 (스레드 안전)"""
-    # 이 함수는 이미 _session_lock 내에서 호출되므로 추가 락 불필요
+    """만료된 세션들을 정리"""
     now = datetime.now(KST)
     expired_sessions = []
     
@@ -2202,54 +2120,14 @@ def cleanup_expired_sessions():
         del USER_SESSIONS[session_id]
     
     if expired_sessions:
-        print(f"정리된 만료 세션: {len(expired_sessions)}개", file=sys.stderr)
-
-# 자동 세션 정리 스케줄러
-_cleanup_timer = None
-CLEANUP_INTERVAL = 300  # 5분마다 정리
-
-def start_session_cleanup_scheduler(silent=False):
-    """자동 세션 정리 스케줄러 시작"""
-    global _cleanup_timer
-    
-    # 이미 실행 중이면 무시
-    if _cleanup_timer is not None:
-        return
-    
-    def periodic_cleanup():
-        with _session_lock:
-            cleanup_expired_sessions()
-        # 다음 정리 스케줄
-        global _cleanup_timer
-        _cleanup_timer = threading.Timer(CLEANUP_INTERVAL, periodic_cleanup)
-        _cleanup_timer.daemon = True
-        _cleanup_timer.start()
-    
-    # 최초 실행
-    _cleanup_timer = threading.Timer(CLEANUP_INTERVAL, periodic_cleanup)
-    _cleanup_timer.daemon = True
-    _cleanup_timer.start()
-    
-    if not silent:
-        print(f"[세션] 자동 정리 스케줄러 시작됨 (간격: {CLEANUP_INTERVAL}초)", file=sys.stderr)
-
-def stop_session_cleanup_scheduler():
-    """자동 세션 정리 스케줄러 중지"""
-    global _cleanup_timer
-    if _cleanup_timer:
-        _cleanup_timer.cancel()
-        _cleanup_timer = None
-        print("[세션] 자동 정리 스케줄러 중지됨", file=sys.stderr)
-
-# 프로그램 종료 시 정리
-atexit.register(stop_session_cleanup_scheduler)
+        print(f"정리된 만료 세션: {len(expired_sessions)}개")
 
 # 하위 호환성을 위한 전역 변수들 (기본 세션용) 
 SESSION_ID = datetime.now(KST).strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
 TURN_ID = 0
 HISTORY: List[Dict] = []
 
-_FOLLOWUP_HINTS = ("같은", "그때", "그 때", "방금", "바로", "이전", "앞의", "동일", "위의", "아까", "해당", "최근", "직전", "금방", "습도", "공기질", "이산화탄소", "CO2", "gas")
+_FOLLOWUP_HINTS = ("같은", "그때", "그 때", "방금", "이전", "앞의", "동일", "위의", "아까", "해당", "최근", "습도", "공기질", "이산화탄소", "CO2", "gas")
 
 def reset_session():
     """세션 종료 시 히스토리와 컨텍스트 초기화"""
@@ -2259,7 +2137,7 @@ def reset_session():
     SESSION_ID = datetime.now(KST).strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
     clear_followup_timestamp()
     _reset_last_ctx()
-    print("[세션] 대화 히스토리가 초기화되었습니다.", file=sys.stderr)
+    print("[세션] 대화 히스토리가 초기화되었습니다.")
 
 # 후속질문용 기준 타임스탬프 저장
 _FOLLOWUP_TIMESTAMP = None
@@ -2421,13 +2299,10 @@ def build_prompt(query: str, context: str, history: List[Dict] = None) -> str:
         "16. 몇 시간 전에 데이터를 물어볼 때, 같은 시간, 같은 분이면 같은 데이터야. (예시: 5시 1분의 3시간 전은 2시 1분인데, 2시 1분 데이터가 있으니 같은거)\n"
         "17. 이전, 방금, 금방의 내용이나 대화 기록을 물을 때는 위의 [이전 대화] 섹션을 참조해서 정확하게 대답해\n"
         "18. [이전 대화]를 참조하는데, 물어본 질문에만 대답해\n"
-        "18-1. **복수 시간을 물어본 후 '방금 물어본 시간'이라고 하면**: 가장 마지막(최근) 시간을 의미함 (예: '1시와 2시' → '2시'를 의미)\n"
-        "19. **여러 시간대를 동시에 요청할 때**: '1시와 2시 온도', '오후 1시와 오후 2시' 등처럼 복수의 시간을 묻는 경우, 각각의 시간대별로 구분해서 명확히 답변해. 각 시간대마다 **별도의 소제목**을 만들어 정리해\n"
-        "20. 복수 시간 요청 시 형식: **시간1 결과:** (데이터 또는 '데이터 없음'), **시간2 결과:** (데이터 또는 '데이터 없음')\n"
-        "21. '현재 시간'이나 '지금'을 말할 때는 반드시 위의 **현재 시간**을 사용해. 이전 대화의 시간과 혼동하지 마\n"
-        "22. 센서 데이터 시간과 현재 시간을 명확히 구분해서 답변해\n"
-        "23. 몇 월인지 말하지 않을 때, 몇 월인지 물어보고, 현재 있는 데이터에 기반해서 말해\n"
-        "24. 컨텍스트에 없는 내용은 추측하지 마\n\n"
+        "19. '현재 시간'이나 '지금'을 말할 때는 반드시 위의 **현재 시간**을 사용해. 이전 대화의 시간과 혼동하지 마\n"
+        "20. 센서 데이터 시간과 현재 시간을 명확히 구분해서 답변해\n"
+        "21. 몇 월인지 말하지 않을 때, 몇 월인지 물어보고, 현재 있는 데이터에 기반해서 말해\n"
+        "22. 컨텍스트에 없는 내용은 추측하지 마\n\n"
         
         f"{hist_block}"
         f"**센서 데이터:**\n{context if context else '데이터를 찾을 수 없습니다.'}\n\n"
@@ -2677,12 +2552,6 @@ def chat_loop(session=None):
                                                for d in top_docs)
             use_rag = has_sensor_data and (top_docs[0]["score"] >= RELEVANCE_THRESHOLD)
             
-            # 최신 데이터 요청 여부 미리 확인
-            is_recent_request = is_recent_query(query)
-            should_extract_from_response = False
-            
-            print(f"DEBUG: use_rag={use_rag}, is_recent_request={is_recent_request}")  # 디버깅용
-            
             if use_rag:
                 # 세션별 히스토리 사용
                 current_history = session.history if session else HISTORY
@@ -2690,123 +2559,22 @@ def chat_loop(session=None):
                 
                 # RAG 센서 질문에서 타임스탬프 추출해서 후속질문용으로 저장 (세션별)
                 current_timestamp = get_followup_timestamp(session)
-                print(f"DEBUG: current_timestamp = {current_timestamp}")  # 디버깅용
-                
-                # 최신 요청의 경우 항상 새 타임스탬프로 업데이트
-                if is_recent_request:
-                    should_extract_from_response = True
-                    print("DEBUG: Will extract timestamp from RAG response (recent request)")  # 디버깅용
-                elif not current_timestamp:
+                if not current_timestamp:
                     dt_strings = extract_datetime_strings(query)
-                    print(f"DEBUG: dt_strings = {dt_strings}")  # 디버깅용
-                    
-                    # 복수 시간대의 경우 마지막(최신) 시간을 사용
-                    parsed_dts = []
                     for ds in dt_strings:
                         dt = parse_dt(ds)
                         if dt:
-                            parsed_dts.append(dt)
-                    
-                    if parsed_dts:
-                        # 가장 마지막(최신) 시간을 followup_timestamp로 설정
-                        latest_dt = max(parsed_dts)  # 시간상 가장 늦은 것
-                        print(f"DEBUG: Setting timestamp from query (latest of {len(parsed_dts)}): {latest_dt}")  # 디버깅용
-                        set_followup_timestamp(latest_dt, session)
-                    
-                    # 추가: 복수 시간 요청인 경우 응답에서도 시간 추출 시도
-                    if "와" in query or "하고" in query or "그리고" in query:
-                        should_extract_from_response = True
-                        print("DEBUG: Multiple time request detected, will also extract from response")  # 디버깅용
-                else:
-                    print("DEBUG: Already has current_timestamp, not extracting")  # 디버깅용
+                            set_followup_timestamp(dt, session)
+                            break
             else:
                 # 세션별 히스토리 사용
                 current_history = session.history if session else HISTORY
                 prompt = build_general_prompt(query, history=current_history)
                 
-                # RAG가 아닌 경우에도 최신 요청이면 타임스탬프 추출 시도
-                if is_recent_request:
-                    should_extract_from_response = True
-                    print("DEBUG: Will extract timestamp from non-RAG response")  # 디버깅용
-                
             t_gen0 = time.time()
             ans = generate_answer_with_nova(prompt)
             t_gen = time.time() - t_gen0
             print(f"\n{ans}")
-
-            # 최신 데이터 요청의 경우 응답에서 타임스탬프 추출
-            print(f"DEBUG: should_extract_from_response = {should_extract_from_response}")  # 디버깅용
-            if should_extract_from_response:
-                import re
-                print(f"DEBUG: Extracting timestamp from response: {ans[:200]}")  # 디버깅용
-                
-                # 응답에서 날짜와 시간 패턴 찾기 (예: "8월 14일 16시 46분", "2025-08-14 16:46", "오후 3시")
-                timestamp_patterns = [
-                    r'(\d+)월\s*(\d+)일\s*(\d+)시\s*(\d+)분',
-                    r'(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{1,2})',
-                    r'(\d+)월\s*(\d+)일\s*(\d+)시',
-                    r'(\d+)월\s*(\d+)일\s*(오전|오후)\s*(\d+)시',  # 8월 13일 오후 3시
-                    r'(오전|오후)\s*(\d+)시'  # 오후 3시 (단독)
-                ]
-                
-                extracted_successfully = False
-                all_extracted_times = []  # 모든 추출된 시간을 저장
-                
-                for pattern in timestamp_patterns:
-                    matches = re.findall(pattern, ans)
-                    print(f"DEBUG: Pattern '{pattern}' matches: {matches}")  # 디버깅용
-                    for match in matches:  # 모든 매치를 처리
-                        try:
-                            if len(match) == 4 and all(m.isdigit() for m in match):  # 월일시분
-                                month, day, hour, minute = map(int, match)
-                                year = datetime.now().year
-                                extracted_dt = datetime(year, month, day, hour, minute)
-                            elif len(match) == 5 and all(m.isdigit() for m in match):  # 년월일시분
-                                year, month, day, hour, minute = map(int, match)
-                                extracted_dt = datetime(year, month, day, hour, minute)
-                            elif len(match) == 3 and all(m.isdigit() for m in match):  # 월일시
-                                month, day, hour = map(int, match)
-                                year = datetime.now().year
-                                extracted_dt = datetime(year, month, day, hour, 0)
-                            elif len(match) == 4 and match[2] in ['오전', '오후']:  # 월일 오전/오후 시
-                                month, day, ampm, hour = match
-                                month, day, hour = int(month), int(day), int(hour)
-                                year = datetime.now().year
-                                # 오전/오후 처리
-                                if ampm == "오후" and hour != 12:
-                                    hour += 12
-                                elif ampm == "오전" and hour == 12:
-                                    hour = 0
-                                extracted_dt = datetime(year, month, day, hour, 0)
-                            elif len(match) == 2 and match[0] in ['오전', '오후']:  # 오전/오후 시
-                                ampm, hour = match
-                                hour = int(hour)
-                                # 현재 기준 날짜 사용
-                                year, month, day = datetime.now().year, datetime.now().month, datetime.now().day
-                                # 오전/오후 처리
-                                if ampm == "오후" and hour != 12:
-                                    hour += 12
-                                elif ampm == "오전" and hour == 12:
-                                    hour = 0
-                                extracted_dt = datetime(year, month, day, hour, 0)
-                            else:
-                                continue
-                            
-                            all_extracted_times.append(extracted_dt)
-                            print(f"DEBUG: Extracted time from response: {extracted_dt}")  # 디버깅용
-                            
-                        except Exception as e:
-                            print(f"DEBUG: Failed to parse match {match}: {e}")  # 디버깅용
-                            continue
-                
-                # 모든 추출된 시간 중 가장 최신 시간을 선택
-                if all_extracted_times:
-                    latest_time = max(all_extracted_times)
-                    print(f"DEBUG: Setting followup timestamp to latest of {len(all_extracted_times)} times: {latest_time}")  # 디버깅용
-                    set_followup_timestamp(latest_time, session)
-                    extracted_successfully = True
-                else:
-                    print("DEBUG: No timestamp extracted from response")  # 디버깅용
 
             # 히스토리 및 저장 (세션별)
             if session:

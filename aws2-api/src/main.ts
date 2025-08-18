@@ -15,7 +15,19 @@ async function bootstrap() {
 
   // ✅ CORS: 프리플라이트 포함 넓게 허용 (개발용)
   app.enableCors({
-    origin: ['http://localhost:3002', 'https://localhost:3002'],
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'http://localhost:3002',
+        'https://localhost:3002',
+        'https://aws2aws2.com',
+        'http://aws2aws2.com'
+      ];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ['GET','HEAD','PUT','PATCH','POST','DELETE','OPTIONS'],
     credentials: true, // 쿠키/세션 안 쓰면 false로 바꿔도 됨
     allowedHeaders: [
@@ -33,14 +45,24 @@ async function bootstrap() {
   // ✅ 어떤 가드/미들웨어가 OPTIONS를 막아도 204로 통과시키기 (개발용 안전장치)
   app.use((req, res, next) => {
     if (req.method === 'OPTIONS') {
-      res.header('Access-Control-Allow-Origin', 'http://localhost:3002');
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-      res.header(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, x-amz-date, x-amz-security-token, x-amz-content-sha256'
-      );
-      return res.sendStatus(204);
+      const origin = req.headers.origin;
+      const allowedOrigins = [
+        'http://localhost:3002',
+        'https://localhost:3002',
+        'https://aws2aws2.com',
+        'http://aws2aws2.com'
+      ];
+      
+      if (!origin || allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin || '*');
+        res.header('Access-Control-Allow-Credentials', 'true');
+        res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+        res.header(
+          'Access-Control-Allow-Headers',
+          'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, x-amz-date, x-amz-security-token, x-amz-content-sha256'
+        );
+        return res.sendStatus(204);
+      }
     }
     next();
   });
@@ -63,6 +85,6 @@ async function bootstrap() {
     });
   }
 
-  await app.listen(process.env.BACKEND_PORT ?? process.env.PORT ?? 3001);
+  await app.listen(process.env.BACKEND_PORT ?? process.env.PORT ?? 3001, '0.0.0.0');
 }
 bootstrap();
