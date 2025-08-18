@@ -73,6 +73,7 @@ def want_detail_list(query: str) -> bool:
 # ===== 날짜/시간 파싱 =====
 ISO_PAT = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?"
 def extract_datetime_strings(s: str):
+    from datetime import datetime as datetime_cls
     out = []
     out += re.findall(ISO_PAT, s)  # ISO8601
     patterns = [
@@ -89,53 +90,248 @@ def extract_datetime_strings(s: str):
         r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(\d{1,2})\s*시",
         # 2025년 8월 11일
         r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일",
-        # 8월 11일 14시 1분의 (초 언급 무시)
-        r"(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(\d{1,2})\s*시\s*(\d{1,2})\s*분(?:의?\s*\d+\s*초)?",
+        # 8월 11일 14시 1분의 or 8월 11일의 14시 1분 (초 언급 무시)
+        r"(\d{1,2})\s*월\s*(\d{1,2})\s*일(?:의)?\s*(\d{1,2})\s*시\s*(\d{1,2})\s*분(?:의?\s*\d+\s*초)?",
         # 8월 11일 오후 2시 1분 (오전/오후 포함)
         r"(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(오전|오후)\s*(\d{1,2})\s*시\s*(\d{1,2})\s*분",
         # 8월 11일 오후 2시 (오전/오후 포함)
         r"(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(오전|오후)\s*(\d{1,2})\s*시",
-        # 8월 11일 14시 00분 (연도 없음)  
-        r"(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(\d{1,2})\s*시\s*(\d{1,2})\s*분",
-        # 8월 11일 14시 (연도 없음)
-        r"(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(\d{1,2})\s*시"
+        # 8월 11일 14시 00분 or 8월 11일의 14시 00분 (연도 없음)  
+        r"(\d{1,2})\s*월\s*(\d{1,2})\s*일(?:의)?\s*(\d{1,2})\s*시\s*(\d{1,2})\s*분",
+        # 8월 11일 14시 or 8월 11일의 14시 (연도 없음)
+        r"(\d{1,2})\s*월\s*(\d{1,2})\s*일(?:의)?\s*(\d{1,2})\s*시",
+        # 8월 11일 (연도와 시간 없음)
+        r"(\d{1,2})\s*월\s*(\d{1,2})\s*일"
     ]
     
+    # 모든 패턴에서 시간을 찾기 위해 패턴별로 순회
+    all_matches = []
+    processed_dates = set()  # 이미 처리된 날짜 추적
+    
     for i, pattern in enumerate(korean_patterns):
-        m = re.search(pattern, s)
-        if m:
-            groups = m.groups()
-            if i < 3:  # 연도가 포함된 패턴 (0, 1, 2)
-                y, mo, d = int(groups[0]), int(groups[1]), int(groups[2])
-                h = int(groups[3]) if len(groups) > 3 and groups[3] else 0
-                mi = int(groups[4]) if len(groups) > 4 and groups[4] else 0
-            elif i == 3:  # "8월 11일 14시 1분의" 패턴 (초 무시)
-                y = datetime.now().year
-                mo, d = int(groups[0]), int(groups[1])
-                h = int(groups[2]) if len(groups) > 2 and groups[2] else 0
-                mi = int(groups[3]) if len(groups) > 3 and groups[3] else 0
-            elif i >= 4 and i <= 5:  # 오전/오후 패턴 (4, 5번 패턴)
-                y = datetime.now().year
-                mo, d = int(groups[0]), int(groups[1])
-                ampm = groups[2]  # 오전/오후
-                h = int(groups[3]) if len(groups) > 3 and groups[3] else 0
-                mi = int(groups[4]) if len(groups) > 4 and groups[4] else 0
-                
-                # 오전/오후 처리
-                if ampm == "오후" and h != 12:
-                    h += 12
-                elif ampm == "오전" and h == 12:
+        matches = re.findall(pattern, s)
+        for m in matches:
+            groups = m if isinstance(m, tuple) else (m,)
+            try:
+                if i < 3:  # 연도가 포함된 패턴 (0, 1, 2)
+                    y, mo, d = int(groups[0]), int(groups[1]), int(groups[2])
+                    h = int(groups[3]) if len(groups) > 3 and groups[3] else 0
+                    mi = int(groups[4]) if len(groups) > 4 and groups[4] else 0
+                elif i == 3:  # "8월 11일 14시 1분의" 패턴 (초 무시)
+                    y = datetime_cls.now().year
+                    mo, d = int(groups[0]), int(groups[1])
+                    h = int(groups[2]) if len(groups) > 2 and groups[2] else 0
+                    mi = int(groups[3]) if len(groups) > 3 and groups[3] else 0
+                elif i >= 4 and i <= 5:  # 오전/오후 패턴 (4, 5번 패턴)
+                    y = datetime_cls.now().year
+                    mo, d = int(groups[0]), int(groups[1])
+                    ampm = groups[2]  # 오전/오후
+                    h = int(groups[3]) if len(groups) > 3 and groups[3] else 0
+                    mi = int(groups[4]) if len(groups) > 4 and groups[4] else 0
+                    
+                    # 오전/오후 처리
+                    if ampm == "오후" and h != 12:
+                        h += 12
+                    elif ampm == "오전" and h == 12:
+                        h = 0
+                    
+                    # 이 날짜를 처리했다고 표시
+                    processed_dates.add((y, mo, d))
+                elif i == 8:  # 날짜만 있는 패턴 (8월 13일)
+                    y = datetime_cls.now().year
+                    mo, d = int(groups[0]), int(groups[1])
+                    
+                    # 이미 더 상세한 시간 정보가 있는 날짜면 건너뛰기
+                    if (y, mo, d) in processed_dates:
+                        continue
+                        
                     h = 0
-            else:  # 연도가 없는 일반 패턴 (현재 연도로 가정)
-                y = datetime.now().year
-                mo, d = int(groups[0]), int(groups[1])
-                h = int(groups[2]) if len(groups) > 2 and groups[2] else 0
-                mi = int(groups[3]) if len(groups) > 3 and groups[3] else 0
+                    mi = 0
+                else:  # 연도가 없는 일반 패턴 (현재 연도로 가정)
+                    y = datetime_cls.now().year
+                    mo, d = int(groups[0]), int(groups[1])
+                    h = int(groups[2]) if len(groups) > 2 and groups[2] else 0
+                    mi = int(groups[3]) if len(groups) > 3 and groups[3] else 0
+                
+                time_str = f"{y:04d}-{mo:02d}-{d:02d} {h:02d}:{mi:02d}"
+                if time_str not in all_matches:  # 중복 제거
+                    all_matches.append(time_str)
+                    
+            except (ValueError, IndexError):
+                continue
+    
+    # 추가로 "오후 X시" 형태의 패턴을 별도로 찾기 (날짜 없이)
+    standalone_time_pattern = r"(오전|오후)\s*(\d{1,2})\s*시"
+    standalone_matches = re.findall(standalone_time_pattern, s)
+    
+    # 이미 전체 패턴에서 찾은 시간들을 확인
+    existing_hours = set()
+    for match in all_matches:
+        hour = int(match.split()[1].split(':')[0])
+        existing_hours.add(hour)
+    
+    for ampm, hour_str in standalone_matches:
+        try:
+            h = int(hour_str)
+            if ampm == "오후" and h != 12:
+                h += 12
+            elif ampm == "오전" and h == 12:
+                h = 0
             
-            out.append(f"{y:04d}-{mo:02d}-{d:02d} {h:02d}:{mi:02d}")  # 시/분까지만
-            break  # 첫 번째 매치만 사용
+            # 이미 해당 시간이 추출되었으면 건너뛰기
+            if h in existing_hours:
+                continue
+                
+            y = datetime_cls.now().year
+            # 이미 찾은 첫 번째 시간에서 날짜 정보 추출
+            if all_matches:
+                first_match = all_matches[0]
+                y, mo, d = map(int, first_match.split()[0].split('-')[:3])
+            else:
+                # 날짜 정보가 없으면 오늘 날짜 사용
+                mo, d = 8, 13  # 기본값으로 8월 13일 사용
+                
+            time_str = f"{y:04d}-{mo:02d}-{d:02d} {h:02d}:00"
+            if time_str not in all_matches:
+                all_matches.append(time_str)
+                existing_hours.add(h)
+                
+        except (ValueError, IndexError):
+            continue
+    
+    out.extend(all_matches)
     
     return out
+
+def extract_time_range_from_query(query: str):
+    """범위 쿼리(~부터 ~까지)에서 시작과 끝 시간 추출"""
+    from datetime import datetime as datetime_cls
+    
+    # "X부터 Y까지", "X에서 Y까지" 패턴 매칭
+    range_patterns = [
+        r"(\d{1,2})\s*시\s*부터\s*(\d{1,2})\s*시",  # "1시부터 3시"
+        r"오후\s*(\d{1,2})\s*시\s*부터\s*오후\s*(\d{1,2})\s*시",  # "오후 1시부터 오후 3시"
+        r"(\d{1,2})\s*시\s*에서\s*(\d{1,2})\s*시",  # "1시에서 3시"
+    ]
+    
+    # 날짜 정보 추출
+    date_match = re.search(r"(\d{1,2})\s*월\s*(\d{1,2})\s*일", query)
+    if not date_match:
+        return None
+    
+    year = datetime_cls.now().year
+    month, day = int(date_match.group(1)), int(date_match.group(2))
+    
+    for pattern in range_patterns:
+        match = re.search(pattern, query)
+        if match:
+            start_hour = int(match.group(1))
+            end_hour = int(match.group(2))
+            
+            # 오후 처리
+            if "오후" in query:
+                if start_hour != 12:
+                    start_hour += 12
+                if end_hour != 12:
+                    end_hour += 12
+            
+            # 시간 범위 생성
+            time_range = []
+            for hour in range(start_hour, end_hour + 1):
+                time_str = f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:00"
+                time_range.append(time_str)
+            
+            return time_range
+    
+    return None
+
+def calculate_daily_average_temperature(query: str):
+    """특정 날짜의 일간 평균 온도 계산 (houravg 데이터 활용)"""
+    import re
+    from datetime import datetime as datetime_cls
+    import boto3
+    import json
+    
+    # 날짜 추출
+    date_match = re.search(r"(\d{1,2})\s*월\s*(\d{1,2})\s*일", query)
+    if not date_match:
+        return None
+    
+    year = datetime_cls.now().year
+    month, day = int(date_match.group(1)), int(date_match.group(2))
+    date_prefix = f"{year:04d}{month:02d}{day:02d}"
+    
+    # S3에서 해당 날짜의 houravg 데이터 검색
+    s3 = boto3.client("s3", region_name=REGION)
+    paginator = s3.get_paginator("list_objects_v2")
+    
+    temperature_values = []
+    hour_data = []
+    
+    try:
+        search_prefix = f"{S3_PREFIX}houravg/{year:04d}/{month:02d}/{day:02d}/"
+        print(f"[DEBUG] 일간 평균 검색: {search_prefix}")
+        pages = paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=search_prefix, PaginationConfig={'MaxItems': 100})
+        
+        for page in pages:
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if key.lower().endswith(".json"):
+                    try:
+                        obj_data = s3.get_object(Bucket=S3_BUCKET_DATA, Key=key)
+                        data = json.loads(obj_data['Body'].read().decode('utf-8'))
+                        
+                        # houravg 데이터에서 온도 값 추출 (다양한 필드명 시도)
+                        temp_value = None
+                        
+                        # 가능한 온도 필드명들
+                        temp_fields = ['hourtemp', 'temperature', 'temp', 'avg_temp', 'hourly_temp']
+                        for field in temp_fields:
+                            if field in data and data[field] is not None:
+                                temp_value = data[field]
+                                break
+                        
+                        # averages 구조 내부도 확인
+                        if temp_value is None and 'averages' in data:
+                            avg_data = data['averages']
+                            for field in ['temperature', 'temp', 'hourtemp']:
+                                if field in avg_data and avg_data[field] is not None:
+                                    temp_value = avg_data[field]
+                                    break
+                        
+                        if temp_value is not None:
+                            temperature_values.append(temp_value)
+                            hour_info = {
+                                'hour': int(key.split('/')[-1].split('_')[0][-2:]),  # 시간 추출
+                                'temp': temp_value,
+                                'key': key
+                            }
+                            hour_data.append(hour_info)
+                            print(f"[DEBUG] 온도 데이터 추가: {temp_value}도 (키: {key})")
+                    except Exception:
+                        continue
+    except Exception:
+        return None
+    
+    if not temperature_values:
+        print(f"[DEBUG] 온도 데이터가 없어서 None 반환")
+        return None
+    
+    # 평균 계산
+    daily_avg = sum(temperature_values) / len(temperature_values)
+    min_temp = min(temperature_values)
+    max_temp = max(temperature_values)
+    
+    print(f"[DEBUG] 일간 평균 계산 완료: {daily_avg:.2f}도 ({len(temperature_values)}시간)")
+    
+    return {
+        'date': f"{year}년 {month}월 {day}일",
+        'average': round(daily_avg, 2),
+        'min': round(min_temp, 2),
+        'max': round(max_temp, 2),
+        'data_count': len(temperature_values),
+        'hour_data': sorted(hour_data, key=lambda x: x['hour'])
+    }
 
 def parse_dt(dt_str: str):
     try:
@@ -158,6 +354,8 @@ def minute_requested(query: str) -> bool:
     if re.search(r"\d{1,2}\s*시\s*\d{1,2}\s*분", q): return True
     if re.search(r"\b\d{1,2}\s*분\b", q): return True
     if re.search(r"(?:\b|t)\d{1,2}:\d{2}\b", q, flags=re.IGNORECASE): return True
+    # "정각" 키워드가 있으면 minute 데이터 요청
+    if re.search(r"정각", q): return True
     return False
 
 
@@ -175,14 +373,20 @@ def hourly_average_requested(query: str) -> bool:
     avg_patterns = ["평균", "average", "avg"]
     # 시간 관련 키워드
     hour_patterns = ["시간", "시", "hour", "전체", "그시간", "해당시간"]
+    # 온도/센서 데이터 요청 키워드
+    data_patterns = ["온도", "습도", "가스", "이산화탄소", "공기질", "temperature", "humidity"]
     
     has_avg = any(pattern in query_lower for pattern in avg_patterns)
     has_hour_context = any(pattern in query_lower for pattern in hour_patterns)
+    has_data_request = any(pattern in query_lower for pattern in data_patterns)
     
-    # 명시적으로 일간이 아니고, 평균과 시간 관련 키워드가 있으면 true
+    # 명시적으로 일간이 아니고, (평균과 시간) 또는 (시간과 데이터요청)이 있으면 true
     not_daily = not any(word in query_lower for word in ["일평균", "하루평균", "일간", "하루", "daily", "day"])
     
-    return has_avg and has_hour_context and not_daily
+    # 특정 시간대의 온도/센서 데이터를 묻는 경우도 시간별 처리로 간주
+    specific_time_data = has_hour_context and has_data_request and not_daily
+    
+    return (has_avg and has_hour_context and not_daily) or specific_time_data
 
 def daily_summary_requested(query: str) -> bool:
     """일간 요약을 요청하는지 확인"""
@@ -237,8 +441,9 @@ def extract_time_offset(query: str) -> tuple:
     return None, None
 
 def requested_granularity(query: str) -> Optional[str]:
-    # 우선순위: 분 > 시
+    # 분 정보가 명시적으로 있으면 minute 사용
     if minute_requested(query) or ("분의" in query): return "minute"
+    # 시간만 있고 분이 없으면 hour 사용 (houravg 우선)
     if hour_bucket_requested(query): return "hour"
     return None
 
@@ -654,6 +859,16 @@ def _deterministic_sensor_signal(query: str) -> bool:
     return has_time_literal or has_ko_time_tokens or has_range
 
 def decide_route(query: str) -> str:
+    # UTF-8 문제 해결을 위한 간단한 센서 감지
+    sensor_keywords = ["온도", "습도", "CO2", "이산화탄소", "공기질", "센서"]
+    time_keywords = ["시", "분", "일", "월", "년", "전", "후", "오전", "오후"]
+    
+    has_sensor = any(keyword in query for keyword in sensor_keywords)
+    has_time = any(keyword in query for keyword in time_keywords)
+    
+    if has_sensor and has_time:
+        return "sensor"
+    
     if _deterministic_sensor_signal(query):
         return "sensor"
 
@@ -672,7 +887,8 @@ def decide_route(query: str) -> str:
 # ===== 검색 =====
 def find_latest_sensor_data_from_s3(query: str) -> dict:
     """현재 시간 기준으로 가장 최근 센서 데이터 파일을 S3에서 찾기"""
-    now = datetime.now()
+    from datetime import datetime as datetime_cls, timedelta
+    now = datetime_cls.now()
     
     # 시간 오프셋 처리 (예: '30분 전')
     offset_value, offset_unit = extract_time_offset(query)
@@ -872,6 +1088,56 @@ def find_latest_sensor_data_from_s3(query: str) -> dict:
     
     return None
 
+def find_minavg_data(target_time: datetime) -> dict:
+    """특정 시간의 minavg 데이터 찾기"""
+    s3 = boto3.client("s3", region_name=REGION)
+    paginator = s3.get_paginator("list_objects_v2")
+    
+    year = target_time.strftime('%Y')
+    month = target_time.strftime('%m')
+    day = target_time.strftime('%d')
+    hour = target_time.strftime('%H')
+    minute = target_time.strftime('%M')
+    
+    # minavg 파일 경로 패턴: minavg/2025/08/14/13/202508141305_minavg.json
+    target_pattern = f"{year}{month}{day}{hour}{minute}"
+    
+    print(f"[DEBUG] minavg 검색 패턴: {target_pattern}")
+    
+    for prefix_path in ["minavg/", "mintrend/"]:
+        try:
+            # 정확한 시간 폴더에서 검색
+            search_prefix = f"{S3_PREFIX}{prefix_path}{year}/{month}/{day}/{hour}/"
+            print(f"[DEBUG] minavg 검색 경로: {search_prefix}")
+            
+            pages = paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=search_prefix, PaginationConfig={'MaxItems': 100})
+            
+            for page in pages:
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    filename = key.split('/')[-1]
+                    
+                    if filename.lower().endswith(".json") and target_pattern in filename:
+                        print(f"[DEBUG] minavg 파일 매칭: {filename}")
+                        try:
+                            obj_data = s3.get_object(Bucket=S3_BUCKET_DATA, Key=key)
+                            data = json.loads(obj_data['Body'].read().decode('utf-8'))
+                            return {
+                                'key': key,
+                                'data': data,
+                                'timestamp': target_time.strftime('%Y-%m-%d %H:%M:%S')
+                            }
+                        except Exception as e:
+                            print(f"[DEBUG] minavg 파일 읽기 오류: {e}")
+                            continue
+        except Exception as e:
+            print(f"[DEBUG] minavg 검색 오류: {e}")
+            continue
+    
+    print(f"[DEBUG] minavg 데이터 없음, houravg fallback")
+    # minavg를 찾지 못하면 houravg로 fallback
+    return find_closest_sensor_data(target_time)
+
 def find_closest_sensor_data(target_time: datetime) -> dict:
     """대상 시간에서 가장 가까운 센서 데이터 찾기"""
     s3 = boto3.client("s3", region_name=REGION)
@@ -894,8 +1160,8 @@ def find_closest_sensor_data(target_time: datetime) -> dict:
             day = search_time.strftime('%d')
             hour = search_time.strftime('%H')
             
-            # minavg, houravg 순으로 검색
-            for prefix_path in ["minavg/", "houravg/"]:
+            # houravg, minavg 순으로 검색 (시간 평균 우선)
+            for prefix_path in ["houravg/", "minavg/"]:
                 try:
                     search_prefix = f"{S3_PREFIX}{prefix_path}{year}/{month}/{day}/{hour}/"
                     pages = paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=search_prefix, PaginationConfig={'MaxItems': 200})
@@ -962,16 +1228,109 @@ def find_closest_sensor_data(target_time: datetime) -> dict:
 
 def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHARS, max_files: int = MAX_FILES_TO_SCAN, top_k: int = TOP_K):
     # 통합된 검색 로직: 요청된 시간에서 가장 가까운 데이터 찾기
+    import re
+    from datetime import datetime as datetime_cls
+    
+    print(f"[DEBUG] retrieve_documents_from_s3 시작: {query}")
     
     # 1) 시간 정보 추출
     dt_strings = extract_datetime_strings(query)
+    print(f"[DEBUG] 추출된 시간 문자열: {dt_strings}")
+    
+    # UTF-8 문제로 인한 fallback 시간 추출
+    if not dt_strings:
+        # 간단한 패턴 매칭으로 날짜/시간 추출
+        import re
+        from datetime import datetime as datetime_cls
+        
+        # "8월 13일 오후 1시" 같은 패턴
+        patterns = [
+            r"(\d{1,2})월\s*(\d{1,2})일\s*오후\s*(\d{1,2})시",
+            r"(\d{1,2})월\s*(\d{1,2})일\s*오전\s*(\d{1,2})시", 
+            r"(\d{1,2})월\s*(\d{1,2})일\s*(\d{1,2})시",
+            r"(\d{1,2})월\s*(\d{1,2})일"
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, query)
+            for match in matches:
+                try:
+                    if len(match) == 4:  # 월, 일, 오전/오후, 시
+                        month, day, ampm, hour = match
+                        year = datetime_cls.now().year
+                        h = int(hour)
+                        if ampm == "오후" and h != 12:
+                            h += 12
+                        elif ampm == "오전" and h == 12:
+                            h = 0
+                        time_str = f"{year:04d}-{int(month):02d}-{int(day):02d} {h:02d}:00"
+                        dt_strings.append(time_str)
+                    elif len(match) == 3:  # 월, 일, 시 (24시간제)
+                        month, day, hour = match
+                        year = datetime_cls.now().year
+                        time_str = f"{year:04d}-{int(month):02d}-{int(day):02d} {int(hour):02d}:00"
+                        dt_strings.append(time_str)
+                    elif len(match) == 2:  # 월, 일만
+                        month, day = match
+                        year = datetime_cls.now().year
+                        time_str = f"{year:04d}-{int(month):02d}-{int(day):02d} 00:00"
+                        dt_strings.append(time_str)
+                except:
+                    continue
+    
+    # 일간 평균 온도 요청 확인 (시간이 명시되지 않은 경우만)
+    daily_avg_patterns = [
+        r"\d+일.*평균.*온도",
+        r"평균.*온도.*\d+일", 
+        r"\d+일.*온도.*평균",
+        r"하루.*평균.*온도",
+        r"일간.*평균.*온도"
+    ]
+    
+    # 특정 시간이 언급된 경우 일간 평균이 아님
+    has_specific_time = bool(re.search(r"\d{1,2}\s*시|\d{1,2}\s*:\s*\d{1,2}|오전|오후", query))
+    
+    is_daily_avg_query = (any(re.search(pattern, query) for pattern in daily_avg_patterns) 
+                         and not has_specific_time)
+    
+    if is_daily_avg_query:
+        print(f"[DEBUG] 일간 평균 쿼리 감지: {query}")
+        daily_avg_data = calculate_daily_average_temperature(query)
+        if daily_avg_data:
+            print(f"[DEBUG] 일간 평균 데이터 찾음: {daily_avg_data['data_count']}시간, 평균 {daily_avg_data['average']}도")
+            
+            # 결과를 컨텍스트로 구성 (LLM이 이해하기 쉽게)
+            context = f"[D1] {daily_avg_data['date']} 센서 데이터 분석 결과\n"
+            context += f"일간 평균 온도: {daily_avg_data['average']}도\n"
+            context += f"최저 온도: {daily_avg_data['min']}도\n"
+            context += f"최고 온도: {daily_avg_data['max']}도\n"
+            context += f"측정 시간 수: {daily_avg_data['data_count']}시간\n"
+            context += f"해당 날짜의 온도 데이터가 정상적으로 수집되었습니다.\n"
+            
+            top_doc = {
+                'score': 100,
+                'schema': 'daily_average',
+                'content': context,
+                'id': f"daily_avg_{daily_avg_data['date']}",
+                'tag': 'D1'
+            }
+            
+            return [top_doc], context
+    
+    # 범위 쿼리 확인
+    time_range = extract_time_range_from_query(query)
+    if time_range:
+        print(f"[DEBUG] 범위 쿼리 감지: {time_range}")
+        dt_strings = time_range  # 범위 쿼리면 범위로 교체
+    
     offset_value, offset_unit = extract_time_offset(query)
     
     # 2) 대상 시간 계산
     target_dt = None
+    
     if offset_value and offset_unit:
         # 상대적 시간 (3시간 전, 어제 등)
-        now = datetime.now()
+        now = datetime_cls.now()
         if offset_unit == 'minute':
             target_dt = now - timedelta(minutes=offset_value)
         elif offset_unit == 'hour':
@@ -1006,52 +1365,282 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
             else:
                 # 시간 정보가 없으면 해당 날짜의 현재 시간
                 target_dt = base_dt
-    elif dt_strings:
-        # 절대 시간 (8월 13일 17시)
+    elif dt_strings and len(dt_strings) > 1:
+        # 복수 시간 처리 (범위 쿼리 등)
+        print(f"[DEBUG] 복수 시간 감지, 각 시간별로 granularity 기반 검색: {dt_strings}")
+        
+        # 가장 구체적인 시간이 있으면 단일 시간으로 처리 (예: "13시 5분"의 경우)
+        gran = requested_granularity(query)
+        if gran == "minute":
+            # 분 단위 질의의 경우 가장 구체적인 시간(분이 포함된) 하나만 사용
+            specific_times = [dt for dt in dt_strings if ':05' in dt or ':0' in dt and dt != dt_strings[-1]]  # 00:00 제외
+            if specific_times:
+                print(f"[DEBUG] 분 단위 질의로 단일 시간 처리로 전환: {specific_times[0]}")
+                target_dt = parse_dt(specific_times[0])
+                if target_dt:
+                    print(f"[DEBUG] minavg 직접 검색: {target_dt}")
+                    closest_data = find_minavg_data(target_dt)
+                    
+                    if closest_data:
+                        data = closest_data['data']
+                        is_minavg = 'minavg' in closest_data['key'] or 'mintrend' in closest_data['key']
+                        
+                        if is_minavg:
+                            content = f"분별 측정 센서 데이터:\n"
+                            if 'mintemp' in data:
+                                content += f"온도: {data['mintemp']}도\n"
+                            if 'minhum' in data:
+                                content += f"습도: {data['minhum']}%\n"
+                            if 'mingas' in data:
+                                content += f"이산화탄소: {data['mingas']}ppm\n"
+                        else:
+                            content = json.dumps(data, ensure_ascii=False, indent=2)
+                        
+                        top_doc = {
+                            'score': 100,
+                            'schema': 'minavg' if is_minavg else 'closest',
+                            'content': content,
+                            'id': closest_data['key'],
+                            'tag': 'D1'
+                        }
+                        
+                        timestamp_str = data.get('timestamp', '')
+                        if timestamp_str:
+                            try:
+                                dt = datetime_cls.fromisoformat(timestamp_str.replace('T', ' '))
+                                korean_time = f"{dt.year}년 {dt.month}월 {dt.day}일 {dt.hour}시 {dt.minute}분"
+                            except:
+                                korean_time = timestamp_str
+                        else:
+                            korean_time = "시간 정보 없음"
+                        
+                        context = f"[D1] {korean_time} 분별 측정 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}\n"
+                        return [top_doc], context
+        
+        target_dts = []
         for ds in dt_strings:
             dt = parse_dt(ds)
             if dt:
-                target_dt = dt
-                break
+                target_dts.append(dt)
+        
+        if target_dts:
+            # 각 시간에 대해 granularity 기반 검색
+            gran = requested_granularity(query)
+            print(f"[DEBUG] 복수 시간 granularity: {gran}")
+            
+            all_docs = []
+            context_parts = []
+            
+            for i, target_dt in enumerate(target_dts):
+                print(f"[DEBUG] 시간 {i+1}/{len(target_dts)} 검색: {target_dt}")
+                
+                # 각 시간에 대해 granularity별 검색
+                if gran == "hour":
+                    # houravg 검색 (기존 함수는 houravg 우선이므로 사용)
+                    closest_data = find_closest_sensor_data(target_dt)
+                else:
+                    # minavg 검색 - 직접 구현
+                    print(f"[DEBUG] minavg 직접 검색: {target_dt}")
+                    closest_data = find_minavg_data(target_dt)
+                
+                if closest_data:
+                    tag = f"D{i+1}"
+                    data = closest_data['data']
+                    
+                    # 데이터 타입 확인
+                    is_houravg = 'hourtemp' in data or 'houravg' in closest_data['key']
+                    is_minavg = 'minavg' in closest_data['key'] or 'mintrend' in closest_data['key']
+                    
+                    if is_minavg:
+                        # minavg 데이터용 특별 포맷
+                        content = f"분별 측정 센서 데이터:\n"
+                        if 'mintemp' in data:
+                            content += f"온도: {data['mintemp']}도\n"
+                        if 'minhum' in data:
+                            content += f"습도: {data['minhum']}%\n"
+                        if 'mingas' in data:
+                            content += f"이산화탄소: {data['mingas']}ppm\n"
+                        
+                        top_doc = {
+                            'score': 100 - i,
+                            'schema': 'minavg',
+                            'content': content,
+                            'id': closest_data['key'],
+                            'tag': tag
+                        }
+                    elif is_houravg:
+                        # houravg 데이터용 특별 포맷 (LLM이 확실히 인식하도록 강화)
+                        content = f"이것은 해당 시간대 전체의 평균값입니다.\n"
+                        content += f"시간별 평균 센서 데이터:\n"
+                        if 'hourtemp' in data:
+                            content += f"⭐ 시간별 평균 온도: {data['hourtemp']}도 (60분간 평균)\n"
+                        if 'hourhum' in data:
+                            content += f"⭐ 시간별 평균 습도: {data['hourhum']}% (60분간 평균)\n"
+                        if 'hourgas' in data:
+                            content += f"⭐ 시간별 평균 이산화탄소: {data['hourgas']}ppm (60분간 평균)\n"
+                        
+                        top_doc = {
+                            'score': 100 - i,
+                            'schema': 'houravg',
+                            'content': content,
+                            'id': closest_data['key'],
+                            'tag': tag
+                        }
+                    else:
+                        # 일반 데이터용 포맷
+                        top_doc = {
+                            'score': 100 - i,
+                            'schema': 'closest',
+                            'content': json.dumps(data, ensure_ascii=False, indent=2),
+                            'id': closest_data['key'],
+                            'tag': tag
+                        }
+                    
+                    all_docs.append(top_doc)
+                    
+                    # 타임스탬프를 한국어로 변환
+                    timestamp_str = data.get('timestamp', '')
+                    if timestamp_str:
+                        try:
+                            dt = datetime_cls.fromisoformat(timestamp_str.replace('T', ' '))
+                            korean_time = f"{dt.year}년 {dt.month}월 {dt.day}일 {dt.hour}시"
+                        except:
+                            korean_time = timestamp_str
+                    else:
+                        korean_time = "시간 정보 없음"
+                    
+                    if is_houravg:
+                        context_parts.append(f"[{tag}] {korean_time} 시간별 평균 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}")
+                    elif is_minavg:
+                        context_parts.append(f"[{tag}] {korean_time} 분별 측정 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}")
+                    else:
+                        context_parts.append(f"[{tag}] {korean_time} 측정 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}")
+            
+            if all_docs:
+                context = "\n\n".join(context_parts) + "\n"
+                return all_docs, context
+    elif dt_strings:
+        # 단일 시간 처리
+        print(f"[DEBUG] 단일 시간 처리: {dt_strings}")
+        
+        target_dt = parse_dt(dt_strings[0])
+        if target_dt:
+            gran = requested_granularity(query)
+            print(f"[DEBUG] 단일 시간 granularity: {gran}")
+            print(f"[DEBUG] 단일 시간 검색: {target_dt}")
+            
+            # granularity별 검색
+            if gran == "hour":
+                closest_data = find_closest_sensor_data(target_dt)
+            else:
+                closest_data = find_minavg_data(target_dt)
+            
+            if closest_data:
+                data = closest_data['data']
+                
+                # 데이터 타입 확인 및 포맷
+                is_houravg = 'hourtemp' in data or 'houravg' in closest_data['key']
+                is_minavg = 'minavg' in closest_data['key'] or 'mintrend' in closest_data['key']
+                
+                if is_minavg:
+                    content = f"분별 측정 센서 데이터:\n"
+                    if 'mintemp' in data:
+                        content += f"온도: {data['mintemp']}도\n"
+                    if 'minhum' in data:
+                        content += f"습도: {data['minhum']}%\n"
+                    if 'mingas' in data:
+                        content += f"이산화탄소: {data['mingas']}ppm\n"
+                    
+                    top_doc = {
+                        'score': 100,
+                        'schema': 'minavg',
+                        'content': content,
+                        'id': closest_data['key'],
+                        'tag': 'D1'
+                    }
+                elif is_houravg:
+                    content = f"이것은 해당 시간대 전체의 평균값입니다.\n"
+                    content += f"시간별 평균 센서 데이터:\n"
+                    if 'hourtemp' in data:
+                        content += f"⭐ 시간별 평균 온도: {data['hourtemp']}도 (60분간 평균)\n"
+                    if 'hourhum' in data:
+                        content += f"⭐ 시간별 평균 습도: {data['hourhum']}% (60분간 평균)\n"
+                    if 'hourgas' in data:
+                        content += f"⭐ 시간별 평균 이산화탄소: {data['hourgas']}ppm (60분간 평균)\n"
+                    
+                    top_doc = {
+                        'score': 100,
+                        'schema': 'houravg',
+                        'content': content,
+                        'id': closest_data['key'],
+                        'tag': 'D1'
+                    }
+                else:
+                    top_doc = {
+                        'score': 100,
+                        'schema': 'closest',
+                        'content': json.dumps(data, ensure_ascii=False, indent=2),
+                        'id': closest_data['key'],
+                        'tag': 'D1'
+                    }
+                
+                # 타임스탬프를 한국어로 변환
+                timestamp_str = data.get('timestamp', '')
+                if timestamp_str:
+                    try:
+                        dt = datetime_cls.fromisoformat(timestamp_str.replace('T', ' '))
+                        korean_time = f"{dt.year}년 {dt.month}월 {dt.day}일 {dt.hour}시"
+                    except:
+                        korean_time = timestamp_str
+                else:
+                    korean_time = "시간 정보 없음"
+                
+                if is_houravg:
+                    context = f"[D1] {korean_time} 시간별 평균 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}\n"
+                elif is_minavg:
+                    context = f"[D1] {korean_time} 분별 측정 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}\n"
+                else:
+                    context = f"[D1] {korean_time} 측정 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}\n"
+                return [top_doc], context
     else:
         # 시간 정보 없음 → 최근 데이터
-        target_dt = datetime.now()
+        target_dt = datetime_cls.now()
     
-    # 3) 대상 시간 기준으로 가장 가까운 데이터 검색
-    if target_dt:
-        closest_data = find_closest_sensor_data(target_dt)
-        if closest_data:
-            # 타임스탬프 저장
-            key_dt, gran = parse_time_from_key(closest_data['key'])
-            if key_dt:
-                set_followup_timestamp(key_dt)
-            
-            # 결과 반환
-            top_doc = {
-                'score': 100,
-                'schema': 'closest',
-                'content': json.dumps(closest_data['data'], ensure_ascii=False, indent=2),
-                'id': closest_data['key'],
-                'tag': 'D1'
-            }
-            context = f"[D1] (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}\n"
-            return [top_doc], context
+    # 3) 단일 시간 검색 - granularity 기반 검색 후 fallback으로 이동
+    # (granularity 기반 검색을 먼저 시도하도록 주석 처리)
     
     # 4) 시간 기반 검색 실패 시 기존 방식으로 fallback
     dt_strings = extract_datetime_strings(query)
     target_dt = None
     date_prefixes = []
     
-    # 쿼리에서 날짜 추출
-    for ds in dt_strings:
-        dt = parse_dt(ds)
-        if dt:
-            target_dt = dt
-            date_prefix = dt.strftime('%Y%m%d')  # YYYYMMDD 형식
+    # 상대 시간 쿼리의 경우 계산된 target_dt 사용
+    if offset_value and offset_unit and not target_dt:
+        if offset_unit == 'minute':
+            target_dt = datetime_cls.now() - timedelta(minutes=offset_value)
+        elif offset_unit == 'hour':
+            target_dt = datetime_cls.now() - timedelta(hours=offset_value)
+        elif offset_unit == 'day':
+            target_dt = datetime_cls.now() - timedelta(days=offset_value)
+        
+        if target_dt:
+            date_prefix = target_dt.strftime('%Y%m%d')
             date_prefixes.append(date_prefix)
-            break
+    
+    # 쿼리에서 날짜 추출 (상대 시간이 아닌 경우)
+    if not date_prefixes:
+        for ds in dt_strings:
+            dt = parse_dt(ds)
+            if dt:
+                target_dt = dt
+                date_prefix = dt.strftime('%Y%m%d')  # YYYYMMDD 형식
+                date_prefixes.append(date_prefix)
+                break
     
     gran = requested_granularity(query)
+    print(f"[DEBUG] 결정된 granularity: {gran}")
+    print(f"[DEBUG] target_dt: {target_dt}")
+    print(f"[DEBUG] date_prefixes: {date_prefixes}")
     
     paginator = s3.get_paginator("list_objects_v2")
     priority_keys = []
@@ -1116,19 +1705,23 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
             day = target_dt.strftime('%d') if target_dt else ""
             
             target_datetime = f"{date_prefix}{hour_prefix}{minute_prefix}"  # 202508111401
+            print(f"[DEBUG] minavg 검색 시작: 타겟시간={target_datetime}, 날짜={date_prefix}")
             
             for prefix_path in ["minavg/", "mintrend/"]:
                 try:
                     # 정확한 시간 폴더에서 검색: minavg/2025/08/11/14/
                     search_prefix = f"{S3_PREFIX}{prefix_path}{year}/{month}/{day}/{hour_prefix}/"
+                    print(f"[DEBUG] minavg 폴더 검색: {search_prefix}")
                     pages = paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=search_prefix, PaginationConfig={'MaxItems': 100})
                     for page in pages:
                         for obj in page.get("Contents", []):
                             k = obj["Key"]
                             filename = k.split('/')[-1]  # 파일명만 추출
                             if filename.lower().endswith(".json"):
+                                print(f"[DEBUG] minavg 파일 발견: {filename}")
                                 # 정확한 분 매칭 우선
                                 if target_datetime in filename:
+                                    print(f"[DEBUG] 정확한 매칭! {target_datetime} in {filename}")
                                     priority_keys.insert(0, k)
                                 else:
                                     priority_keys.append(k)
@@ -1137,10 +1730,14 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
                         if len(priority_keys) >= 30:
                             break
                 except Exception as e:
+                    print(f"[DEBUG] minavg 검색 오류: {e}")
                     pass
-                
-                # 정확한 시간 폴더에서 못 찾으면 전체 폴더에서 fallback
-                if len(priority_keys) == 0:
+            
+            print(f"[DEBUG] minavg 검색 완료: 총 {len(priority_keys)}개 파일 발견")
+            
+            # 정확한 시간 폴더에서 못 찾으면 전체 폴더에서 fallback
+            if len(priority_keys) == 0:
+                for prefix_path in ["minavg/", "mintrend/"]:
                     try:
                         search_prefix = f"{S3_PREFIX}{prefix_path}"
                         pages = paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=search_prefix, PaginationConfig={'MaxItems': 200})
@@ -1268,6 +1865,102 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
     
     # 평균 데이터만 사용
     all_keys = keys[:max_files]
+
+    # 마지막 fallback: 상대 시간 쿼리에서 데이터가 없으면 주변 날짜에서 검색
+    if not all_keys and offset_value and offset_unit:
+        print(f"[Fallback] 대상 날짜({target_dt.strftime('%Y-%m-%d') if target_dt else 'N/A'})에 데이터가 없어 주변 날짜에서 검색합니다.")
+        
+        # 대상 시간 주변 ±3일 범위에서 검색
+        fallback_keys = []
+        for days_offset in range(-3, 4):  # -3일부터 +3일까지
+            if target_dt:
+                search_date = target_dt + timedelta(days=days_offset)
+                search_date_prefix = search_date.strftime('%Y%m%d')
+                
+                # minavg와 houravg에서 해당 날짜 검색
+                for prefix_path in ["minavg/", "houravg/"]:
+                    try:
+                        year = search_date.strftime('%Y')
+                        month = search_date.strftime('%m')
+                        day = search_date.strftime('%d')
+                        
+                        search_prefix = f"{S3_PREFIX}{prefix_path}{year}/{month}/{day}/"
+                        pages = paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=search_prefix, PaginationConfig={'MaxItems': 50})
+                        
+                        for page in pages:
+                            for obj in page.get("Contents", []):
+                                k = obj["Key"]
+                                if k.lower().endswith(".json"):
+                                    fallback_keys.append(k)
+                                if len(fallback_keys) >= 20:
+                                    break
+                            if len(fallback_keys) >= 20:
+                                break
+                        
+                        if len(fallback_keys) >= 10:  # 충분한 데이터를 찾으면 중단
+                            break
+                            
+                    except Exception as e:
+                        pass
+                
+                if len(fallback_keys) >= 10:
+                    break
+        
+        if fallback_keys:
+            all_keys = fallback_keys[:max_files]
+            print(f"[Fallback] {len(all_keys)}개의 대체 데이터를 찾았습니다.")
+        
+    # minavg 검색이 실패한 경우 find_closest_sensor_data로 fallback
+    if not all_keys and gran == "minute" and target_dt:
+        print(f"[Fallback] minavg 검색 실패 (찾은 키: {len(priority_keys)}개), 가장 가까운 센서 데이터를 찾습니다...")
+        closest_data = find_closest_sensor_data(target_dt)
+        if closest_data:
+            # closest_data를 문서 형태로 변환
+            content = f"가장 가까운 센서 데이터 (요청 시간: {target_dt.strftime('%Y-%m-%d %H:%M')}):\n"
+            content += f"실제 데이터 시간: {closest_data['timestamp']}\n"
+            data = closest_data.get('data', {})
+            if 'temperature' in data:
+                content += f"온도: {data['temperature']}도\n"
+            if 'humidity' in data:
+                content += f"습도: {data['humidity']}%\n"
+            if 'gas' in data:
+                content += f"공기질(가스): {data['gas']}ppm\n"
+            
+            top_doc = {
+                'score': 100,
+                'schema': 'closest_sensor',
+                'content': content,
+                'id': closest_data['key'],
+                'tag': 'D1'
+            }
+            context = f"[D1] (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{content}\n"
+            return [top_doc], context
+    
+    # 모든 검색이 실패한 경우 최종 fallback
+    if not all_keys and target_dt:
+        print(f"[Final Fallback] 모든 검색 실패, find_closest_sensor_data로 최종 시도...")
+        closest_data = find_closest_sensor_data(target_dt)
+        if closest_data:
+            # closest_data를 문서 형태로 변환
+            content = f"가장 가까운 센서 데이터 (요청 시간: {target_dt.strftime('%Y-%m-%d %H:%M')}):\n"
+            content += f"실제 데이터 시간: {closest_data['timestamp']}\n"
+            data = closest_data.get('data', {})
+            if 'temperature' in data:
+                content += f"온도: {data['temperature']}도\n"
+            if 'humidity' in data:
+                content += f"습도: {data['humidity']}%\n"
+            if 'gas' in data:
+                content += f"공기질(가스): {data['gas']}ppm\n"
+            
+            top_doc = {
+                'score': 100,
+                'schema': 'closest_sensor',
+                'content': content,
+                'id': closest_data['key'],
+                'tag': 'D1'
+            }
+            context = f"[D1] (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{content}\n"
+            return [top_doc], context
 
     if not all_keys: 
         return [], ""
@@ -1582,32 +2275,45 @@ def show_hourly_average_if_requested(query: str) -> Optional[str]:
     
     # 날짜와 시간 추출
     dt_strings = extract_datetime_strings(query)
-    target_dt = None
+    target_dts = []
     
+    # 모든 시간을 추출 (복수 시간 처리)
     for ds in dt_strings:
         dt = parse_dt(ds)
         if dt:
-            target_dt = dt
-            break
+            target_dts.append(dt)
     
-    if not target_dt:
+    if not target_dts:
         # 현재 시간의 이전 시간 사용 (정시로 맞춤)
-        now = datetime.now()
+        from datetime import datetime as datetime_cls
+        now = datetime_cls.now()
         target_dt = now.replace(minute=0, second=0, microsecond=0)
         if now.minute < 30:  # 30분 이전이면 이전 시간 사용
             target_dt = target_dt - timedelta(hours=1)
-    
-    # 해당 시간의 houravg 데이터 찾기
-    doc = find_houravg_doc_for_hour(target_dt)
-    
-    if not doc:
-        return f"{target_dt.strftime('%Y년 %m월 %d일 %H시')}의 시간별 평균 데이터를 찾을 수 없습니다."
+        target_dts = [target_dt]
     
     # 요청된 필드 추출
     need_fields = detect_fields_in_query(query)
+    results = []
     
-    # houravg 형식으로 포맷팅
-    return format_houravg_answer_from_doc(doc, need_fields)
+    # 각 시간에 대해 데이터 찾기
+    for target_dt in target_dts:
+        doc = find_houravg_doc_for_hour(target_dt)
+        
+        if doc:
+            # 개별 시간 결과 포맷팅
+            time_str = target_dt.strftime('%Y년 %m월 %d일 %H시')
+            result = format_houravg_answer_from_doc(doc, need_fields)
+            results.append(f"**{time_str}:**\n{result}")
+        else:
+            time_str = target_dt.strftime('%Y년 %m월 %d일 %H시')
+            results.append(f"**{time_str}:**\n해당 시간의 데이터를 찾을 수 없습니다.")
+    
+    if not results:
+        return "요청하신 시간대의 데이터를 찾을 수 없습니다."
+    
+    # 복수 결과를 합쳐서 반환
+    return "\n\n".join(results)
 
 def show_daily_summary_if_requested(query: str) -> Optional[str]:
     """일간 요약이 요청되면 해당 날짜의 hourly 데이터로 일 평균과 추이 계산"""
@@ -1857,9 +2563,9 @@ def format_houravg_answer_from_doc(d, need_fields: set) -> str:
     ranges = j.get("hourly_ranges", {}) or {}
     trends = j.get("trends", {}) or {}
 
-    av_std = {"temperature": av.get("temp"),
-              "humidity": av.get("hum"),
-              "gas": av.get("gas")}
+    av_std = {"temperature": av.get("temp") or j.get("hourtemp"),
+              "humidity": av.get("hum") or j.get("hourhum"), 
+              "gas": av.get("gas") or j.get("hourgas")}
     rng_std = {
         "temperature": (ranges.get("temp") or {}),
         "humidity":    (ranges.get("hum") or {}),
@@ -2256,10 +2962,24 @@ def save_turn_to_s3(
             },
         }
         key = f"{CHATLOG_PREFIX}{session_id}/{turn_id:04d}_{int(time.time())}.json"
+        # 서로게이트 문자 처리
+        def clean_surrogate_chars(text):
+            if isinstance(text, str):
+                # 서로게이트 문자 제거
+                return text.encode('utf-8', errors='ignore').decode('utf-8')
+            elif isinstance(text, dict):
+                return {k: clean_surrogate_chars(v) for k, v in text.items()}
+            elif isinstance(text, list):
+                return [clean_surrogate_chars(item) for item in text]
+            else:
+                return text
+        
+        cleaned_rec = clean_surrogate_chars(rec)
+        
         s3_logs.put_object(
             Bucket=CHATLOG_BUCKET,
             Key=key,
-            Body=json.dumps(rec, ensure_ascii=False).encode("utf-8"),
+            Body=json.dumps(cleaned_rec, ensure_ascii=False).encode("utf-8"),
             ContentType="application/json",
         )
         return key
@@ -2280,9 +3000,12 @@ def build_prompt(query: str, context: str, history: List[Dict] = None) -> str:
         "사용자가 현재 시간을 물어보거나 '지금', '현재'라는 표현을 사용하면 반드시 위의 현재 시간을 사용해.\n"
         "절대로 이전 대화나 센서 데이터의 시간과 혼동하지 마.\n\n"
         
+        "**중요**: 아래 센서 데이터 섹션에 특정 날짜와 시간의 데이터가 제공되어 있다면, 그 데이터를 사용해서 답변해.\n"
+        "현재 시간과 센서 데이터의 시간을 절대 혼동하지 마.\n\n"
+        
         "답변 가이드라인:\n"
-        "1. 없는 데이터는 없다고 말을 해\n"
-        "2. 요청한 정확한 시간에 데이터가 없을 때는 '해당 시간의 데이터는 없다'고 먼저 명시한 후, 가장 가까운 시간의 데이터를 제공하며 그 시간을 정확히 언급해\n"
+        "1. 반드시 위의 센서 데이터 섹션만을 참조해서 답변해. 다른 날짜나 시간의 데이터는 언급하지 마\n"
+        "2. 센서 데이터에 정확한 날짜와 시간이 표시되어 있으면 해당 데이터를 사용해\n"
         "3. 물어보는 질의를 명확히 제시하고 현재 상황을 친근하게 설명해\n"
         "4. 측정 시점을 정확히 언급해 (예: '8월 11일 14시 1분') - 24시간제로 표시\n"
         "5. 상황에 따른 실용적인 조언을 해 (에어컨, 환기, 제습기 등)\n"
@@ -2432,35 +3155,35 @@ def chat_loop(session=None):
                         save_turn_to_s3(SESSION_ID, TURN_ID, "sensor", query_raw, detail_ans, top_docs=[])
                 continue
 
-            # 0-1) 시간별 평균 요청이면 houravg 데이터로 처리
-            hourly_ans = show_hourly_average_if_requested(query_raw)
-            if hourly_ans:
-                print(f"\n{hourly_ans}")
-                if ENABLE_CHATLOG_SAVE:
-                    if session:
-                        turn_id = session.increment_turn()
-                        session.add_to_history(query_raw, hourly_ans, "sensor")
-                        save_turn_to_s3(session.session_id, turn_id, "sensor", query_raw, hourly_ans, top_docs=[])
-                    else:
-                        TURN_ID += 1
-                        HISTORY.append({"query": query_raw, "answer": hourly_ans, "route": "sensor"})
-                        save_turn_to_s3(SESSION_ID, TURN_ID, "sensor", query_raw, hourly_ans, top_docs=[])
-                continue
+            # 0-1) 시간별 평균 요청이면 houravg 데이터로 처리 (임시 비활성화 - LLM 응답 위해)
+            # hourly_ans = show_hourly_average_if_requested(query_raw)
+            # if hourly_ans:
+            #     print(f"\n{hourly_ans}")
+            #     if ENABLE_CHATLOG_SAVE:
+            #         if session:
+            #             turn_id = session.increment_turn()
+            #             session.add_to_history(query_raw, hourly_ans, "sensor")
+            #             save_turn_to_s3(session.session_id, turn_id, "sensor", query_raw, hourly_ans, top_docs=[])
+            #         else:
+            #             TURN_ID += 1
+            #             HISTORY.append({"query": query_raw, "answer": hourly_ans, "route": "sensor"})
+            #             save_turn_to_s3(SESSION_ID, TURN_ID, "sensor", query_raw, hourly_ans, top_docs=[])
+            #     continue
 
-            # 0-2) 일간 요약 요청이면 houravg 데이터로 처리
-            daily_ans = show_daily_summary_if_requested(query_raw)
-            if daily_ans:
-                print(f"\n{daily_ans}")
-                if ENABLE_CHATLOG_SAVE:
-                    if session:
-                        turn_id = session.increment_turn()
-                        session.add_to_history(query_raw, daily_ans, "sensor")
-                        save_turn_to_s3(session.session_id, turn_id, "sensor", query_raw, daily_ans, top_docs=[])
-                    else:
-                        TURN_ID += 1
-                        HISTORY.append({"query": query_raw, "answer": daily_ans, "route": "sensor"})
-                        save_turn_to_s3(SESSION_ID, TURN_ID, "sensor", query_raw, daily_ans, top_docs=[])
-                continue
+            # 0-2) 일간 요약 요청이면 houravg 데이터로 처리 (임시 비활성화 - LLM 응답 위해)
+            # daily_ans = show_daily_summary_if_requested(query_raw)
+            # if daily_ans:
+            #     print(f"\n{daily_ans}")
+            #     if ENABLE_CHATLOG_SAVE:
+            #         if session:
+            #             turn_id = session.increment_turn()
+            #             session.add_to_history(query_raw, daily_ans, "sensor")
+            #             save_turn_to_s3(session.session_id, turn_id, "sensor", query_raw, daily_ans, top_docs=[])
+            #         else:
+            #             TURN_ID += 1
+            #             HISTORY.append({"query": query_raw, "answer": daily_ans, "route": "sensor"})
+            #             save_turn_to_s3(SESSION_ID, TURN_ID, "sensor", query_raw, daily_ans, top_docs=[])
+            #     continue
 
             # 0-3) 후속질문이라면 직전 센서 구간을 자동 주입
             query = expand_followup_query_with_last_window(query_raw, session)
@@ -2495,7 +3218,11 @@ def chat_loop(session=None):
             _reset_last_ctx(session)
 
             # 2) 먼저 S3 로그에서 해당 시간의 센서 데이터 찾기 시도
-            cached_sensor_data = find_sensor_data_from_s3_logs(query)
+            # 복수 시간 쿼리는 캐시를 건너뛰고 직접 검색
+            dt_strings = extract_datetime_strings(query)
+            is_multiple_time_query = len(dt_strings) > 1
+            
+            cached_sensor_data = None if is_multiple_time_query else find_sensor_data_from_s3_logs(query)
             
             if cached_sensor_data:
                 # S3 로그에서 데이터를 찾은 경우
@@ -2546,11 +3273,15 @@ def chat_loop(session=None):
 
             # 4) 정확 매칭 실패 → RAG 또는 일반
             # 데이터가 있으면 RAG, 없으면 일반 LLM
-            has_sensor_data = top_docs and any(d.get("schema") in {"raw_list","minavg","houravg","mintrend"} or 
+            has_sensor_data = top_docs and any(d.get("schema") in {"raw_list","minavg","houravg","mintrend","daily_average","closest_sensor"} or 
                                                any(pattern in d.get("id", "").lower() 
-                                                   for pattern in ["rawdata", "houravg", "minavg", "mintrend"])
+                                                   for pattern in ["rawdata", "houravg", "minavg", "mintrend", "daily_avg"])
                                                for d in top_docs)
             use_rag = has_sensor_data and (top_docs[0]["score"] >= RELEVANCE_THRESHOLD)
+            
+            print(f"[DEBUG] has_sensor_data: {has_sensor_data}, use_rag: {use_rag}")
+            if top_docs:
+                print(f"[DEBUG] 첫 번째 문서 스키마: {top_docs[0].get('schema')}, 점수: {top_docs[0].get('score')}")
             
             if use_rag:
                 # 세션별 히스토리 사용
