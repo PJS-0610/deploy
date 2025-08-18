@@ -42,10 +42,9 @@ export class IoTService {
         id: controlLog.id,
         timestamp: controlLog.timestamp,
         sensor_type: controlLog.sensor_type,
-        value: controlLog.value,
+        before_value: controlLog.before_value,
         status: controlLog.status,
-        action: controlLog.action,
-        result: controlLog.result
+        after_value: controlLog.after_value
       };
 
       // JSON을 한 줄로 압축
@@ -116,10 +115,9 @@ export class IoTService {
         id: controlLog.id,
         timestamp: controlLog.timestamp,
         sensor_type: controlLog.sensor_type,
-        value: controlLog.value,
+        before_value: controlLog.before_value,
         status: controlLog.status,
-        action: controlLog.action,
-        result: controlLog.result
+        after_value: controlLog.after_value
       };
 
       const payload = JSON.stringify(message);

@@ -6,10 +6,9 @@ export interface ControlLogEntity {
   id: string;                // 제어 로그 ID (예: "0000001")
   timestamp: string;         // 타임스탬프 (예: "2025-08-18T14:59:00")
   sensor_type: string;       // 센서 타입 (예: "temp", "humidity", "gas")
-  value: number;            // 설정값 (예: 25.0)
+  before_value: number;      // 이전값 (예: 22.5)
   status: string;           // 상태 (예: "good", "warning", "critical")
-  action: string;           // 액션 (예: "↓ 3", "↑ 2", "maintain")
-  result: string;           // 결과 (예: "OK", "FAILED", "PENDING")
+  after_value: number;       // 설정 후 값 (예: 25.0)
 }
 
 @Injectable()
