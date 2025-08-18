@@ -47,7 +47,8 @@ export type AppRoute =
   | 'userCode'     // 🔢 사용자 코드 입력 화면
   | 'dashboard'    // 📊 메인 대시보드 (인증 후)
   | 'chatbot'      // 🤖 챗봇 화면
-  | 'history';     // 📝 히스토리 화면
+  | 'history'      // 📝 히스토리 화면
+  | 'settings';    // ⚙️ 설정 화면
 
 /**
  * 👤 사용자 역할 타입

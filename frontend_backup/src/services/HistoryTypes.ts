@@ -93,6 +93,7 @@ export interface HistoryScreenProps {
   onNavigateToHistory: () => void;
   onNavigateToRole?: () => void;
   onNavigateToDashboard: () => void;
+  onNavigateToSettings?: () => void;  // 설정 페이지로 이동
   activeMenu: string;
   setActiveMenu: (menu: string) => void;
 }

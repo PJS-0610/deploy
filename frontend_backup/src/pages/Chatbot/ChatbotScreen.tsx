@@ -42,6 +42,7 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
   onNavigateToHistory,
   onNavigateToRole,
   onNavigateToDashboard,
+  onNavigateToSettings,
   activeMenu,
   setActiveMenu,
 }) => {
@@ -97,6 +98,9 @@ const useCurrentTime = () => {
         break;
       case 'History':
         onNavigateToHistory();
+        break;
+      case 'Settings':
+        onNavigateToSettings?.();
         break;
       case 'Chatbot':
         // 챗봇 화면이므로 현재 화면 유지

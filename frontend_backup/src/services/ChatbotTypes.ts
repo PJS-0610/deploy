@@ -81,6 +81,7 @@ export interface ChatbotScreenProps {
   onNavigateToHistory: () => void;
   onNavigateToRole: () => void;                // App.tsx에서 넘김
   onNavigateToDashboard: () => void;
+  onNavigateToSettings?: () => void;           // 설정 페이지로 이동
   activeMenu: string;
   setActiveMenu: (menu: string) => void;
 }

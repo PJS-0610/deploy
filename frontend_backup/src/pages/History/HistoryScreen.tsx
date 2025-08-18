@@ -45,6 +45,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
   onNavigateToHistory,      // 히스토리 화면으로 이동 (현재 화면)
   onNavigateToRole,         // 역할 선택 화면으로 이동 (로그아웃)
   onNavigateToDashboard,    // 대시보드 화면으로 이동
+  onNavigateToSettings,     // 설정 화면으로 이동
   activeMenu,               // 현재 활성화된 메뉴
   setActiveMenu             // 메뉴 변경 함수
 }) => {
@@ -118,6 +119,9 @@ const {
         break;
       case 'History':
         onNavigateToHistory();       // 현재 히스토리 화면 (새로고침)
+        break;
+      case 'Settings':
+        onNavigateToSettings?.();    // 설정 화면으로 이동
         break;
       case 'Logout':
         onNavigateToRole?.();        // 로그아웃 - 역할 선택 화면으로

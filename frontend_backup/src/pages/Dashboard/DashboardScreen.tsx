@@ -74,6 +74,7 @@ import AnomalyAlert from './hooks/AnomalyAlert';
 interface DashboardScreenProps {
   onNavigateToChatbot: () => void;   // 챗봇 화면으로 이동하는 콜백 함수
   onNavigateToHistory: () => void;   // 히스토리 화면으로 이동하는 콜백 함수
+  onNavigateToSettings?: () => void; // 설정 화면으로 이동하는 콜백 함수 (선택적)
   onNavigateToRole?: () => void;     // 역할 선택(로그아웃) 화면으로 이동하는 콜백 함수 (선택적)
 }
 
@@ -383,6 +384,7 @@ const QuickSightDashboard: React.FC<{
 const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onNavigateToChatbot,
   onNavigateToHistory,
+  onNavigateToSettings,
   onNavigateToRole,
 }) => {
   const [activeMenu, setActiveMenu] = useState('Dashboard');
@@ -515,6 +517,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
         break;
       case 'History':
         onNavigateToHistory();
+        break;
+      case 'Settings':
+        onNavigateToSettings?.();
         break;
       case 'Dashboard':
         // 대시보드면 현재 화면 유지
