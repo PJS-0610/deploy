@@ -9,6 +9,7 @@ import { S3Controller } from './s3/s3.controller';
 import { QuickSightModule } from './quicksight/quicksight.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { LoginModule } from './login/login.module';
+import { ControlModule } from './control/control.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -30,7 +31,8 @@ import { AppService } from './app.service';
     S3Module, 
     QuickSightModule, 
     ChatbotModule, 
-    LoginModule
+    LoginModule,
+    ControlModule
   ],
   controllers: [AppController, HealthController, S3Controller],
   providers: [AppService],

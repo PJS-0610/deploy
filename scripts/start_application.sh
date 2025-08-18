@@ -92,6 +92,8 @@ if ! command -v aws &> /dev/null; then
     export PATH=$PATH:/usr/local/bin
 fi
 
+# DynamoDB 테이블이 이미 생성되어 있다고 가정
+
 # 환경변수 파일 생성
 echo "환경변수 설정 중..."
 
@@ -120,6 +122,11 @@ REACT_APP_ADMIN_API_KEY=$(aws ssm get-parameter --name "/test_pjs/backend/ADMIN_
 # 도메인 정보
 DOMAIN_NAME=$(aws ssm get-parameter --name "/test_pjs/domain" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "localhost")
 
+# IoT Core 설정
+IOT_ENDPOINT_URL=$(aws ssm get-parameter --name "/test_pjs/backend/IOT_ENDPOINT_URL" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "https://your-iot-endpoint.iot.ap-northeast-2.amazonaws.com")
+IOT_TOPIC_CONTROL=$(aws ssm get-parameter --name "/test_pjs/backend/IOT_TOPIC_CONTROL" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "device/control/environment")
+DYNAMODB_CONTROL_TABLE=$(aws ssm get-parameter --name "/test_pjs/backend/DYNAMODB_CONTROL_TABLE" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "EnvironmentControlLogs")
+
 echo "환경변수 확인:"
 echo "- S3_BUCKET_NAME=$S3_BUCKET_NAME"
 echo "- AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID"
@@ -127,6 +134,9 @@ echo "- AWS_REGION=$AWS_REGION"
 echo "- BACKEND_PORT=$BACKEND_PORT"
 echo "- PORT=$PORT"
 echo "- DOMAIN_NAME=$DOMAIN_NAME"
+echo "- IOT_ENDPOINT_URL=$IOT_ENDPOINT_URL"
+echo "- IOT_TOPIC_CONTROL=$IOT_TOPIC_CONTROL"
+echo "- DYNAMODB_CONTROL_TABLE=$DYNAMODB_CONTROL_TABLE"
 echo "- ADMIN_API_KEY=***[SECURED]***"
 
 # 백엔드 .env 파일 생성
@@ -153,6 +163,9 @@ DOMAIN_NAME=$DOMAIN_NAME
 ADMIN_API_KEY=$ADMIN_API_KEY
 RATE_LIMIT_TTL=60
 RATE_LIMIT_LIMIT=20
+IOT_ENDPOINT_URL=$IOT_ENDPOINT_URL
+IOT_TOPIC_CONTROL=$IOT_TOPIC_CONTROL
+DYNAMODB_CONTROL_TABLE=$DYNAMODB_CONTROL_TABLE
 EOF
 
 # .env 파일 생성 확인
@@ -369,6 +382,14 @@ server {
 
     location /login/ {
         proxy_pass http://127.0.0.1:${BACKEND_PORT}/login/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /control/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT}/control/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
