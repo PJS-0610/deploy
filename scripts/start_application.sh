@@ -115,6 +115,7 @@ ADMIN_API_KEY=$(aws ssm get-parameter --name "/test_pjs/backend/ADMIN_API_KEY" -
 PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3002")
 REACT_APP_API_BASE_URL=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE_URL" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "https://aws2aws2.com")
 REACT_APP_DEBUG=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_DEBUG" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "false")
+REACT_APP_ADMIN_API_KEY=$(aws ssm get-parameter --name "/test_pjs/backend/ADMIN_API_KEY" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "admin-0816-key-0610-aws2")
 
 # 도메인 정보
 DOMAIN_NAME=$(aws ssm get-parameter --name "/test_pjs/domain" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "localhost")
@@ -169,6 +170,7 @@ mkdir -p /home/ec2-user/app/frontend_backup
 cat > /home/ec2-user/app/frontend_backup/.env << EOF
 REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
 REACT_APP_DEBUG=$REACT_APP_DEBUG
+REACT_APP_ADMIN_API_KEY=$REACT_APP_ADMIN_API_KEY
 REACT_APP_ENV=production
 PORT=$PORT
 BROWSER=none
