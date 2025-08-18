@@ -15,13 +15,24 @@ if [ -d "/home/ec2-user/app" ]; then
     find /home/ec2-user/app -name ".env.example" -delete 2>/dev/null || true
     find /home/ec2-user/app -name ".env" -delete 2>/dev/null || true
     
-    # 기타 충돌 가능한 파일들 제거
-    rm -f /home/ec2-user/app/package.json
-    rm -f /home/ec2-user/app/package-lock.json
-    rm -f /home/ec2-user/app/ecosystem.config.js
-    rm -f /home/ec2-user/app/appspec.yml
-    rm -f /home/ec2-user/app/README.md
-    rm -f /home/ec2-user/app/DEPLOYMENT_BLOCKED.md
+    # 패키지 및 설정 파일들 모든 하위 디렉토리에서 제거
+    find /home/ec2-user/app -name "package.json" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "package-lock.json" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "yarn.lock" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "pnpm-lock.yaml" -delete 2>/dev/null || true
+    
+    # 문서 파일들 모든 하위 디렉토리에서 제거  
+    find /home/ec2-user/app -name "README*" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "CHANGELOG*" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "LICENSE*" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "DEPLOYMENT_BLOCKED.md" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "*.md" -not -path "*/node_modules/*" -delete 2>/dev/null || true
+    
+    # 설정 파일들 모든 하위 디렉토리에서 제거
+    find /home/ec2-user/app -name "appspec.yml" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "ecosystem.config.js" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "docker-compose.yml" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "Dockerfile*" -delete 2>/dev/null || true
     
     # 스크립트 디렉토리 정리
     rm -rf /home/ec2-user/app/scripts
@@ -39,6 +50,10 @@ if [ -d "/home/ec2-user/app" ]; then
     find /home/ec2-user/app -name ".nvmrc" -delete 2>/dev/null || true
     find /home/ec2-user/app -name ".npmrc" -delete 2>/dev/null || true
     find /home/ec2-user/app -name ".DS_Store" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "tsconfig*.json" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "jest.config*" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "babel.config*" -delete 2>/dev/null || true
+    find /home/ec2-user/app -name "webpack.config*" -delete 2>/dev/null || true
     
     # 빌드 및 캐시 디렉토리 정리 - 모든 하위 디렉토리 포함
     find /home/ec2-user/app -type d -name "node_modules" -exec rm -rf {} + 2>/dev/null || true
@@ -54,17 +69,18 @@ if [ -d "/home/ec2-user/app" ]; then
     find /home/ec2-user/app -name "*.tmp" -delete 2>/dev/null || true
     find /home/ec2-user/app -name ".*~" -delete 2>/dev/null || true
     
-    echo "기존 파일 정리 완료 (모든 하위 디렉토리 포함)"
+    echo "기존 파일 정리 완료 (모든 하위 디렉토리 완전 정리)"
     echo "정리된 항목들:"
-    echo "- Git 관련 파일들: 모든 .gitignore, .gitattributes, .git* 파일들"
-    echo "- IDE 설정 디렉토리들: .idea, .vscode, .vs, .github 디렉토리들"
-    echo "- 빌드 및 캐시 디렉토리들: node_modules, dist, build, .cache 등"
-    echo "- 환경변수 파일들: .env, .env.example 파일들"
-    echo "- 패키지 설정 파일들: package.json, ecosystem.config.js 등"
-    echo "- 개발 도구 설정들: .eslintrc*, .prettierrc*, .npmrc 등"
-    echo "- 문서 파일들: README.md, DEPLOYMENT_BLOCKED.md 등"
-    echo "- 로그 및 임시 파일들: *.log, *.tmp, logs 디렉토리들"
-    echo "- 기타: scripts 디렉토리, .DS_Store, 백업 파일들"
+    echo "- Git 관련 파일들: .gitignore, .gitattributes, .git* (모든 위치)"
+    echo "- IDE 설정 디렉토리들: .idea/, .vscode/, .vs/, .github/ (모든 위치)"
+    echo "- 빌드 및 캐시 디렉토리들: node_modules/, dist/, build/, .cache/ 등 (모든 위치)"
+    echo "- 환경변수 파일들: .env, .env.example (모든 위치)"
+    echo "- 패키지 설정 파일들: package.json, package-lock.json, yarn.lock 등 (모든 위치)"
+    echo "- 문서 파일들: README*, CHANGELOG*, LICENSE*, *.md (모든 위치) ← 포함!"
+    echo "- 개발 도구 설정들: .eslintrc*, .prettierrc*, tsconfig*.json 등 (모든 위치)"
+    echo "- 설정 파일들: appspec.yml, ecosystem.config.js, docker-compose.yml 등"
+    echo "- 로그 및 임시 파일들: *.log, *.tmp, logs/ 디렉토리들"
+    echo "- 기타: scripts 디렉토리, .DS_Store, 백업 파일들, Dockerfile 등"
 else
     echo "새로운 배포: 애플리케이션 디렉토리 생성"
     mkdir -p /home/ec2-user/app
