@@ -146,8 +146,29 @@ export class ChatbotService {
         }
 
         try {
+          // 로그 메시지를 제외하고 JSON만 추출
+          const lines = stdout.trim().split('\n');
+          let jsonString = '';
+          let foundStart = false;
+          
+          for (const line of lines) {
+            if (line.trim().startsWith('{')) {
+              foundStart = true;
+            }
+            if (foundStart) {
+              jsonString += line + '\n';
+            }
+            if (foundStart && line.trim().endsWith('}')) {
+              break;
+            }
+          }
+          
+          if (!jsonString.trim()) {
+            throw new Error('No JSON found in output');
+          }
+          
           // JSON 파싱
-          const result = JSON.parse(stdout.trim());
+          const result = JSON.parse(jsonString.trim());
           
           // 에러 응답 체크
           if (result.error) {

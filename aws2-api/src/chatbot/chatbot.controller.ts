@@ -29,8 +29,10 @@ export class ChatbotController {
    * @apiDescription 파이썬 AI 챗봇에 질문을 전송하고 답변을 받습니다.
    * 센서 데이터 질문(온도, 습도, 공기질)과 일반 질문을 모두 처리할 수 있습니다.
    * 
+   * @apiHeader {String} X-API-Key API 인증 키 (필수)
+   * 
    * @apiBody {String} query 질문 내용
-   * @apiBody {String} [session_id] 선택적 세션 ID
+   * @apiBody {String} session_id 세션 ID (필수)
    * 
    * @apiSuccess {String} answer 챗봇 답변
    * @apiSuccess {String} route 라우팅 결과 (sensor/general/sensor_cache/sensor_detail/error)
@@ -44,7 +46,8 @@ export class ChatbotController {
    * @apiExample {curl} Example usage:
    *     curl -X POST http://localhost:3001/chatbot/ask \
    *          -H "Content-Type: application/json" \
-   *          -d '{"query": "현재 온도가 어때?"}'
+   *          -H "X-API-Key: your-api-key" \
+   *          -d '{"query": "현재 온도가 어때?", "session_id": "user123"}'
    * 
    * @apiSuccessExample {json} Success-Response:
    *     HTTP/1.1 200 OK
