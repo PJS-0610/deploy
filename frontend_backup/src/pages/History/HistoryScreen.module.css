@@ -1,6 +1,11 @@
-/* HistoryScreen.module.css - 레이아웃 및 공통 스타일만 유지 */
+/* HistoryScreen.module.css - History 페이지 스타일 */
 
-/* Layout */
+/* ===========================================
+   📊 History 페이지 메인 레이아웃
+   =========================================== */
+
+/* 전체 컨테이너 레이아웃 */
+/* 전체 컴테이너 레이아웃 */
 .container {
   display: flex;
   height: 100vh;
@@ -8,6 +13,7 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
+/* 메인 콘텐츠 영역 */
 .mainContent {
   flex: 1;
   display: flex;
@@ -16,13 +22,18 @@
   background-color: #ffffff;
 }
 
-/* Header */
+/* ===========================================
+   📋 헤더 섹션
+   =========================================== */
+
+/* 상단 헤더 */
 .header {
   background: white;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   border-bottom: 1px solid #e5e7eb;
 }
 
+/* 헤더 콘텐츠 컴테이너 */
 .headerContent {
   display: flex;
   align-items: center;
@@ -30,6 +41,7 @@
   padding: 16px 24px;
 }
 
+/* 헤더 제목 */
 .headerTitle {
   font-size: 24px;
   font-weight: bold;
@@ -37,23 +49,30 @@
   margin: 0;
 }
 
+/* 헤더 부제목 */
 .headerSubtitle {
   color: #333333;
   margin: 4px 0 0 0;
   font-size: 14px;
 }
 
+/* 헤더 액션 버튼들 (알림, 관리자) */
 .headerActions {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
-/* Notification */
+/* ===========================================
+   🔔 알림 & 관리자 메뉴
+   =========================================== */
+
+/* 알림 컴테이너 */
 .notificationContainer {
   position: relative;
 }
 
+/* 알림 버튼 */
 .notificationButton {
   position: relative;
   padding: 8px;
@@ -70,6 +89,7 @@
   background-color: #f3f4f6;
 }
 
+/* 알림 배지 (숫자 표시) */
 .notificationBadge {
   position: absolute;
   top: -4px;
@@ -123,6 +143,10 @@
   font-weight: 500;
 }
 
+/* ===========================================
+   📈 히스토리 메인 콘텐츠
+   =========================================== */
+
 /* 히스토리 메인 컨테이너 */
 .historyMain {
   flex: 1;
@@ -131,12 +155,13 @@
   background-color: #ffffff;
 }
 
+/* 히스토리 콘텐츠 (최대 너비 제한) */
 .historyContent {
   max-width: 1200px;
   margin: 0 auto;
 }
 
-/* 테이블 섹션 */
+/* 테이블 섹션 컨테이너 */
 .tableSection {
   background: white;
   border-radius: 12px;
@@ -145,7 +170,7 @@
   border: 1px solid #e5e7eb;
 }
 
-/* 에러 상태 */
+/* 에러 상태 메시지 */
 .error {
   background-color: #fee2e2;
   color: #991b1b;
@@ -156,7 +181,11 @@
   border-left: 4px solid #ef4444;
 }
 
-/* 반응형 디자인 */
+/* ===========================================
+   📱 반응형 디자인 (모바일 최적화)
+   =========================================== */
+
+/* 태블릿 (1024px 이하) */
 @media (max-width: 1024px) {
   .historyMain {
     padding: 16px;
@@ -166,12 +195,180 @@
     padding: 16px;
     overflow-x: auto;
   }
+  
+  .filterBar {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .filterActions {
+    margin-left: 0;
+    align-self: center;
+  }
 }
 
+/* 태블릿 & 모바일 (768px 이하) */
 @media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+  
+  .historyMain {
+    padding: 12px;
+  }
+  
+  .headerContent {
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .headerTitle {
+    font-size: 20px;
+    text-align: center;
+  }
+  
+  .headerSubtitle {
+    text-align: center;
+  }
+  
+  .headerActions {
+    justify-content: center;
+  }
+  
   .tableSection {
     padding: 12px;
     margin-bottom: 16px;
+    border-radius: 8px;
+  }
+  
+  .filterBar {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    gap: 12px;
+  }
+  
+  .dateInput {
+    min-width: 100%;
+    padding: 12px;
+    font-size: 16px; /* 모바일 줌 방지 */
+    border-radius: 8px;
+  }
+  
+  .filterPill {
+    padding: 10px 12px;
+    font-size: 14px;
+    min-height: 44px; /* 터치 최적화 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .resetBtn {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 44px;
+    border-radius: 8px;
+    width: 100%;
+  }
+  
+  .table {
+    min-width: 600px;
+    font-size: 13px;
+  }
+  
+  .table thead th,
+  .table tbody td {
+    padding: 8px 12px;
+  }
+  
+  .historyStatus {
+    min-width: 70px;
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+}
+
+/* 소형 모바일 (480px 이하) */
+@media (max-width: 480px) {
+  .historyMain {
+    padding: 8px;
+  }
+  
+  .headerContent {
+    padding: 8px 12px;
+  }
+  
+  .headerTitle {
+    font-size: 18px;
+  }
+  
+  .tableSection {
+    padding: 8px;
+    border-radius: 6px;
+  }
+  
+  .filterBar {
+    padding: 8px 12px;
+    border-radius: 6px;
+  }
+  
+  .filterGroup {
+    gap: 6px;
+  }
+  
+  .filterLabel {
+    font-size: 11px;
+  }
+  
+  .dateInput {
+    padding: 14px;
+    border-radius: 6px;
+  }
+  
+  .pillRow {
+    gap: 6px;
+  }
+  
+  .filterPill {
+    padding: 12px 14px;
+    font-size: 13px;
+    min-height: 48px;
+    border-radius: 12px;
+  }
+  
+  .resetBtn {
+    padding: 14px 18px;
+    font-size: 13px;
+    min-height: 48px;
+    border-radius: 6px;
+  }
+  
+  .table {
+    min-width: 500px;
+    font-size: 12px;
+  }
+  
+  .table thead th,
+  .table tbody td {
+    padding: 6px 8px;
+  }
+  
+  .table th:nth-child(1), .table td:nth-child(1) { width: 60px; }
+  .table th:nth-child(2), .table td:nth-child(2) { width: 140px; }
+  .table th:nth-child(3), .table td:nth-child(3) { width: 120px; }
+  .table th:nth-child(4), .table td:nth-child(4) { width: 100px; }
+  .table th:nth-child(5), .table td:nth-child(5) { width: 80px; }
+  
+  .historyStatus {
+    min-width: 60px;
+    font-size: 10px;
+    padding: 2px 6px;
   }
 }
 

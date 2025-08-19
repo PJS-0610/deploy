@@ -1,3 +1,10 @@
+/* SettingScreen.module.css - Settings 페이지 스타일 */
+
+/* ===========================================
+   📱 메인 레이아웃 & 컨테이너
+   =========================================== */
+
+/* 전체 대시보드 컨테이너 */
 .dashboardContainer {
   display: flex;
   height: 100vh;
@@ -6,6 +13,7 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
+/* 백업용 컨테이너 (사용 안 함) */
 .container {
   display: flex;
   height: 100vh;
@@ -14,6 +22,7 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
+/* 메인 콘텐츠 영역 */
 .mainContent {
   flex: 1;
   display: flex;
@@ -21,6 +30,11 @@
   overflow: hidden;
 }
 
+/* ===========================================
+   📋 헤더 섹션
+   =========================================== */
+
+/* 상단 헤더 */
 .header {
   background: #fff;
   padding: 16px 24px;
@@ -31,12 +45,14 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
+/* 헤더 왼쪽 영역 (제목 & 부제목) */
 .headerLeft {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
+/* 페이지 제목 */
 .pageTitle {
   margin: 0;
   font-size: 28px;
@@ -44,18 +60,24 @@
   color: #1f2937;
 }
 
+/* 페이지 부제목 (현재 시간 표시) */
 .pageSubtitle {
   margin: 0;
   font-size: 14px;
   color: #6b7280;
 }
 
+/* 헤더 오른쪽 영역 (알림, 관리자 메뉴) */
 .headerRight {
   display: flex;
   align-items: center;
   gap: 16px;
   position: relative;
 }
+
+/* ===========================================
+   ⚙️ 메인 콘텐츠 영역
+   =========================================== */
 
 /* 대시보드 컨텐츠 영역 */
 .dashboardContent {
@@ -65,22 +87,25 @@
   background-color: #f8f9fa;
 }
 
-/* 설정 컨테이너 */
+/* 설정 페이지 메인 컨테이너 */
 .settingContainer {
   max-width: 100%;
   width: 100%;
 }
 
+/* 설정 페이지 헤더 (사용 안 함) */
 .settingHeader {
   margin-bottom: 20px;
 }
 
+/* 부제목 스타일 */
 .subtitle {
   color: #6b7280;
   font-size: 14px;
   margin: 0 0 16px 0;
 }
 
+/* 헤더 행 레이아웃 */
 .headerRow {
   display: flex;
   justify-content: space-between;
@@ -88,23 +113,29 @@
   margin-bottom: 16px;
 }
 
+/* 디버그 정보 텍스트 */
 .debug {
   color: #6b7280;
   font-size: 12px;
   margin: 0;
 }
 
+/* 액션 버튼 그룹 */
 .actions {
   display: flex;
   gap: 8px;
 }
+
+/* ===========================================
+   🎛️ 설정 카드 & 그리드 레이아웃
+   =========================================== */
 
 /* 메인 콘텐츠 영역 */
 .main {
   width: 100%;
 }
 
-/* 메인 카드 스타일 */
+/* 메인 설정 카드 */
 .card {
   background-color: #ffffff;
   border-radius: 12px;
@@ -116,23 +147,23 @@
   box-sizing: border-box;
 }
 
-/* 그리드 레이아웃 - 새로운 스타일 */
+/* 2열 그리드 레이아웃 (센서 데이터 | 컨트롤) */
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;  /* ← 이 부분 수정 */
+  grid-template-columns: 1fr 1.2fr;  /* 센서 데이터 : 컨트롤 = 1 : 1.2 비율 */
   gap: 32px;
   margin-bottom: 24px;
   width: 100%;
   min-height: 200px;
 }
 
-/* 그리드 아이템들 */
+/* 그리드 아이템 기본 스타일 */
 .grid > div {
   min-height: 300px;
   padding: 0;
 }
 
-/* 섹션 타이틀 */
+/* 섹션 제목 (SENSOR DATA, CONTROLS) */
 .sectionTitle {
   font-size: 18px;
   font-weight: 600;
@@ -142,12 +173,16 @@
   border-bottom: 2px solid #e5e7eb;
 }
 
-/* 현재값 아이템 */
+/* ===========================================
+   📈 센서 데이터 & 컨트롤 아이템
+   =========================================== */
+
+/* 센서 데이터/컨트롤 개별 아이템 */
 .currentItem {
   display: flex;
   justify-content: space-between;
   display: flex;
-justify-content: center;   /* ← 전체 가운데 */
+justify-content: center;   /* 전체 가운데 정렬 */
 gap: 16px;    
   align-items: center;
   padding: 16px;
@@ -159,16 +194,19 @@ gap: 16px;
   box-sizing: border-box;
 }
 
+/* 센서 이름 영역 (왼쪽) */
 .currentLeft {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
+/* 센서 아이콘 */
 .icon {
   font-size: 20px;
 }
 
+/* 센서 이름 (TEMPERATURE, HUMIDITY, CO₂ CONCENTRATION) */
 .currentName {
   font-weight: 500;
   color: #374151;
@@ -288,7 +326,11 @@ gap: 8px;
   box-sizing: border-box;
 }
 
-/* 버튼 스타일 */
+/* ===========================================
+   📎 버튼 스타일
+   =========================================== */
+
+/* 기본 버튼 스타일 */
 .btn {
   border: none;
   border-radius: 6px;
@@ -301,6 +343,7 @@ gap: 8px;
   white-space: nowrap;
 }
 
+/* 기본 버튼 (회색) */
 .btnPrimary {
   background-color: #1f2937;
   color: white;
@@ -310,6 +353,7 @@ gap: 8px;
   background-color: #374151;
 }
 
+/* 성공 버튼 (녹색) */
 .btnSuccess {
   background-color: #15803d;
   color: white;
@@ -319,6 +363,7 @@ gap: 8px;
   background-color: #166534;
 }
 
+/* AI 추천 버튼 (주황색) */
 .btnViolet {
   background-color: #f59e0b;
   color: white;
@@ -328,6 +373,7 @@ gap: 8px;
   background-color: #f59e0b;
 }
 
+/* REFRESH 버튼 (슬레이트) */
 .btnSlate {
   background-color: #64748b;
   color: white;
@@ -627,7 +673,11 @@ gap: 8px;
   font-style: italic;
 }
 
-/* 반응형 디자인 */
+/* ===========================================
+   📱 반응형 디자인 (모바일 최적화)
+   =========================================== */
+
+/* 태블릿 (1024px 이하) */
 @media (max-width: 1024px) {
   .grid {
     grid-template-columns: 1fr;
@@ -645,6 +695,192 @@ gap: 8px;
   
   .footerActions {
     justify-content: center;
+  }
+}
+
+/* 태블릿 & 모바일 (768px 이하) */
+@media (max-width: 768px) {
+  .dashboardContent {
+    padding: 16px;
+  }
+  
+  .header {
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .headerRight {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .pageTitle {
+    font-size: 24px;
+    text-align: center;
+  }
+  
+  .card {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .grid {
+    gap: 16px;
+  }
+  
+  .sectionTitle {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .currentItem {
+    padding: 12px;
+    margin: 8px 0;
+  }
+  
+  .currentName {
+    font-size: 14px;
+  }
+  
+  .currentValue {
+    font-size: 16px;
+  }
+  
+  .input {
+    padding: 12px;
+    font-size: 16px; /* 모바일에서 줌 방지 */
+  }
+  
+  .btn {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 44px; /* 터치 최적화 */
+  }
+  
+  .footerActions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .table {
+    min-width: 500px;
+    font-size: 13px;
+  }
+  
+  .table th,
+  .table td {
+    padding: 8px;
+  }
+  
+  .notificationDropdown {
+    width: 280px;
+    right: -20px;
+  }
+}
+
+/* 소형 모바일 (480px 이하) */
+@media (max-width: 480px) {
+  .dashboardContainer {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+  
+  .dashboardContent {
+    padding: 12px;
+  }
+  
+  .header {
+    padding: 12px;
+  }
+  
+  .pageTitle {
+    font-size: 20px;
+  }
+  
+  .card {
+    padding: 12px;
+    border-radius: 8px;
+  }
+  
+  .cardLogs {
+    padding: 12px;
+  }
+  
+  .sectionTitle {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  
+  .currentItem {
+    padding: 10px;
+    margin: 6px 0;
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+  
+  .currentLeft,
+  .currentRight {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .currentRight {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .input {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+  
+  .btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    min-height: 48px;
+    border-radius: 8px;
+  }
+  
+  .footerActions .btn {
+    margin-bottom: 8px;
+  }
+  
+  .table {
+    min-width: 400px;
+    font-size: 12px;
+  }
+  
+  .table th,
+  .table td {
+    padding: 6px 4px;
+  }
+  
+  .badge {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+  
+  .notificationDropdown {
+    width: calc(100vw - 40px);
+    right: -160px;
+    max-width: 300px;
+  }
+  
+  .logsHeader {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .logsTitle {
+    text-align: center;
+    font-size: 16px;
   }
 }
 /* ===== SENSOR DATA: 3열(이름 | 값 | 뱃지) 중앙정렬 + 세로 줄맞춤 ===== */
