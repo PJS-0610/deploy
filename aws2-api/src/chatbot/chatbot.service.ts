@@ -20,13 +20,13 @@ export class ChatbotService {
   /**
    * 챗봇에 질문을 전송하고 답변을 받습니다
    */
-  async askChatbot(queryDto: ChatbotQueryDto): Promise<ChatbotResponseDto> {
+  async askChatbot(queryDto: ChatbotQueryDto, sessionId: string): Promise<ChatbotResponseDto> {
     const startTime = Date.now();
     
     try {
       this.logger.log(`Processing query: ${queryDto.query.substring(0, 100)}...`);
       
-      const result = await this.executePythonScript(queryDto.query, queryDto.session_id);
+      const result = await this.executePythonScript(queryDto.query, sessionId);
       
       const processingTime = (Date.now() - startTime) / 1000;
       this.logger.log(`Query processed in ${processingTime.toFixed(2)}s, mode: ${result.mode}`);

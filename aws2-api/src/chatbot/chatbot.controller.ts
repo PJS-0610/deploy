@@ -10,6 +10,7 @@ import {
   ValidationPipe,
   Res,
   UseGuards,
+  Headers,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ThrottlerGuard } from '@nestjs/throttler';
@@ -30,9 +31,9 @@ export class ChatbotController {
    * 센서 데이터 질문(온도, 습도, 공기질)과 일반 질문을 모두 처리할 수 있습니다.
    * 
    * @apiHeader {String} X-API-Key API 인증 키 (필수)
+   * @apiHeader {String} X-Session-Id 세션 ID (필수)
    * 
    * @apiBody {String} query 질문 내용
-   * @apiBody {String} session_id 세션 ID (필수)
    * 
    * @apiSuccess {String} answer 챗봇 답변
    * @apiSuccess {String} route 라우팅 결과 (sensor/general/sensor_cache/sensor_detail/error)
@@ -47,7 +48,8 @@ export class ChatbotController {
    *     curl -X POST http://localhost:3001/chatbot/ask \
    *          -H "Content-Type: application/json" \
    *          -H "X-API-Key: your-api-key" \
-   *          -d '{"query": "현재 온도가 어때?", "session_id": "user123"}'
+   *          -H "X-Session-Id: user123" \
+   *          -d '{"query": "현재 온도가 어때?"}'
    * 
    * @apiSuccessExample {json} Success-Response:
    *     HTTP/1.1 200 OK
@@ -67,9 +69,10 @@ export class ChatbotController {
   @HttpCode(HttpStatus.OK)
   async askChatbot(
     @Body(ValidationPipe) queryDto: ChatbotQueryDto,
+    @Headers('x-session-id') sessionId: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<ChatbotResponseDto> {
-    const result = await this.chatbotService.askChatbot(queryDto);
+    const result = await this.chatbotService.askChatbot(queryDto, sessionId);
     
     // 캐시 설정 - 센서 데이터는 짧게, 일반 질문은 길게
     if (result.route === 'sensor' || result.route === 'sensor_cache') {

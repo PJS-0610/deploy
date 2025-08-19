@@ -6,10 +6,6 @@ export class ChatbotQueryDto {
   @IsString()
   @IsNotEmpty()
   query: string;
-
-  @IsString()
-  @IsNotEmpty()
-  session_id: string;
 }
 
 export class ChatbotResponseDto {

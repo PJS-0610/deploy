@@ -361,6 +361,7 @@
 // - 필요 시 Bearer/쿠키 인증도 옵션으로 확장
 
 import { ChatbotAPIType } from './ChatbotTypes';
+import { getSessionId } from '../utils/sessionUtils';
 
 // ======== 환경변수 & 기본값 ========
 
@@ -414,6 +415,9 @@ class ChatbotAPIImpl implements ChatbotAPIType {
     if (ADMIN_API_KEY) {
       headers[ADMIN_HEADER_NAME] = ADMIN_API_KEY;
     }
+
+    // 세션 ID 자동 첨부
+    headers['X-Session-Id'] = getSessionId();
 
     // 선택: Bearer 토큰
     if (BEARER_TOKEN) {
@@ -470,10 +474,9 @@ class ChatbotAPIImpl implements ChatbotAPIType {
   }
 
   // 메시지 전송
-  async sendMessage(text: string, sessionId?: string | null) {
+  async sendMessage(text: string) {
     const url = `${this.baseURL}${ASK_PATH}`;
     const requestBody: Record<string, unknown> = { query: text };
-    if (sessionId) requestBody.session_id = sessionId;
 
     const response = await this.fetchWithTimeout(url, {
       method: 'POST',

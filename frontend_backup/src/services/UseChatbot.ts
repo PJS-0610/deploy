@@ -94,8 +94,8 @@ export const useChatbot = () => {
     }));
 
     try {
-      // API 호출
-      const response = await ChatbotAPI.sendMessage(messageText, sessionIdRef.current);
+      // API 호출 (세션 ID는 헤더로 자동 전달됨)
+      const response = await ChatbotAPI.sendMessage(messageText);
       
       // 세션 ID 저장
       if (response.session_id) {
