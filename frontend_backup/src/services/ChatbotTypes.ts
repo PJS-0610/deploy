@@ -14,6 +14,7 @@ export interface ChatMessage {
   timestamp: string;        // ISO
   status?: 'Good' | 'Normal' | 'Warning';
   sensorData?: SensorData;  // UI에서 message.sensorData.* 접근
+  route?: 'sensor' | 'general' | 'sensor_cache' | 'sensor_detail' | 'error'; // 응답 라우팅 타입
 }
 
 // UseChatbot / ChatbotScreen에서 실제로 쓰는 상태 필드들
@@ -178,6 +179,7 @@ export const ChatbotUtils = {
       timestamp: new Date().toISOString(),
       status,
       sensorData,
+      route: 'sensor', // 웰컴 메시지는 센서 데이터를 포함하므로 sensor로 분류
     };
   },
 

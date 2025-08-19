@@ -11,8 +11,8 @@ interface ChatbotHeaderProps {
   onNewChat?: () => void;    // 새 채팅 버튼 콜백 추가
 }
 
-export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({ 
-  modelStatus, 
+export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({
+  modelStatus,
   onBackClick,
   onNewChat
 }) => {
@@ -55,47 +55,47 @@ export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div>
-          <h2 style={{ 
-            margin: 0, 
-            fontSize: '18px', 
+          <h2 style={{
+            margin: 0,
+            fontSize: '18px',
             fontWeight: '600',
             color: '#000105'
           }}>
             AWS² IoT 공기질 분석 챗봇
           </h2>
-    </div>
-
-          <p style={{
-            margin: '2px 0 0 0',
-            fontSize: '13px',
-            color: '#000105'
-          }}>
-            실시간 센서 데이터 및 환경 분석 AI
-          </p>
-                  {/* ✅ 여기로 이동 */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '6px 12px',
-        borderRadius: '20px',
-        backgroundColor: modelStatus === 'Active' ? '#ecfdf5' :
-                        modelStatus === 'Loading' ? '#fef3c7' : '#fef2f2',
-        border: `1px solid ${modelStatus === 'Active' ? '#d1fae5' :
-                              modelStatus === 'Loading' ? '#fde68a' : '#fecaca'}`,
-        fontSize: '13px'
-      }}>
-        <span style={{ color: getStatusColor() }}>
-          {getStatusIcon()}
-        </span>
-        <span style={{ color: getStatusColor(), fontWeight: '500' }}>
-          {getStatusText()}
-        </span>
-      </div>
         </div>
 
+        <p style={{
+          margin: '2px 0 0 0',
+          fontSize: '13px',
+          color: '#000105'
+        }}>
+          실시간 센서 데이터 및 환경 분석 AI
+        </p>
+        {/* ✅ 여기로 이동 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '6px 12px',
+          borderRadius: '20px',
+          backgroundColor: modelStatus === 'Active' ? '#ecfdf5' :
+            modelStatus === 'Loading' ? '#fef3c7' : '#fef2f2',
+          border: `1px solid ${modelStatus === 'Active' ? '#d1fae5' :
+            modelStatus === 'Loading' ? '#fde68a' : '#fecaca'}`,
+          fontSize: '13px'
+        }}>
+          <span style={{ color: getStatusColor() }}>
+            {getStatusIcon()}
+          </span>
+          <span style={{ color: getStatusColor(), fontWeight: '500' }}>
+            {getStatusText()}
+          </span>
+        </div>
+      </div>
 
-      
+
+
       {onNewChat && (
         <button
           onClick={onNewChat}
@@ -118,10 +118,10 @@ export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({
           type="button"
         >
           <Plus size={16} />
-          새 채팅
+          NEW CHAT
         </button>
       )}
-      
+
       <style>{`
         .loading-spinner {
           width: 16px;
@@ -182,6 +182,8 @@ export const SensorDataCard: React.FC<SensorDataCardProps> = ({ sensorData }) =>
   const badgeStyle = (status: string): React.CSSProperties => {
     const color = getStatusColor(status);
     return {
+      display: 'inline-flex',      // ✅ 추가
+      alignItems: 'center',
       padding: '2px 8px',
       borderRadius: 9999,
       border: `1px solid ${color}`,
@@ -194,48 +196,40 @@ export const SensorDataCard: React.FC<SensorDataCardProps> = ({ sensorData }) =>
   };
   return (
     <div style={{
-      marginTop: '12px',
-      padding: '12px',
-      backgroundColor: '#f7f7f8',
-      borderRadius: '8px',
-      fontSize: '13px',
-      border: '1px solid #ececf1'
+      marginTop: 0,                          // 위 여백 제거
+      padding: 10,                           // 패딩 살짝 줄임
+      backgroundColor: '#fff',               // 흰색 배경
+      borderRadius: 10,                      // 라운드 살짝 키움
+      border: '1px solid #e5e7eb',           // 더 중립적인 테두리
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04)', // 은은한 그림자
+      fontSize: 13,
+      minWidth: 300,                         // 카드 최소폭
+      maxWidth: 340                          // 카드 최대폭
     }}>
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'auto auto auto',
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        gap: '12',
-        fontSize: '18px'
+
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        fontSize: 15
       }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '10px',
-          color: 'black'
-        }}>
-          <span>🌡️TEMPERATURE</span>
+        {/* 1) TEMP */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#111827' }}>
+          <span>🌡️ TEMPERATURE</span>
           <span>{sensorData.temperature.toFixed(1)}°C</span>
           <span style={badgeStyle(tempStatus)}>{tempStatus}</span>
         </div>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '10px',
-          color: 'black'
-        }}>
-          <span>💧HUMIDITY</span>
+
+        {/* 2) HUMIDITY */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#111827' }}>
+          <span>💧 HUMIDITY</span>
           <span>{sensorData.humidity.toFixed(1)}%</span>
           <span style={badgeStyle(humStatus)}>{humStatus}</span>
         </div>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '10px',
-          color: 'black'
-        }}>
-          <span>💨CO₂ CONCENTRATION</span>
+
+        {/* 3) CO2 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#111827' }}>
+          <span>💨 CO₂ CONCENTRATION</span>
           <span>{sensorData.gasConcentration.toFixed(0)}ppm</span>
           <span style={badgeStyle(gasStatus)}>{gasStatus}</span>
         </div>
@@ -252,7 +246,7 @@ interface MessageItemProps {
 
 export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   const isUser = message.sender === 'user';
-  
+
   const getStatusColor = (status?: string) => {
     switch (status) {
       case 'Good': return '#10b981';
@@ -274,66 +268,215 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   const formatTime = (timestamp: string) => {
     try {
       const date = new Date(timestamp);
-      return date.toLocaleTimeString('ko-KR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return date.toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit'
       });
     } catch {
       return '';
     }
   };
 
+  // Route 기반 응답 타입 배지 정보
+  const getResponseTypeBadge = (route?: string) => {
+    if (!route) return null;
+    
+    switch (route) {
+      case 'sensor':
+      case 'sensor_cache':
+      case 'sensor_detail':
+        return {
+          text: 'RAG',
+          color: '#10b981', // 초록색 - RAG 응답
+          bgColor: '#dcfce7'
+        };
+      case 'general':
+        return {
+          text: 'LLM',
+          color: '#3b82f6', // 파란색 - 일반 LLM 응답
+          bgColor: '#dbeafe'
+        };
+      case 'error':
+        return {
+          text: 'ERROR',
+          color: '#ef4444', // 빨간색 - 에러
+          bgColor: '#fee2e2'
+        };
+      default:
+        return null;
+    }
+  };
+
   return (
-    <>
+    <div style={{
+      display: 'flex',
+      flexDirection: isUser ? 'row-reverse' : 'row',
+      alignItems: 'flex-start',
+      padding: '8px 16px',
+      gap: '12px',
+      maxWidth: '100%',
+      animation: 'fadeIn 0.3s ease-out'
+    }}>
+      {/* 프로필 아이콘 */}
       <div style={{
-        width: '100%',
-        backgroundColor: isUser ? '#f7f7f8' : '#ffffff',
-        borderTop: isUser ? 'none' : '1px solid #ececf1',
-        padding: '32px 24px',
-        position: 'relative'
+        width: '36px',
+        height: '36px',
+        borderRadius: '50%',
+        backgroundColor: isUser ? '#007bff' : '#28a745',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        fontSize: '16px',
+        color: 'white',
+        fontWeight: '600',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
       }}>
-        {/* 사용자 */}
+        {isUser ? '👤' : '🤖'}
+      </div>
+
+      {/* 메시지 컨테이너 */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        maxWidth: '70%',
+        gap: '4px'
+      }}>
+        {/* 사용자명 */}
         <div style={{
-          fontSize: '14px',
+          fontSize: '12px',
           fontWeight: '600',
-          color: isUser ? '#8e8ea0' : '#19c37d',
-          marginBottom: '12px',
-          textTransform: 'uppercase' as const
+          color: '#6b7280',
+          marginLeft: isUser ? 'auto' : '0',
+          marginRight: isUser ? '0' : 'auto'
         }}>
-          {isUser ? 'You' : 'CHATBOT'}
+          {isUser ? 'You' : 'AI Assistant'}
         </div>
-        
-        <div style={{ 
-          whiteSpace: 'pre-wrap',
-          lineHeight: '1.5',
-          fontSize: '16px',
-          color: '#353740'
-        }}>
-          {message.message}
-        </div>
-        
-        {/* 센서 데이터 표시 */}
-        {message.sensorData && !isUser && (
-          <SensorDataCard sensorData={message.sensorData} />
-        )}
-        
-        {/* 타임스탬프 (선택적으로 표시) */}
+
+        {/* 메시지 말풍선 */}
         <div style={{
-          marginTop: '8px',
-          fontSize: '11px',
-          color: '#8e8ea0'
+          backgroundColor: isUser ? '#007bff' : '#f1f3f4',
+          color: isUser ? 'white' : '#202124',
+          borderRadius: '18px',
+          padding: '12px 16px',
+          fontSize: '14px',
+          lineHeight: '1.4',
+          wordWrap: 'break-word',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+          position: 'relative',
+          maxWidth: 'fit-content'
         }}>
-          {formatTime(message.timestamp)}
+          {/* 말풍선 꼬리 */}
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            [isUser ? 'right' : 'left']: '-8px',
+            width: '0',
+            height: '0',
+            borderStyle: 'solid',
+            borderWidth: isUser ? '8px 0 8px 8px' : '8px 8px 8px 0',
+            borderColor: isUser 
+              ? `transparent transparent transparent #007bff`
+              : `transparent #f1f3f4 transparent transparent`
+          }} />
+          
+          <div style={{ whiteSpace: 'pre-wrap' }}>
+            {message.message}
+          </div>
+        </div>
+
+        {/* 센서 데이터 카드 (봇 메시지에만) */}
+        {!isUser && message.sensorData && (
+          <div style={{
+            backgroundColor: '#f8f9fa',
+            border: '1px solid #e9ecef',
+            borderRadius: '12px',
+            padding: '12px',
+            marginTop: '6px',
+            fontSize: '12px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ 
+              fontWeight: '600', 
+              color: '#495057', 
+              marginBottom: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              📊 실시간 센서 데이터
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {[
+                { label: '🌡️ 온도', value: `${message.sensorData.temperature}°C`, status: message.status },
+                { label: '💧 습도', value: `${message.sensorData.humidity}%`, status: message.status },
+                { label: '🌬️ CO₂', value: `${message.sensorData.gasConcentration}ppm`, status: message.status },
+              ].map((item, idx) => (
+                <div key={idx} style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  padding: '4px 0'
+                }}>
+                  <span style={{ color: '#6c757d' }}>{item.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontWeight: '600', color: '#212529' }}>{item.value}</span>
+                    <span style={{ 
+                      backgroundColor: getStatusColor(item.status),
+                      color: 'white',
+                      fontSize: '10px',
+                      padding: '2px 6px',
+                      borderRadius: '10px',
+                      fontWeight: '600'
+                    }}>
+                      {item.status?.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 시간 및 배지 */}
+        <div style={{
+          fontSize: '11px',
+          color: '#9ca3af',
+          marginLeft: isUser ? 'auto' : '0',
+          marginRight: isUser ? '0' : 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          marginTop: '2px'
+        }}>
+          <span>{formatTime(message.timestamp)}</span>
+          {!isUser && getResponseTypeBadge(message.route) && (
+            <span style={{
+              fontSize: '9px',
+              fontWeight: '600',
+              padding: '2px 5px',
+              borderRadius: '8px',
+              color: getResponseTypeBadge(message.route)!.color,
+              backgroundColor: getResponseTypeBadge(message.route)!.bgColor,
+              textTransform: 'uppercase' as const,
+              letterSpacing: '0.3px'
+            }}>
+              {getResponseTypeBadge(message.route)!.text}
+            </span>
+          )}
+          {isUser && (
+            <span style={{ fontSize: '12px', color: '#10b981' }}>✓</span>
+          )}
         </div>
       </div>
-      
+
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-    </>
+    </div>
   );
 };
 
@@ -342,33 +485,86 @@ export const TypingIndicator: React.FC = () => {
   return (
     <div style={{
       display: 'flex',
-      justifyContent: 'flex-start',
-      marginBottom: '16px',
-      animation: 'fadeIn 0.3s ease-in-out'
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      padding: '8px 16px',
+      gap: '12px',
+      maxWidth: '100%',
+      animation: 'fadeIn 0.3s ease-out'
     }}>
+      {/* 봇 프로필 아이콘 */}
       <div style={{
-        padding: '14px 18px',
-        borderRadius: '20px 20px 20px 6px',
-        backgroundColor: '#ffffff',
-        color: '#6b7280',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-        border: '1px solid #e5e7eb'
+        width: '36px',
+        height: '36px',
+        borderRadius: '50%',
+        backgroundColor: '#28a745',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        fontSize: '16px',
+        color: 'white',
+        fontWeight: '600',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
       }}>
+        🤖
+      </div>
+
+      {/* 타이핑 메시지 */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        maxWidth: '70%',
+        gap: '4px'
+      }}>
+        {/* 봇 이름 */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '14px'
+          fontSize: '12px',
+          fontWeight: '600',
+          color: '#6b7280'
         }}>
-          <span>챗봇이 응답 중입니다</span>
-          <div className="typing-dots">
-            <span>●</span>
-            <span>●</span>
-            <span>●</span>
+          AI Assistant
+        </div>
+
+        {/* 타이핑 말풍선 */}
+        <div style={{
+          backgroundColor: '#f1f3f4',
+          color: '#6b7280',
+          borderRadius: '18px',
+          padding: '12px 16px',
+          fontSize: '14px',
+          lineHeight: '1.4',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+          position: 'relative',
+          maxWidth: 'fit-content'
+        }}>
+          {/* 말풍선 꼬리 */}
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            left: '-8px',
+            width: '0',
+            height: '0',
+            borderStyle: 'solid',
+            borderWidth: '8px 8px 8px 0',
+            borderColor: 'transparent #f1f3f4 transparent transparent'
+          }} />
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>💭 응답 중...</span>
+            <div className="typing-dots">
+              <span>●</span>
+              <span>●</span>
+              <span>●</span>
+            </div>
           </div>
         </div>
       </div>
-      
+
       <style>{`
         .typing-dots {
           display: flex;
@@ -458,7 +654,7 @@ export const ChatbotInput: React.FC<ChatbotInputProps> = ({
           <span>{error}</span>
         </div>
       )}
-      
+
       {/* 입력 영역 */}
       <div style={{
         display: 'flex',
@@ -489,7 +685,7 @@ export const ChatbotInput: React.FC<ChatbotInputProps> = ({
               lineHeight: '1.5'
             }}
           />
-          
+
           {/* 글자 수 카운터 */}
           {inputMessage.length > 0 && (
             <div style={{
@@ -503,7 +699,7 @@ export const ChatbotInput: React.FC<ChatbotInputProps> = ({
             </div>
           )}
         </div>
-        
+
         <button
           onClick={onSendMessage}
           disabled={isLoading || !inputMessage.trim()}
@@ -542,7 +738,7 @@ export const ChatbotInput: React.FC<ChatbotInputProps> = ({
           )}
         </button>
       </div>
-      
+
       {/* 도움말 텍스트 */}
       <div style={{
         marginTop: '12px',

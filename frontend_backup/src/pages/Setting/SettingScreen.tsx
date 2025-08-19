@@ -23,6 +23,7 @@ import { Sidebar } from '../../components/common/Sidebar';
 import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
 // ✅ 올바른 임포트 (경로만 프로젝트 구조에 맞게)
 import { MintrendService, type MintrendResponse } from '../Dashboard/hooks/MintrendService';
+import AIRecommendationModal from '../../components/ai-recommendation/AIRecommendationModal';
 
 
 // 원시 센서 코드 → 화면 라벨
@@ -83,7 +84,7 @@ type SettingField = keyof SensorSetting;
 // =========================
 // 상수
 // =========================
-const API_CALL_INTERVAL = 2000; // 2초 간격으로 조회 제한
+const API_CALL_INTERVAL = 5000; // 5초 간격으로 조회 제한 (로그 폭발 방지)
 const INITIAL_SETTINGS: SettingsState = {
   temp: { current: 24, target: 0, threshold: 28, triggerEnabled: true },
   humidity: { current: 30, target: 0, threshold: 70, triggerEnabled: true },
@@ -128,6 +129,9 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   // 알림 상태
   const [notifications, setNotifications] = useState<string[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState<boolean>(false);
+
+  // AI 추천 모달 상태
+  const [isAIModalOpen, setIsAIModalOpen] = useState<boolean>(false);
 
   // ⬇️ 이 4개를 최상단에서 잘라내서, 컴포넌트 안으로 옮긴다
   const [mintrend, setMintrend] = useState<MintrendResponse['data'] | null>(null);
@@ -224,12 +228,10 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
     if (now - lastApiCall < API_CALL_INTERVAL) {
       const waitMs = API_CALL_INTERVAL - (now - lastApiCall);
       const msg = `⏱️ API 호출 간격 제한 (${Math.ceil(waitMs / 100) / 10}s 후 가능)`;
-      console.log(msg);
       setDebugInfo(msg);
       return;
     }
     if (isLoading) {
-      console.log('🔄 이미 로딩 중.');
       setDebugInfo('🔄 이미 로딩 중.');
       return;
     }
@@ -254,7 +256,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, lastApiCall, setLogs, setDebugInfo]);
+  }, [isLoading, lastApiCall]); // setLogs, setDebugInfo 제거
 
   // =========================
   // 입력 변경 / 토글
@@ -307,8 +309,8 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
           ...prev,
           [type]: { ...prev[type], status },
         }));
-        setDebugInfo('✅ 적용 완료');
-        await fetchLogs();
+        setDebugInfo('✅ 적용 완료 - 로그를 보려면 REFRESH 버튼을 클릭하세요');
+        addNotification(`${type.toUpperCase()} 센서 설정이 적용되었습니다.`);
       } else {
         setDebugInfo('⚠️ 적용 실패(success=false)');
       }
@@ -335,9 +337,8 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         co2: { current: settings.co2.current, target: settings.co2.target, threshold: settings.co2.threshold, status: co2Status },
       });
 
-      setDebugInfo(batchResult.success ? '✅ 전체 적용 완료' : `⚠️ 일부 실패 (${batchResult.failCount}건)`);
+      setDebugInfo(batchResult.success ? '✅ 전체 적용 완료 - 로그를 보려면 REFRESH 버튼을 클릭하세요' : `⚠️ 일부 실패 (${batchResult.failCount}건)`);
       addNotification(batchResult.success ? '모든 센서 설정이 적용되었습니다.' : `일부 센서 설정 적용에 실패했습니다. (${batchResult.failCount}건)`);
-      await fetchLogs();
     } catch (err) {
       console.error(err);
       setDebugInfo('❌ 전체 적용 중 오류');
@@ -345,25 +346,29 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   };
 
   // =========================
-  // AI 추천(LLM 모사)
+  // AI 추천 핸들러
   // =========================
-  const handleLLMRecommendation = (): void => {
-    const currentTemp = settings.temp.current;
-    const currentHumidity = settings.humidity.current;
-    const currentCO2 = settings.co2.current;
+  const handleOpenAIModal = (): void => {
+    setIsAIModalOpen(true);
+  };
 
-    const optimalTemp = currentTemp > 26 ? 24 : currentTemp < 20 ? 22 : 24;
-    const optimalHumidity = currentHumidity > 60 ? 50 : currentHumidity < 40 ? 45 : 50;
-    const optimalCO2 = currentCO2 > 800 ? 400 : 450;
+  const handleCloseAIModal = (): void => {
+    setIsAIModalOpen(false);
+  };
 
+  const handleApplyAIRecommendation = (recommendation: {
+    temperature: number;
+    humidity: number;
+    co2: number;
+    answer: string;
+  }): void => {
     setSettings(prev => ({
-      temp: { ...prev.temp, target: optimalTemp, threshold: 27 },
-      humidity: { ...prev.humidity, target: optimalHumidity, threshold: 65 },
-      co2: { ...prev.co2, target: optimalCO2, threshold: 800 }
+      temp: { ...prev.temp, target: recommendation.temperature, threshold: Math.max(recommendation.temperature + 3, 27) },
+      humidity: { ...prev.humidity, target: recommendation.humidity, threshold: Math.max(recommendation.humidity + 15, 65) },
+      co2: { ...prev.co2, target: recommendation.co2, threshold: Math.max(recommendation.co2 + 400, 800) }
     }));
 
-    addNotification(`AI 추천 설정이 적용되었습니다. (온도: ${optimalTemp}℃, 습도: ${optimalHumidity}%, CO₂: ${optimalCO2}ppm)`);
-    alert(`🤖 LLM 추천 완료!\n온도: ${optimalTemp}℃\n습도: ${optimalHumidity}%\nCO₂: ${optimalCO2}ppm`);
+    addNotification(`AI 추천 설정이 적용되었습니다. (온도: ${recommendation.temperature}℃, 습도: ${recommendation.humidity}%, CO₂: ${recommendation.co2}ppm)`);
   };
 
   // =========================
@@ -377,7 +382,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         if (isConfigured) {
           setConnectionStatus('설정됨');
           console.log('✅ API 설정 확인 완료');
-          setTimeout(() => fetchLogs(), 1200);
+          // 자동 로그 로딩 제거 - 사용자가 수동으로 REFRESH 버튼을 눌러야 함
         } else {
           setConnectionStatus('설정 필요');
           console.warn('⚠️ API 설정이 필요합니다');
@@ -527,11 +532,11 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                           </div>
                           <div className={styles.currentRight}>
                             <span className={styles.currentValue}>
-  {value}
-  {type === 'temp' && '°C'}
-  {type === 'humidity' && '%'}
-  {type === 'co2' && 'ppm'}
-</span>
+                              {value}
+                              {type === 'temp' && '°C'}
+                              {type === 'humidity' && '%'}
+                              {type === 'co2' && 'ppm'}
+                            </span>
 
                             <span
                               className={styles.badge}
@@ -560,17 +565,17 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                           </div>
                           <div className={styles.currentRight}>
                             <input
-  type="number"
-  value={setting.target || ''}
-  onChange={e => handleSettingChange(type, 'target', e.target.value)}
-  className={styles.input}
-  style={{ width: '86px', marginRight: '8px' }}
-  placeholder={
-    type === 'temp' ? '24°C' :
-    type === 'humidity' ? '50%' :
-    type === 'co2' ? '400ppm' : 'Target'
-  }
-/>
+                              type="number"
+                              value={setting.target || ''}
+                              onChange={e => handleSettingChange(type, 'target', e.target.value)}
+                              className={styles.input}
+                              style={{ width: '86px', marginRight: '8px' }}
+                              placeholder={
+                                type === 'temp' ? '24°C' :
+                                  type === 'humidity' ? '50%' :
+                                    type === 'co2' ? '400ppm' : 'Target'
+                              }
+                            />
                             {/* <button
                               onClick={() => handleTriggerToggle(type)}
                               className={`${styles.chip} ${setting.triggerEnabled ? styles.chipOn : styles.chipOff}`}
@@ -607,23 +612,23 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                     </label>
                   </div> */}
 
-                  <div className={styles.footerActions}>
-                    <button
-                      onClick={handleLLMRecommendation}
-                      className={`${styles.btn} ${styles.btnViolet}`}
-                    >
-                      LLM SUGGESTION
-                    </button>
+                <div className={styles.footerActions}>
+                  <button
+                    onClick={handleOpenAIModal}
+                    className={`${styles.btn} ${styles.btnViolet}`}
+                  >
+                    AI RECOMMENDATION
+                  </button>
 
-                    <button
-                      onClick={handleApplyAll}
-                      disabled={isLoading}
-                      className={`${styles.btn} ${styles.btnSuccess} ${isLoading ? styles.btnDisabled : ''}`}
-                    >
-                      {isLoading ? 'APPLY ALL' : 'APPLY ALL'}
-                    </button>
-                  </div>
-                
+                  <button
+                    onClick={handleApplyAll}
+                    disabled={isLoading}
+                    className={`${styles.btn} ${styles.btnPrimary} ${isLoading ? styles.btnDisabled : ''}`}
+                  >
+                    {isLoading ? 'APPLY ALL' : 'APPLY ALL'}
+                  </button>
+                </div>
+
               </div>
 
               {/* 로그 영역 */}
@@ -698,6 +703,13 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
           </div>
         </div>
       </main>
+
+      {/* AI 추천 모달 */}
+      <AIRecommendationModal
+        isOpen={isAIModalOpen}
+        onClose={handleCloseAIModal}
+        onApplyRecommendation={handleApplyAIRecommendation}
+      />
     </div>
   );
 };

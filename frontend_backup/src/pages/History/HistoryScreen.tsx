@@ -34,6 +34,20 @@ import useHistoryData from './hooks/UseHistoryData';
 // ✅ import에서 HistoryTable 제거 (사용하지 않으므로)
 import HistoryFilter from '../../components/history/HistoryFilter';
 
+const statusClass = (s?: string) => {
+  switch (String(s || '').toUpperCase()) {
+    case 'GOOD': 
+      return `${styles.historyStatus} ${styles.good}`;
+    case 'WARNING': 
+      return `${styles.historyStatus} ${styles.warning}`;
+    case 'DANGER':
+      return `${styles.historyStatus} ${styles.danger}`;
+    case 'NORMAL':
+    default: 
+      return `${styles.historyStatus} ${styles.normal}`;
+  }
+};
+
 
 /**
  * 🎯 히스토리 화면 메인 컴포넌트
@@ -238,7 +252,12 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
                             <td>{getTypeLabel(first)}</td>
                             <td>{fmt(first?.value)} {unitOf(typeKey(first))}</td>
 
-                            <td>{String(first?.status || '-').toUpperCase()}</td>
+                            <td>
+  <span className={statusClass(first?.status)}>
+    {String(first?.status || '-').toUpperCase()}
+  </span>
+</td>
+
                           </tr>
 
                           {rest.map((r: any, i: number) => (
@@ -246,7 +265,12 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
                               <td>{getTypeLabel(r)}</td>
                               <td>{fmt(r?.value)} {unitOf(typeKey(r))}</td>
 
-                              <td>{String(r?.status || '-').toUpperCase()}</td>
+                              <td>
+  <span className={statusClass(r?.status)}>
+    {String(r?.status || '-').toUpperCase()}
+  </span>
+</td>
+
                             </tr>
                           ))}
                         </React.Fragment>

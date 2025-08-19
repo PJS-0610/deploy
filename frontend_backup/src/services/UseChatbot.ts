@@ -113,6 +113,7 @@ export const useChatbot = () => {
         timestamp: new Date().toISOString(),
         status: mapRouteToStatus(response.route),
         sensorData: extractSensorDataFromResponse(response.answer),
+        route: response.route, // route 정보 추가
       };
 
       // 타이핑 딜레이 추가 (자연스러운 사용자 경험)
@@ -137,6 +138,7 @@ export const useChatbot = () => {
         message: '죄송합니다. 메시지 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
         timestamp: new Date().toISOString(),
         status: 'Warning',
+        route: 'error', // 에러 route 추가
       };
 
       setTimeout(() => {
@@ -210,6 +212,7 @@ export const useChatbot = () => {
           message: turn.answer,
           timestamp: turn.ts_kst,
           status: turn.route === 'error' ? 'Warning' : 'Good',
+          route: turn.route, // 히스토리에서도 route 정보 추가
         };
         historyMessages.push(botMessage);
       }

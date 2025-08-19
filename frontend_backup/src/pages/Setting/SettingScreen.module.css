@@ -142,14 +142,6 @@
   border-bottom: 2px solid #e5e7eb;
 }
 
-.borderBlue {
-  border-bottom-color: #1f2937;
-}
-
-.borderGreen {
-  border-bottom-color: #15803d;
-}
-
 /* 현재값 아이템 */
 .currentItem {
   display: flex;
@@ -328,12 +320,12 @@ gap: 8px;
 }
 
 .btnViolet {
-  background-color: #6d28d9;
+  background-color: #f59e0b;
   color: white;
 }
 
 .btnViolet:hover {
-  background-color: #5b21b6;
+  background-color: #f59e0b;
 }
 
 .btnSlate {
