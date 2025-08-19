@@ -34,30 +34,30 @@ import styles from './Sidebar.module.css';
  * React.createElement를 사용하여 아이콘 컴포넌트를 생성
  */
 const DEFAULT_MENU_ITEMS: MenuItem[] = [
-  { 
-    icon: React.createElement(LayoutDashboard, { size: 20 }), 
-    label: 'Dashboard', 
-    path: '/dashboard' 
+  {
+    icon: React.createElement(LayoutDashboard, { size: 20 }),
+    label: 'Dashboard',
+    path: '/dashboard'
   },
-  { 
-    icon: React.createElement(MessageCircle, { size: 20 }), 
-    label: 'Chatbot', 
-    path: '/chatbot' 
+  {
+    icon: React.createElement(MessageCircle, { size: 20 }),
+    label: 'Chatbot',
+    path: '/chatbot'
   },
-  { 
-    icon: React.createElement(History, { size: 20 }), 
-    label: 'History', 
-    path: '/history' 
+  {
+    icon: React.createElement(History, { size: 20 }),
+    label: 'History',
+    path: '/history'
   },
-  { 
-    icon: React.createElement(Settings, { size: 20 }), 
-    label: 'Settings', 
-    path: '/settings' 
+  {
+    icon: React.createElement(Settings, { size: 20 }),
+    label: 'Settings',
+    path: '/settings'
   },
-  { 
-    icon: React.createElement(LogOut, { size: 20 }), 
-    label: 'Logout', 
-    path: '/logout' 
+  {
+    icon: React.createElement(LogOut, { size: 20 }),
+    label: 'Logout',
+    path: '/logout'
   }
 ];
 
@@ -91,17 +91,26 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, isActive, onClic
  * @param onMenuClick - 메뉴 클릭 시 호출되는 콜백 함수
  * @param menuItems - 커스텀 메뉴 아이템 배열 (선택적, 기본값 사용 가능)
  */
-const Sidebar: React.FC<SidebarProps> = ({ 
-  activeMenu, 
-  onMenuClick, 
-  menuItems = DEFAULT_MENU_ITEMS 
+const Sidebar: React.FC<SidebarProps> = ({
+  activeMenu,
+  onMenuClick,
+  menuItems = DEFAULT_MENU_ITEMS
 }) => {
   return (
     <nav className={styles.sidebar} role="navigation" aria-label="메인 네비게이션">
       {/* 🏷️ 사이드바 헤더 - 애플리케이션 타이틀 */}
-      <div className={styles.sidebarHeader}>
+      {/* <div className={styles.sidebarHeader}>
         <h2 className={styles.sidebarTitle}>AWS IOT</h2>
+      </div> */}
+      {/* 🏷️ 사이드바 헤더 - 애플리케이션 타이틀 */}
+      <div className={styles.sidebarHeader}>
+        <img
+          src="/images/logo3.png"   // public 폴더 기준 경로 (예: public/assets/logo.png)
+          alt="AWS IoT"
+          className={styles.sidebarLogo}
+        />
       </div>
+
 
       {/* 📋 사이드바 메뉴 영역 - 메뉴 아이템들을 렌더링 */}
       <div className={styles.sidebarMenu}>
@@ -115,6 +124,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           />
         ))}
       </div>
+      {/* 📝 사이드바 하단 푸터 영역 */}
+    <div className={styles.sidebarFooter}>
+      <p className={styles.footerText}>2025 GBSA AWS</p>
+    </div>
     </nav>
   );
 };

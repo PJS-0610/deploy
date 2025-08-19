@@ -66,51 +66,37 @@ export class MintrendService {
   }
 
   // 기존 메서드들은 그대로 유지
-  static getTemperatureStatus(temperature: number): string {
-    if (temperature < 15) return 'COLD';
-    if (temperature < 20) return 'COOL';
-    if (temperature < 28) return 'GOOD';
-    if (temperature < 35) return 'WARM';
-    return 'HOT';
-  }
+// 1) 온도
+static getTemperatureStatus(t: number): string {
+  if (t < 22 || t > 28) return 'WARNING';         // 🚨
+  if (t >= 24 && t <= 27) return 'GOOD';          // ✅
+  return 'NORMAL';                                 // ⚠️
+}
 
-  static getHumidityStatus(humidity: number): string {
-    if (humidity < 30) return 'DRY';
-    if (humidity < 40) return 'LOW';
-    if (humidity < 70) return 'GOOD';
-    if (humidity < 80) return 'HIGH';
-    return 'WET';
-  }
+// 2) 습도
+static getHumidityStatus(h: number): string {
+  if (h < 40 || h > 80) return 'WARNING';
+  if (h >= 50 && h <= 70) return 'GOOD';
+  return 'NORMAL';
+}
 
-  static getGasStatus(gas: number): string {
-    if (gas < 400) return 'EXCELLENT';
-    if (gas < 800) return 'GOOD';
-    if (gas < 1500) return 'MODERATE';
-    if (gas < 3000) return 'POOR';
-    return 'DANGEROUS';
-  }
+// 3) 가스(CO2)
+static getGasStatus(g: number): string {
+  if (g > 2500) return 'WARNING';
+  if (g <= 2000) return 'GOOD';
+  return 'NORMAL';
+}
 
-  static getStatusColorClass(status: string): string {
-    switch (status.toUpperCase()) {
-      case 'EXCELLENT':
-      case 'GOOD':
-        return 'status-good';
-      case 'MODERATE':
-      case 'COOL':
-      case 'WARM':
-        return 'status-moderate';
-      case 'POOR':
-      case 'HIGH':
-      case 'LOW':
-        return 'status-poor';
-      case 'DANGEROUS':
-      case 'HOT':
-      case 'COLD':
-        return 'status-danger';
-      default:
-        return 'status-default';
-    }
+// 4) 색상 매핑(세 가지로만)
+// MintrendService.ts
+static getStatusColorClass(status: string): string {
+  switch (status.toUpperCase()) {
+    case 'GOOD':    return 'status-good';    // 초록
+    case 'NORMAL':  return 'status-normal';  // 회색
+    case 'WARNING': return 'status-warning'; // 빨강
+    default:        return 'status-normal';
   }
+}
 
   static validateMintrendData(data: any): data is MintrendResponse {
     return (

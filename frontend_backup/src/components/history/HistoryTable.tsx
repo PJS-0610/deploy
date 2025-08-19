@@ -37,6 +37,18 @@ import { HistoryTableProps } from '../../services/HistoryTypes';
 // CSS 모듈 스타일 임포트
 import styles from './HistoryTable.module.css';
 
+// ISO Timestamp("2025-08-19T11:29:00") → 날짜/시간 2줄로 분리 렌더
+const renderTimestamp = (ts: string) => {
+  if (!ts) return null;
+  const [date, time] = ts.split('T');
+  return (
+    <>
+      <div className="timestampDate">{date}</div>
+      <div className="timestampTime">{time}</div>
+    </>
+  );
+};
+
 /**
  * 📋 HistoryTable 메인 컴포넌트
  * 
@@ -103,8 +115,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
               </td>
               <td className={styles.tableCell}>
                 <span className={styles.timestamp}>
-                  {HistoryUtils.formatTimestamp(event.timestamp)}
-                </span>
+  {renderTimestamp(event.timestamp)}
+</span>
               </td>
               <td className={styles.tableCell}>
                 <span className={styles.sensorType}>{event.sensorType}</span>

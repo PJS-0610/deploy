@@ -732,3 +732,7 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+:global(.status-good)    { color: #16a34a; font-weight: 600; }
+:global(.status-normal)  { color: #6b7280; }
+:global(.status-warning) { color: #dc2626; font-weight: 600; }

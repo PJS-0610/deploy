@@ -231,3 +231,10 @@
     display: none;
   }
 }
+
+.timestampDate,
+.timestampTime {
+  display: block;              /* 두 줄 보장 */
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}

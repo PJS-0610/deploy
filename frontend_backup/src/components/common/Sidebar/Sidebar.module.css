@@ -202,3 +202,21 @@
     color: #f1f5f9;
   }
 }
+
+.sidebarLogo {
+  width: 200px;   /* 적절한 크기로 조정 */
+  height: auto;
+  object-fit: contain; 
+}
+
+.sidebarFooter {
+  margin-top: auto;      /* 사이드바 아래쪽으로 밀어내기 */
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: #9ca3af;        /* 회색톤 */
+}
+
+.footerText {
+  margin: 0;
+}

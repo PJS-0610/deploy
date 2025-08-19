@@ -160,20 +160,18 @@ interface ThresholdSettings {
  */
 const DEFAULT_THRESHOLDS: ThresholdSettings = {
   temperature: {
-    warningMin: 10.0,   // 10도 이하 경고 (너무 차가움)
-    warningMax: 30.0,   // 30도 이상 경고 (너무 뜨거움)
-    dangerMin: 5.0,     // 5도 이하 위험 (극도로 차가움)
-    dangerMax: 35.0,    // 35도 이상 위험 (극도로 뜨거움)
+    warningMin: 22.0,   // 22°C 이하 경고
+    warningMax: 28.0,   // 28°C 이상 경고
+    // dangerMin / dangerMax 필요시 여기서 정의
   },
   humidity: {
-    warningMin: 30.0,   // 30% 이하 경고 (너무 건조)
-    warningMax: 80.0,   // 80% 이상 경고 (너무 습함)
-    dangerMin: 20.0,    // 20% 이하 위험 (극도로 건조)
-    dangerMax: 90.0,    // 90% 이상 위험 (극도로 습함)
+    warningMin: 40.0,   // 40% 이하 경고
+    warningMax: 80.0,   // 80% 이상 경고
+    // dangerMin / dangerMax 필요시 정의
   },
   gas: {
-    warningMax: 1000.0, // 1000ppm 이상 경고 (공기질 주의)
-    dangerMax: 1500.0,  // 1500ppm 이상 위험 (심각한 공기오염)
+    warningMax: 2500.0, // 2500ppm 이상 경고
+    // dangerMax 필요시 정의
   },
 };
 

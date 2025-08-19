@@ -203,7 +203,7 @@ export class MinTrendHistoryUtils {
       case 'minhum':
         return 'Humidity';
       case 'mingas':
-        return 'CO Concentration';
+        return 'CO₂ Concentration';
       default:
         return '';
     }

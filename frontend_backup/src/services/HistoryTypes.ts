@@ -199,8 +199,7 @@ if (filters.sensorType) {
     'Gas Concentration': 'GAS',
     'CO₂ Concentration': 'GAS'
   };
-  
-  const actualSensorType = sensorTypeMapping[filters.sensorType] || filters.sensorType;
+const actualSensorType = sensorTypeMapping[filters.sensorType] || filters.sensorType;
   events = events.filter(event => event.sensorType === actualSensorType);
 }
 

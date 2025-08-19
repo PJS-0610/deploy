@@ -86,7 +86,6 @@ const {
       if (!map.has(ts)) map.set(ts, []);
       map.get(ts)!.push(row);
     });
-
     // TEMP → HUMI → GAS 순서
     const order: Record<string, number> = { TEMP: 0, HUMI: 1, GAS: 2 };
     const norm = (t: any) => String(t || '').toUpperCase();
@@ -102,6 +101,17 @@ const {
     });
   }, [historyState.events]);
 
+    // ISO "2025-08-19T11:29:00" → 날짜/시간 두 줄로 표시
+const renderTimestamp = (ts: string) => {
+  if (!ts) return '-';
+  const [date, time] = String(ts).split('T');
+  return (
+    <>
+      <div className={styles.timestampDate}>{date}</div>
+      <div className={styles.timestampTime}>{time || ''}</div>
+    </>
+  );
+};
 
   /**
    * 🧭 메뉴 네비게이션 핸들러
@@ -144,10 +154,8 @@ const {
    * 날짜, 센서 타입, 상태 필터가 변경될 때마다 자동으로 데이터 갱신
    */
 useEffect(() => {
-  // 필터가 모두 null이 아닐 때만 데이터 로드
-  if (historyState.filters.date || historyState.filters.sensorType || historyState.filters.status) {
-    applyFilters();
-  }
+   // ✅ 어떤 값이든 바뀌면 항상 재조회 (All로 복귀도 즉시 반영)
+  applyFilters();
 }, [historyState.filters, applyFilters]);
 
   return (
@@ -223,7 +231,7 @@ useEffect(() => {
                           <tr>
                             {/* ✅ 같은 timestamp 묶기: ID / Timestamp는 rowSpan으로 한 번만 표시 */}
                             <td rowSpan={g.rows.length}>{g.gid}</td>
-                            <td rowSpan={g.rows.length}>{g.timestamp}</td>
+                            <td rowSpan={g.rows.length}>{String(g.timestamp).replace('T', ' ')}</td>
 
                             <td>{getTypeLabel(first)}</td>
                             <td>{fmt(first?.value)} {unitOf(typeKey(first))}</td>

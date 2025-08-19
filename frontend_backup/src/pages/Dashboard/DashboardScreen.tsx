@@ -300,14 +300,6 @@ const QuickSightDashboard: React.FC<{
         <h3 className={styles.quicksightTitle}>
           {QuickSightService.getSensorTypeLabel(selectedSensor)}
         </h3>
-        <div className={styles.quicksightDescription}>
-          대시보드: {dashboardData.dashboard?.name || dashboardData.dashboardId}
-          {dashboardData.embedExpirationTime && (
-            <span style={{ marginLeft: '12px', fontSize: '12px', color: '#6b7280' }}>
-              만료: {new Date(dashboardData.embedExpirationTime).toLocaleString('ko-KR')}
-            </span>
-          )}
-        </div>
       </div>
 
       {/* 📊 임베드 iframe 또는 오류 메시지 */}
@@ -688,7 +680,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   <table className={styles.summaryTable}>
                     <thead>
                       <tr>
-                        <th>TIME</th>
+                        <th>TIMESTAMP</th>
                         <th>TEMPERATURE</th>
                         <th>HUMIDITY</th>
                         <th>CO₂ CONCENTRATION</th>
@@ -717,16 +709,23 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                             if (mintrendData?.data?.mintemp !== undefined) {
                               const tempStatus = MintrendService.getTemperatureStatus(mintrendData.data.mintemp);
                               return (
-                                <span className={MintrendService.getStatusColorClass(tempStatus)}>
-                                  {mintrendData.data.mintemp.toFixed(2)}°C
+                                <span>
+                                  {mintrendData.data.mintemp.toFixed(2)}°C{' '}
+                                  <span className={MintrendService.getStatusColorClass(tempStatus)}>({tempStatus})</span>
                                 </span>
+
+
                               );
                             }
                             if (allSensorData.temperature) {
+                              const v = allSensorData.temperature.current.value;
+                              const st = MintrendService.getTemperatureStatus(v);
                               return (
-                                <span className={DashboardUtils.getStatusClass(allSensorData.temperature.current.status)}>
-                                  {allSensorData.temperature.current.value.toFixed(2)}{allSensorData.temperature.unit}
+                                <span>
+                                  {v.toFixed(2)}{allSensorData.temperature.unit}{' '}
+                                  <span className={MintrendService.getStatusColorClass(st)}>({st})</span>
                                 </span>
+
                               );
                             }
                             return <span>로딩 중...</span>;
@@ -739,15 +738,19 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                             if (mintrendData?.data?.minhum !== undefined) {
                               const humStatus = MintrendService.getHumidityStatus(mintrendData.data.minhum);
                               return (
-                                <span className={MintrendService.getStatusColorClass(humStatus)}>
-                                  {mintrendData.data.minhum.toFixed(2)}%
+                                <span>
+                                  {mintrendData.data.minhum.toFixed(2)}%{' '}
+                                  <span className={MintrendService.getStatusColorClass(humStatus)}>({humStatus})</span>
                                 </span>
                               );
                             }
                             if (allSensorData.humidity) {
+                              const v = allSensorData.humidity.current.value;
+                              const st = MintrendService.getHumidityStatus(v);
                               return (
-                                <span className={DashboardUtils.getStatusClass(allSensorData.humidity.current.status)}>
-                                  {allSensorData.humidity.current.value.toFixed(2)}{allSensorData.humidity.unit}
+                                <span>
+                                  {v.toFixed(2)}{allSensorData.humidity.unit}{' '}
+                                  <span className={MintrendService.getStatusColorClass(st)}>({st})</span>
                                 </span>
                               );
                             }
@@ -761,15 +764,19 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                             if (mintrendData?.data?.mingas !== undefined) {
                               const gasStatus = MintrendService.getGasStatus(mintrendData.data.mingas);
                               return (
-                                <span className={MintrendService.getStatusColorClass(gasStatus)}>
-                                  {mintrendData.data.mingas.toFixed(2)}ppm
+                                <span>
+                                  {mintrendData.data.mingas.toFixed(2)}ppm{' '}
+                                  <span className={MintrendService.getStatusColorClass(gasStatus)}>({gasStatus})</span>
                                 </span>
                               );
                             }
                             if (allSensorData.gas) {
+                              const v = allSensorData.gas.current.value;
+                              const st = MintrendService.getGasStatus(v);
                               return (
-                                <span className={DashboardUtils.getStatusClass(allSensorData.gas.current.status)}>
-                                  {allSensorData.gas.current.value.toFixed(2)}{allSensorData.gas.unit}
+                                <span>
+                                  {v.toFixed(2)}{allSensorData.gas.unit}{' '}
+                                  <span className={MintrendService.getStatusColorClass(st)}>({st})</span>
                                 </span>
                               );
                             }
@@ -838,25 +845,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
       </main >
 
       {/* 🚨 이상치 알림 컴포넌트 추가 - 화면 우상단에 팝업으로 표시 */}
-      < AnomalyAlert
-        interval={60000}        // 60초마다 체크
-        autoHideDelay={60000}   // 60초 표시
-        s3ApiEndpoint="/s3/file/last/mintrend"  // 기존 S3 API 사용
-        enabled={activeMenu === 'Dashboard'}    // 대시보드 화면에서만 활성화
-        maxAlerts={3}           // 최대 3개까지만 표시
-        thresholds={{           // 커스텀 임계값 (선택사항)
-          temperature: {
-            warningMax: 28,     // 28도 이상 경고
-            dangerMax: 32,      // 32도 이상 위험
-          },
-          humidity: {
-            warningMax: 75,     // 75% 이상 경고
-            dangerMax: 85,      // 85% 이상 위험
-          },
-          gas: {
-            warningMax: 800,    // 800ppm 이상 경고
-            dangerMax: 1200,    // 1200ppm 이상 위험
-          }
+      <AnomalyAlert
+        interval={60000}
+        autoHideDelay={60000}
+        s3ApiEndpoint="/s3/file/last/mintrend"
+        enabled={activeMenu === 'Dashboard'}
+        maxAlerts={3}
+        thresholds={{
+          temperature: { warningMin: 22, warningMax: 28 },
+          humidity: { warningMin: 40, warningMax: 80 },
+          gas: { warningMax: 2500 },
         }}
       />
     </div >

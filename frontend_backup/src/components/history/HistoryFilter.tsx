@@ -90,7 +90,7 @@ const HistoryFilter: React.FC<HistoryFilterProps> = ({
    * 🌡️ 센서 타입 필터 옵션
    * 시스템에서 지원하는 센서 종류들
    */
-  const sensorTypeOptions = ['Temperature', 'Humidity', 'CO Concentration'];
+  const sensorTypeOptions = ['Temperature', 'Humidity', 'CO₂ Concentration'];
 
   /**
    * 🚨 상태 필터 옵션
