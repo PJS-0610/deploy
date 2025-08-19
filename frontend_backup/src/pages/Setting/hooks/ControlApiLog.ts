@@ -12,8 +12,8 @@ export class ControlLogService {
     process.env.REACT_APP_CONTROL_API_BASE_URL
     || process.env.REACT_APP_API_BASE_URL
     || (window.location.hostname === 'localhost'
-          ? ''
-          : '');   // ✅ 히스토리와 동일하게
+          ? 'http://localhost:3001'  // 로컬 개발용 - 3001로 수정
+          : 'https://aws2aws2.com'); // 실제 AWS API URL
 
   private static readonly NORMALIZED_BASE_URL =
     ControlLogService.API_BASE_URL.replace(/\/+$/, '');
@@ -50,13 +50,33 @@ export class ControlLogService {
     // ✅ 절대경로로 보장
     const url = `${this.NORMALIZED_BASE_URL}${this.CONTROL_ENDPOINT}/log`;
 
+    console.log('📡 Control Log API Request:', {
+      url,
+      headers: this.getHeaders(),
+      payload
+    });
+
     const response = await fetch(url, {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    return (await response.json()) as ControlResponseDto;
+    
+    console.log('📡 Control Log API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('📡 Control Log API Error:', errorText);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('📡 Control Log API Success:', result);
+    return result as ControlResponseDto;
   }
 
   /** 배치 제어 로그 전송 */
@@ -72,7 +92,7 @@ export class ControlLogService {
     const sensors = [
       { type: "temp", data: settingsData.temp },
       { type: "humidity", data: settingsData.humidity },
-      { type: "gas", data: settingsData.co2 },
+      { type: "gas", data: settingsData.co2 }, // 백엔드는 'gas'를 받음
     ];
 
     for (const sensor of sensors) {

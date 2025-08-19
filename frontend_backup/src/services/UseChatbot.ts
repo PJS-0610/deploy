@@ -38,11 +38,14 @@ export const useChatbot = () => {
       const healthStatus = await ChatbotAPI.checkHealth();
       
       if (healthStatus.status === 'healthy') {
+        // 센서 데이터를 포함한 웰컴 메시지 생성
+        const welcomeMessage = await ChatbotUtils.createWelcomeMessageWithSensorData();
+        
         setChatbotState(prev => ({
           ...prev,
           modelStatus: 'Active',
           isConnected: true,
-          messages: [ChatbotUtils.createWelcomeMessage()],
+          messages: [welcomeMessage],
         }));
       } else {
         throw new Error(healthStatus.error || 'Chatbot is not available');
@@ -169,13 +172,61 @@ export const useChatbot = () => {
   }, []);
 
   // 채팅 히스토리 초기화
-  const clearHistory = useCallback(() => {
+  const clearHistory = useCallback(async () => {
+    const welcomeMessage = await ChatbotUtils.createWelcomeMessageWithSensorData();
     setChatbotState(prev => ({
       ...prev,
-      messages: [ChatbotUtils.createWelcomeMessage()],
+      messages: [welcomeMessage],
       error: null,
     }));
     sessionIdRef.current = null;
+  }, []);
+
+  // 히스토리 로드 함수
+  const loadChatHistory = useCallback(async (turns: any[]) => {
+    try {
+      // 히스토리 턴을 ChatMessage 형식으로 변환
+      const historyMessages: ChatMessage[] = [];
+      
+      // 웰컴 메시지 유지
+      const welcomeMessage = await ChatbotUtils.createWelcomeMessageWithSensorData();
+      historyMessages.push(welcomeMessage);
+
+      // 턴 데이터를 메시지로 변환
+      for (const turn of turns) {
+        // 사용자 메시지 추가
+        const userMessage: ChatMessage = {
+          id: `${turn.session_id}-${turn.turn_id}-user`,
+          sender: 'user',
+          message: turn.query,
+          timestamp: turn.ts_kst,
+        };
+        historyMessages.push(userMessage);
+
+        // 봇 메시지 추가
+        const botMessage: ChatMessage = {
+          id: `${turn.session_id}-${turn.turn_id}-bot`,
+          sender: 'bot',
+          message: turn.answer,
+          timestamp: turn.ts_kst,
+          status: turn.route === 'error' ? 'Warning' : 'Good',
+        };
+        historyMessages.push(botMessage);
+      }
+
+      setChatbotState(prev => ({
+        ...prev,
+        messages: historyMessages,
+        error: null,
+      }));
+
+    } catch (error) {
+      console.error('Failed to load chat history:', error);
+      setChatbotState(prev => ({
+        ...prev,
+        error: '히스토리를 불러올 수 없습니다.',
+      }));
+    }
   }, []);
 
   return {
@@ -186,6 +237,7 @@ export const useChatbot = () => {
     handleKeyDown,
     retryConnection,
     clearHistory,
+    loadChatHistory,
   };
 };
 

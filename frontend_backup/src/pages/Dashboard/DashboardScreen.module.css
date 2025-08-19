@@ -198,14 +198,14 @@
 .chartTitle {
   margin-bottom: 16px;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 
 .summaryCard {
   background: #fafafa;
   border-radius: 8px;
-  padding: 16px;
+  padding: 20px;
   overflow-x: auto;
 }
 
@@ -226,21 +226,21 @@
   padding: 16px;
   text-align: left;
   font-weight: 600;
-  color: #374151;
-  font-size: 14px;
+  color: #000205;
+  font-size: 18px;
   border-bottom: 2px solid #e5e7eb;
 }
 
 .summaryTable td {
   padding: 16px;
-  font-size: 14px;
-  color: #1f2937;
+  font-size: 18px;
+  color: #000409;
   border-bottom: 1px solid #f3f4f6;
 }
 
 .summaryTable td:first-child {
   font-weight: 600;
-  color: #6b7280;
+  color: #00040b;
 }
 
 .summaryTable tr:hover {
@@ -316,18 +316,18 @@
 .placeholderTitle {
   font-size: 24px;
   font-weight: 700;
-  color: #374151;
+  color: #0e0e0e;
   margin-bottom: 16px;
 }
 
 .placeholderSubtitle {
-  color: #6b7280;
+  color: #090909;
   margin-bottom: 8px;
 }
 
 .placeholderNote {
   font-size: 14px;
-  color: #9ca3af;
+  color: #090909;
 }
 
 /* 반응형 */

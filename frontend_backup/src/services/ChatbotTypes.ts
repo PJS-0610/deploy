@@ -131,6 +131,56 @@ export const ChatbotUtils = {
     },
   }),
 
+  // MintrendService를 사용한 실시간 환영 메시지
+  createWelcomeMessageWithSensorData: async (): Promise<ChatMessage> => {
+    let sensorData: SensorData = {
+      temperature: 25.5,
+      humidity: 60.1,
+      gasConcentration: 675,
+    };
+    let status: 'Good' | 'Normal' | 'Warning' = 'Good';
+    let message = '안녕하세요! 저는 AWS² IoT 공기질 분석 비서입니다. \n강의실의 실시간 환경 상태와 예측 정보를 알려드려요.\n\n';
+
+    try {
+      const { MintrendService } = await import('../pages/Dashboard/hooks/MintrendService');
+      const mintrendData = await MintrendService.getLatestMintrendData();
+      
+      sensorData = {
+        temperature: mintrendData.data.mintemp,
+        humidity: mintrendData.data.minhum,
+        gasConcentration: mintrendData.data.mingas,
+      };
+
+      const tempStatus = MintrendService.getTemperatureStatus(sensorData.temperature);
+      const humStatus = MintrendService.getHumidityStatus(sensorData.humidity);
+      const gasStatus = MintrendService.getGasStatus(sensorData.gasConcentration);
+      
+      // 전체 상태는 가장 심각한 상태로 설정
+      if (tempStatus === 'WARNING' || humStatus === 'WARNING' || gasStatus === 'WARNING') {
+        status = 'Warning';
+      } else if (tempStatus === 'NORMAL' || humStatus === 'NORMAL' || gasStatus === 'NORMAL') {
+        status = 'Normal';
+      } else {
+        status = 'Good';
+      }
+
+      message += '무엇을 도와드릴까요?';
+
+    } catch (error) {
+      console.warn('센서 데이터를 가져올 수 없어 기본 메시지를 사용합니다:', error);
+      message += '현재 센서 데이터를 확인 중입니다...\n무엇을 도와드릴까요?';
+    }
+
+    return {
+      id: ChatbotUtils.generateMessageId(),
+      message,
+      sender: 'bot',
+      timestamp: new Date().toISOString(),
+      status,
+      sensorData,
+    };
+  },
+
   // 간단 localStorage 저장/로드 (필요 없다면 빈 함수로 둬도 됨)
   saveMessageHistory: (messages: ChatMessage[]) => {
     try {
@@ -146,7 +196,3 @@ export const ChatbotUtils = {
     }
   },
 };
-
-// ===== API 초기화 (실제 API로 대체) =====
-// ChatbotAPI는 별도 파일에서 import하여 사용
-// 하위 호환성을 위해 기본 구현체는 유지하되, 실제로는 ChatbotAPI.ts를 사용

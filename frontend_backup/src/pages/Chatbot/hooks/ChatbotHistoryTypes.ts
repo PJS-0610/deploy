@@ -87,4 +87,5 @@ export interface HistoryPanelProps {
   isExpanded: boolean;
   onToggle: () => void;
   currentSessionId: string | null;
+  onHistoryLoad?: (turns: ChatbotTurn[]) => void;
 }

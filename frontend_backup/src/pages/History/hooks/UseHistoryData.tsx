@@ -5,7 +5,7 @@ import { HistoryAPI, HistoryUtils, HistoryState, HistoryFilters } from '../../..
 const initialState: HistoryState = {
   isLoading: false,
   error: null,
-  showFilters: false,
+  showFilters: true,
   showDatePicker: false,
   selectedDate: null,
   filters: { date: null, sensorType: null, status: null },
@@ -29,8 +29,8 @@ export default function useHistoryData() {
     setHistoryState({
       isLoading: false,
       error: null,
-      showFilters: false,        // ✅ 필터 UI도 닫기
-      showDatePicker: false,
+      showFilters: true,        // ✅ 필터 UI도 닫기
+      showDatePicker: true,
       selectedDate: null,
       filters: { date: null, sensorType: null, status: null },
       events: [],
@@ -42,13 +42,13 @@ export default function useHistoryData() {
     setActiveDropdown(null);
   }, []);
 
-    const updateFilter = useCallback((key: keyof HistoryFilters, value: string | null) => {
-  setHistoryState((prev) => {
-    const next = { ...prev.filters, [key]: value };
-    latestFiltersRef.current = next;   // 최신 필터 ref도 함께 갱신
-    return { ...prev, filters: next };
-  });
-}, []);
+  const updateFilter = useCallback((key: keyof HistoryFilters, value: string | null) => {
+    setHistoryState((prev) => {
+      const next = { ...prev.filters, [key]: value };
+      latestFiltersRef.current = next;   // 최신 필터 ref도 함께 갱신
+      return { ...prev, filters: next };
+    });
+  }, []);
 
   const handleDateSelect = useCallback((date: Date) => {
     setHistoryState((prev) => {
@@ -111,8 +111,8 @@ export default function useHistoryData() {
   }, [applyFilters]);
 
   const toggleFilters = useCallback(() => {
-    setHistoryState((prev) => ({ ...prev, showFilters: !prev.showFilters }));
-  }, []);
+    setHistoryState((prev) => ({ ...prev, showFilters: true, showDatePicker: true }));
+  }, []); // ✅ 눌러도 항상 펼쳐진 상태 유지
 
   const loadHistoryData = useCallback((page?: number) => {
     applyFilters(page ?? 1);

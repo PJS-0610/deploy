@@ -132,52 +132,41 @@
   background-color: #f8f9fa;
 }
 
-/* 메인 챗봇 컨테이너 */
+/* 메인 챗봇 컨테이너 - ChatGPT 스타일 */
 .chatbotContainer {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   position: relative;
 }
 
-.chatbotContainer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #232F3E, #232F3E, #232F3E);
-  border-radius: 12px 12px 0 0;
-}
 
 
-/* 채팅 메시지 영역 */
+/* 채팅 메시지 영역 - ChatGPT 스타일 */
 .chatbotMessagesContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #ffffff;
 }
 
 .chatbotMessages {
   flex: 1;
-  padding: 24px;
+  padding: 0;
   overflow-y: auto;
   scroll-behavior: smooth;
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(30, 58, 138, 0.02) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(30, 64, 175, 0.02) 0%, transparent 50%);
+  background: #ffffff;
 }
 
-/* 커스텀 스크롤바 (기존 코드 유지) */
+/* 커스텀 스크롤바 - ChatGPT 스타일 */
 .chatbotMessages::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .chatbotMessages::-webkit-scrollbar-track {
@@ -185,19 +174,18 @@
 }
 
 .chatbotMessages::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #cbd5e1, #94a3b8);
-  border-radius: 3px;
-  transition: background 0.3s ease;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
 }
 
 .chatbotMessages::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #94a3b8, #64748b);
+  background: rgba(0, 0, 0, 0.4);
 }
 
-/* 채팅 메시지 개별 스타일 개선 (기존 코드 유지) */
+/* 채팅 메시지 개별 스타일 - ChatGPT 스타일 */
 .messageItem {
-  margin-bottom: 20px;
-  animation: messageSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 0;
+  animation: messageSlideIn 0.3s ease-out;
 }
 
 @keyframes messageSlideIn {
@@ -211,108 +199,139 @@
   }
 }
 
-/* 사용자 메시지 */
+/* 사용자 메시지 - ChatGPT 스타일 */
 .userMessage {
-  background: linear-gradient(135deg, #1e3a8a, #1e40af);
-  color: white;
-  border-radius: 16px 16px 4px 16px;
-  padding: 12px 16px;
-  margin: 8px 0;
-  margin-left: auto;
-  max-width: 70%;
-  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.2);
+  background: #f7f7f8;
+  color: #353740;
+  padding: 32px 24px;
+  margin: 0;
+  max-width: none;
   border: none;
+  border-radius: 0;
+  position: relative;
+  font-size: 16px;
+  line-height: 1.5;
 }
 
-/* 봇 메시지 */
+.userMessage::before {
+  content: 'You';
+  position: absolute;
+  top: 12px;
+  left: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #8e8ea0;
+  margin-bottom: 8px;
+}
+
+/* 봇 메시지 - ChatGPT 스타일 */
 .botMessage {
-  background: linear-gradient(135deg, #f0f4ff, #e0edff);
-  border: 1px solid rgba(30, 58, 138, 0.1);
-  border-radius: 16px 16px 16px 4px;
-  padding: 12px 16px;
-  margin: 8px 0;
-  margin-right: auto;
-  max-width: 80%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border-left: 3px solid #1e3a8a;
-  color: #1f2937;
+  background: #ffffff;
+  color: #353740;
+  padding: 32px 24px;
+  margin: 0;
+  max-width: none;
+  border: none;
+  border-radius: 0;
+  border-top: 1px solid #ececf1;
+  position: relative;
+  font-size: 16px;
+  line-height: 1.5;
 }
 
-/* 센서 데이터 카드 스타일 (기존 코드 유지) */
+.botMessage::before {
+  content: 'ChatGPT';
+  position: absolute;
+  top: 12px;
+  left: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #19c37d;
+  margin-bottom: 8px;
+}
+
+/* 센서 데이터 카드 스타일 - ChatGPT 스타일로 개선 */
 .sensorDataCard {
-  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 12px;
+  background: #f7f7f8;
+  border: 1px solid #ececf1;
+  border-radius: 8px;
   padding: 16px;
-  margin-top: 12px;
-  backdrop-filter: blur(10px);
+  margin-top: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
-/* 입력 영역 */
+/* 센서 상태별 색상 스타일 */
+.statusGood {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.statusNormal {
+  color: #8b5cf6;
+  font-weight: 600;
+}
+
+.statusWarning {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* 입력 영역 - ChatGPT 스타일 */
 .chatbotInput {
   padding: 24px;
   border-top: 1px solid #e5e7eb;
-  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  background: #ffffff;
   position: relative;
 }
 
-.chatbotInput::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #1e3a8a, transparent);
-  border-radius: 1px;
-}
-
-/* 입력 필드 */
+/* 입력 필드 - ChatGPT 스타일 */
 .messageInput {
   width: 100%;
-  padding: 16px 20px;
-  border: 2px solid #e5e7eb;
-  border-radius: 25px;
+  padding: 16px 52px 16px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
   background: #ffffff;
-  font-size: 14px;
+  font-size: 16px;
   transition: all 0.2s ease;
   outline: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+  resize: none;
+  min-height: 50px;
+  max-height: 200px;
 }
 
 .messageInput:focus {
-  border-color: #1e3a8a;
-  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1), 0 2px 8px rgba(30, 58, 138, 0.05);
-  transform: translateY(-1px);
+  border-color: #10a37f;
+  box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.2);
 }
 
-/* 전송 버튼 */
+/* 전송 버튼 - ChatGPT 스타일 */
 .sendButton {
-  background: linear-gradient(135deg, #1e3a8a, #1e40af);
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  background: #10a37f;
   border: none;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 8px rgba(30, 58, 138, 0.3);
   color: white;
+  box-shadow: none;
 }
 
 .sendButton:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1e40af, #1d4ed8);
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.4);
+  background: #0d9268;
 }
 
 .sendButton:disabled {
-  background: #e5e7eb;
+  background: #d1d5db;
   cursor: not-allowed;
-  box-shadow: none;
+  color: #9ca3af;
 }
 
 /* 타이핑 인디케이터 개선 (기존 코드 유지) */

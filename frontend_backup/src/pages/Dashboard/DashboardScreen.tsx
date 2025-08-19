@@ -296,11 +296,11 @@ const QuickSightDashboard: React.FC<{
   return (
     <div className={styles.quicksightContainer}>
       {/* 🔗 대시보드 정보 헤더 */}
-      <div className={styles.quicksightHeader}>
+      {/* <div className={styles.quicksightHeader}>
         <h3 className={styles.quicksightTitle}>
           {QuickSightService.getSensorTypeLabel(selectedSensor)}
         </h3>
-      </div>
+      </div> */}
 
       {/* 📊 임베드 iframe 또는 오류 메시지 */}
       {dashboardData.embedUrl && /\/embed\//.test(dashboardData.embedUrl) ? (
@@ -796,7 +796,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
               <section className={styles.quicksightSection}>
                 <div className={styles.sectionHeader}>
                   <div className={styles.sectionTitleRow}>
-                    <h2 className={styles.sectionTitle}>QUICKSIGHT ANALYTICS DASHBOARD</h2>
+                    <h2 className={styles.sectionTitle}>
+  {QuickSightService.getSensorTypeLabel(selectedQuickSightSensor)} QUICKSIGHT ANALYTICS DASHBOARD
+</h2>
 
                     {/* QuickSight 센서 선택 토글 버튼 */}
                     <div className={styles.toggleGroup}>

@@ -154,6 +154,9 @@
 .currentItem {
   display: flex;
   justify-content: space-between;
+  display: flex;
+justify-content: center;   /* ← 전체 가운데 */
+gap: 16px;    
   align-items: center;
   padding: 16px;
   margin: 12px 0;
@@ -184,6 +187,10 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  display: flex;
+align-items: center;
+justify-content: center;  /* ← 가운데 정렬 */
+gap: 8px;   
 }
 
 .statusIcon {
@@ -220,6 +227,21 @@
   font-weight: 500;
   color: #374151;
   font-size: 16px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;   /* 세로 중앙 정렬 */
+  gap: 8px;              /* 입력칸과 버튼 간격 */
+}
+
+.controls input {
+  flex: 1;               /* 입력칸을 가능한 넓게 */
+  min-width: 80px;       /* 최소 너비 */
+}
+
+.controls button {
+  white-space: nowrap;   /* 버튼 글자가 줄바꿈 안되게 */
 }
 
 .chip {
@@ -375,6 +397,7 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* 로그 카드 */
@@ -631,4 +654,89 @@
   .footerActions {
     justify-content: center;
   }
+}
+/* ===== SENSOR DATA: 3열(이름 | 값 | 뱃지) 중앙정렬 + 세로 줄맞춤 ===== */
+.grid > div:first-child .currentItem {
+  display: grid;
+  grid-template-columns: 180px 1fr 120px; /* 이름 | 값 | 배지 */
+  column-gap: 12px;
+  align-items: center;
+  justify-items: center; /* 각 칸 중앙 */
+}
+
+.grid > div:first-child .currentLeft {
+  justify-self: center; /* 이름 중앙 */
+}
+
+.grid > div:first-child .currentRight {
+  /* 내부 두 요소(값, 배지)를 부모 그리드로 끌어올려 2,3열에 배치 */
+  display: contents;
+}
+
+.grid > div:first-child .currentValue { /* 값 칸(2열) */
+  justify-self: center;
+  text-align: center;
+  font-variant-numeric: tabular-nums; /* 숫자 폭 통일로 깔끔 */
+}
+
+.grid > div:first-child .badge {       /* 배지 칸(3열) */
+  justify-self: center;
+}
+
+/* 카드 내 여백/배경은 유지하고 싶으면 필요 시 조절 */
+.grid > div:first-child .currentItem {
+  background-color: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+}
+
+/* ===== CONTROLS: 3열(이름 | 입력칸 | 버튼) 중앙정렬 + 세로 줄맞춤 ===== */
+.grid > div:last-child .currentItem {
+  display: grid;
+  grid-template-columns: 180px 1fr 140px; /* 이름 | 입력칸 | 버튼 */
+  column-gap: 12px;
+  align-items: center;
+  justify-items: center; /* 각 칸 중앙 */
+}
+
+.grid > div:last-child .currentLeft {
+  justify-self: center; /* 이름 중앙 */
+}
+
+.grid > div:last-child .currentRight {
+  display: contents; /* 입력칸, 버튼을 부모 그리드 2/3열로 */
+}
+
+/* 입력칸(2열) */
+.grid > div:last-child .input {
+  width: 100%;
+  max-width: 220px;     /* 화면에 맞게 조정 가능 */
+  text-align: center;   /* 숫자 중앙정렬 */
+  justify-self: center;
+}
+
+/* 버튼(3열) — APPLY 단일 버튼 */
+.grid > div:last-child .btn {
+  justify-self: center;
+}
+
+/* 반응형: 좁은 화면에서는 2열로 접기 */
+@media (max-width: 768px) {
+  .grid > div:first-child .currentItem,
+  .grid > div:last-child  .currentItem {
+    grid-template-columns: 1fr 1fr; /* 2열 */
+    grid-auto-rows: minmax(40px, auto);
+  }
+
+  /* SENSOR DATA: 이름(1열), 값(2열), 배지는 2행 1~2열 */
+  .grid > div:first-child .currentLeft { grid-column: 1 / 2; }
+  .grid > div:first-child .currentValue { grid-column: 2 / 3; }
+  .grid > div:first-child .badge { grid-column: 1 / 3; }
+
+  /* CONTROLS: 이름(1열), 입력칸(2열), 버튼은 2행 1~2열 */
+  .grid > div:last-child .currentLeft { grid-column: 1 / 2; }
+  .grid > div:last-child .input { grid-column: 2 / 3; }
+  .grid > div:last-child .btn { grid-column: 1 / 3; }
 }

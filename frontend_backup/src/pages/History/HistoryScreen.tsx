@@ -55,16 +55,16 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
    * - 필터링 및 페이지네이션 상태 관리
    * - 날짜, 센서 타입, 상태별 필터링 지원
    */
-const {
-  historyState,
-  loadHistoryData,
-  updateFilter,
-  resetFilters,
-  changePage,
-  updateHistoryState,
-  handleDateSelect,    // ✅ 훅에서 가져오기
-  applyFilters         // ✅ 이것도 가져오기
-} = useHistoryData();
+  const {
+    historyState,
+    loadHistoryData,
+    updateFilter,
+    resetFilters,
+    changePage,
+    updateHistoryState,
+    handleDateSelect,    // ✅ 훅에서 가져오기
+    applyFilters         // ✅ 이것도 가져오기
+  } = useHistoryData();
 
   /**
    * 🔔 UI 상태 관리 (알림, 드롭다운 등)
@@ -101,17 +101,17 @@ const {
     });
   }, [historyState.events]);
 
-    // ISO "2025-08-19T11:29:00" → 날짜/시간 두 줄로 표시
-const renderTimestamp = (ts: string) => {
-  if (!ts) return '-';
-  const [date, time] = String(ts).split('T');
-  return (
-    <>
-      <div className={styles.timestampDate}>{date}</div>
-      <div className={styles.timestampTime}>{time || ''}</div>
-    </>
-  );
-};
+  // ISO "2025-08-19T11:29:00" → 날짜/시간 두 줄로 표시
+  const renderTimestamp = (ts: string) => {
+    if (!ts) return '-';
+    const [date, time] = String(ts).split('T');
+    return (
+      <>
+        <div className={styles.timestampDate}>{date}</div>
+        <div className={styles.timestampTime}>{time || ''}</div>
+      </>
+    );
+  };
 
   /**
    * 🧭 메뉴 네비게이션 핸들러
@@ -145,18 +145,20 @@ const renderTimestamp = (ts: string) => {
    * 🔧 필터 표시/숨김 토글
    * 필터 섹션의 확장/축소 상태 관리
    */
-  const toggleFilters = useCallback(() => {
-    updateHistoryState({ showFilters: !historyState.showFilters });
-  }, [historyState.showFilters, updateHistoryState]);
+  const openFilters = useCallback(() => {
+    updateHistoryState({ showFilters: true, showDatePicker: true });
+  }, [updateHistoryState]);
 
   /**
    * 🔄 필터 변경 감지 및 자동 적용
    * 날짜, 센서 타입, 상태 필터가 변경될 때마다 자동으로 데이터 갱신
    */
-useEffect(() => {
-   // ✅ 어떤 값이든 바뀌면 항상 재조회 (All로 복귀도 즉시 반영)
-  applyFilters();
-}, [historyState.filters, applyFilters]);
+  useEffect(() => {
+    // 안전장치: 혹시라도 닫혀 있으면 강제로 펼침
+    if (!historyState.showFilters || !historyState.showDatePicker) {
+      updateHistoryState({ showFilters: true, showDatePicker: true });
+    }
+  }, [historyState.showFilters, historyState.showDatePicker, updateHistoryState]);
 
   return (
     <div className={styles.container}>
@@ -190,7 +192,7 @@ useEffect(() => {
               resetFilters={resetFilters}
               handleDateSelect={handleDateSelect}
               applyFilters={applyFilters}
-              toggleFilters={toggleFilters}
+              toggleFilters={openFilters}
             />
 
             {/* 에러 메시지 */}

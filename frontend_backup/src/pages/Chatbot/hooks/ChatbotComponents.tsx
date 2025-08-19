@@ -1,18 +1,20 @@
 // src/components/chatbot/hooks/ChatbotComponents.tsx
 
 import React from 'react';
-import { Send, Wifi, WifiOff, AlertCircle } from 'lucide-react';
-import { ChatMessage } from '../../../services/ChatbotTypes';
+import { Send, Wifi, WifiOff, AlertCircle, Plus } from 'lucide-react';
+import { ChatMessage, SensorData } from '../../../services/ChatbotTypes';
 
 // ========== ChatbotHeader ==========
 interface ChatbotHeaderProps {
   modelStatus: 'Active' | 'Inactive' | 'Loading';
   onBackClick?: () => void;  // 선택적으로 변경
+  onNewChat?: () => void;    // 새 채팅 버튼 콜백 추가
 }
 
 export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({ 
   modelStatus, 
-  onBackClick 
+  onBackClick,
+  onNewChat
 }) => {
   const getStatusColor = () => {
     switch (modelStatus) {
@@ -34,10 +36,10 @@ export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({
 
   const getStatusText = () => {
     switch (modelStatus) {
-      case 'Active': return '연결됨';
-      case 'Loading': return '연결 중...';
-      case 'Inactive': return '연결 실패';
-      default: return '알 수 없음';
+      case 'Active': return 'ACTIVE';
+      case 'Loading': return 'LOADING...';
+      case 'Inactive': return 'INACTIVE';
+      default: return 'UNKNOWN';
     }
   };
 
@@ -48,7 +50,7 @@ export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({
       justifyContent: 'space-between',
       padding: '16px 24px',
       borderBottom: '1px solid #e5e7eb',
-      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+      backgroundColor: '#e5e7eb',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -61,6 +63,8 @@ export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({
           }}>
             AWS² IoT 공기질 분석 챗봇
           </h2>
+    </div>
+
           <p style={{
             margin: '2px 0 0 0',
             fontSize: '13px',
@@ -68,32 +72,55 @@ export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({
           }}>
             실시간 센서 데이터 및 환경 분석 AI
           </p>
-        </div>
-      </div>
-      
+                  {/* ✅ 여기로 이동 */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        padding: '8px 14px',
+        padding: '6px 12px',
         borderRadius: '20px',
-        backgroundColor: modelStatus === 'Active' ? '#ecfdf5' : 
+        backgroundColor: modelStatus === 'Active' ? '#ecfdf5' :
                         modelStatus === 'Loading' ? '#fef3c7' : '#fef2f2',
-        border: `1px solid ${modelStatus === 'Active' ? '#d1fae5' : 
+        border: `1px solid ${modelStatus === 'Active' ? '#d1fae5' :
                               modelStatus === 'Loading' ? '#fde68a' : '#fecaca'}`,
-        fontSize: '14px'
+        fontSize: '13px'
       }}>
         <span style={{ color: getStatusColor() }}>
           {getStatusIcon()}
         </span>
-        <span style={{ 
-          color: getStatusColor(), 
-          fontWeight: '500',
-          fontSize: '13px'
-        }}>
+        <span style={{ color: getStatusColor(), fontWeight: '500' }}>
           {getStatusText()}
         </span>
       </div>
+        </div>
+
+
+      
+      {onNewChat && (
+        <button
+          onClick={onNewChat}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '8px 12px',
+            background: '#4e5150ff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            transition: 'background-color 0.2s ease'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#4e5150ff'}
+          onMouseLeave={(e) => e.currentTarget.style.background = '#4e5150ff'}
+          type="button"
+        >
+          <Plus size={16} />
+          새 채팅
+        </button>
+      )}
       
       <style>{`
         .loading-spinner {
@@ -113,6 +140,110 @@ export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({
     </div>
   );
 };
+
+// ========== SensorDataCard ==========
+interface SensorDataCardProps {
+  sensorData: SensorData;
+}
+
+// MintrendService 상태 판정 함수들 (인라인으로 복사)
+const getTemperatureStatus = (t: number): string => {
+  if (t < 22 || t > 28) return 'WARNING';
+  if (t >= 24 && t <= 27) return 'GOOD';
+  return 'NORMAL';
+};
+
+const getHumidityStatus = (h: number): string => {
+  if (h < 40 || h > 80) return 'WARNING';
+  if (h >= 50 && h <= 70) return 'GOOD';
+  return 'NORMAL';
+};
+
+const getGasStatus = (g: number): string => {
+  if (g > 2500) return 'WARNING';
+  if (g <= 2000) return 'GOOD';
+  return 'NORMAL';
+};
+
+const getStatusColor = (status: string): string => {
+  switch (status.toUpperCase()) {
+    case 'GOOD': return '#10b981';    // 초록
+    case 'NORMAL': return '#8b5cf6';  // 보라
+    case 'WARNING': return '#ef4444'; // 빨강
+    default: return '#6b7280';
+  }
+};
+
+export const SensorDataCard: React.FC<SensorDataCardProps> = ({ sensorData }) => {
+  const tempStatus = getTemperatureStatus(sensorData.temperature);
+  const humStatus = getHumidityStatus(sensorData.humidity);
+  const gasStatus = getGasStatus(sensorData.gasConcentration);
+
+  const badgeStyle = (status: string): React.CSSProperties => {
+    const color = getStatusColor(status);
+    return {
+      padding: '2px 8px',
+      borderRadius: 9999,
+      border: `1px solid ${color}`,
+      color,
+      fontSize: 12,
+      fontWeight: 700,
+      lineHeight: '18px',
+      whiteSpace: 'nowrap',
+    };
+  };
+  return (
+    <div style={{
+      marginTop: '12px',
+      padding: '12px',
+      backgroundColor: '#f7f7f8',
+      borderRadius: '8px',
+      fontSize: '13px',
+      border: '1px solid #ececf1'
+    }}>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'auto auto auto',
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        gap: '12',
+        fontSize: '18px'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '10px',
+          color: 'black'
+        }}>
+          <span>🌡️TEMPERATURE</span>
+          <span>{sensorData.temperature.toFixed(1)}°C</span>
+          <span style={badgeStyle(tempStatus)}>{tempStatus}</span>
+        </div>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '10px',
+          color: 'black'
+        }}>
+          <span>💧HUMIDITY</span>
+          <span>{sensorData.humidity.toFixed(1)}%</span>
+          <span style={badgeStyle(humStatus)}>{humStatus}</span>
+        </div>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '10px',
+          color: 'black'
+        }}>
+          <span>💨CO₂ CONCENTRATION</span>
+          <span>{sensorData.gasConcentration.toFixed(0)}ppm</span>
+          <span style={badgeStyle(gasStatus)}>{gasStatus}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 // ========== MessageItem ==========
 interface MessageItemProps {
@@ -153,103 +284,46 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: isUser ? 'flex-end' : 'flex-start',
-      marginBottom: '16px',
-      animation: 'fadeIn 0.3s ease-in-out'
-    }}>
+    <>
       <div style={{
-        maxWidth: '75%',
-        padding: '14px 18px',
-        borderRadius: isUser ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
-        backgroundColor: isUser ? '#3b82f6' : '#ffffff',
-        color: isUser ? 'white' : '#1f2937',
-        wordWrap: 'break-word',
-        boxShadow: isUser ? '0 2px 8px rgba(59, 130, 246, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.1)',
-        border: isUser ? 'none' : '1px solid #e5e7eb'
+        width: '100%',
+        backgroundColor: isUser ? '#f7f7f8' : '#ffffff',
+        borderTop: isUser ? 'none' : '1px solid #ececf1',
+        padding: '32px 24px',
+        position: 'relative'
       }}>
+        {/* 사용자 */}
+        <div style={{
+          fontSize: '14px',
+          fontWeight: '600',
+          color: isUser ? '#8e8ea0' : '#19c37d',
+          marginBottom: '12px',
+          textTransform: 'uppercase' as const
+        }}>
+          {isUser ? 'You' : 'CHATBOT'}
+        </div>
+        
         <div style={{ 
           whiteSpace: 'pre-wrap',
-          lineHeight: '1.6',
-          fontSize: '14px'
+          lineHeight: '1.5',
+          fontSize: '16px',
+          color: '#353740'
         }}>
           {message.message}
         </div>
         
         {/* 센서 데이터 표시 */}
         {message.sensorData && !isUser && (
-          <div style={{
-            marginTop: '12px',
-            padding: '12px',
-            backgroundColor: '#f8fafc',
-            borderRadius: '10px',
-            fontSize: '13px',
-            border: '1px solid #e2e8f0'
-          }}>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '8px',
-              fontSize: '12px'
-            }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '4px',
-                color: '#059669'
-              }}>
-                <span>🌡️</span>
-                <span>{message.sensorData.temperature.toFixed(1)}°C</span>
-              </div>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '4px',
-                color: '#0ea5e9'
-              }}>
-                <span>💧</span>
-                <span>{message.sensorData.humidity.toFixed(1)}%</span>
-              </div>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '4px',
-                color: '#8b5cf6'
-              }}>
-                <span>🌬️</span>
-                <span>{message.sensorData.gasConcentration.toFixed(0)}ppm</span>
-              </div>
-            </div>
-          </div>
+          <SensorDataCard sensorData={message.sensorData} />
         )}
         
-        {/* 상태 및 시간 */}
+        {/* 타임스탬프 (선택적으로 표시) */}
         <div style={{
           marginTop: '8px',
           fontSize: '11px',
-          opacity: 0.8,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
+          color: '#8e8ea0'
         }}>
-          <span>{formatTime(message.timestamp)}</span>
-          {message.status && !isUser && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <span>{getStatusEmoji(message.status)}</span>
-              <span style={{
-                color: getStatusColor(message.status),
-                fontWeight: '500',
-                fontSize: '10px'
-              }}>
-                {message.status}
-              </span>
-            </div>
-          )}
+          {formatTime(message.timestamp)}
         </div>
       </div>
       
@@ -259,7 +333,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-    </div>
+    </>
   );
 };
 

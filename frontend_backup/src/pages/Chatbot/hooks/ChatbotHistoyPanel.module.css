@@ -1,7 +1,7 @@
 .history-panel {
   position: relative;
   height: 100%;
-  background: #FF9900;
+  background: transparent;
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
@@ -11,11 +11,13 @@
 .history-panel.collapsed {
   width: 60px;
   min-width: 60px;
+  background: #FF9900;
 }
 
 .history-panel.expanded {
   width: 350px;
   min-width: 350px;
+  background: #f8fafc;
 }
 
 .history-toggle-btn {
@@ -50,12 +52,17 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #ffffff;
+  border-left: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 .history-header {
   margin-bottom: 20px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .history-title {

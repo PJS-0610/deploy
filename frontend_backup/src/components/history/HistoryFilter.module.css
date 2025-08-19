@@ -17,6 +17,16 @@
   margin-bottom: 16px;
 }
 
+.filterTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+    font-weight: 600;
+  color: #000000;
+}
+
+
 .filterToggle {
   display: flex;
   align-items: center;
@@ -65,9 +75,6 @@
 }
 
 .filterContent {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
   margin-top: 16px;
 }
 
@@ -79,6 +86,20 @@
 .filterGroup {
   position: relative;
 }
+
+.filtersRow {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.filterGroupRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 
 .filterLabel {
   display: block;
@@ -148,6 +169,42 @@
   border-radius: 0 0 6px 6px;
 }
 
+/* 칩(가로 나열) */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+.chip:hover {
+  border-color: #9ca3af;
+}
+.chipActive {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* 인라인 달력 컨테이너 */
+.calendarBox {
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+
 /* 날짜 선택 컨테이너 */
 .datePickerContainer {
   position: relative;
@@ -171,4 +228,102 @@
   .filterContent {
     grid-template-columns: 1fr;
   }
+}
+
+/* ===== Inline Filter Bar ===== */
+.filterBar {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  flex-wrap: wrap;              /* 폭 부족하면 다음 줄로 */
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterLabel {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+  letter-spacing: .2px;
+}
+
+.dateInput {
+  appearance: none;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 14px;
+  min-width: 220px;
+  color: #111827;
+}
+
+.pillRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filterPill {
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.filterPill:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 1px 6px rgba(99,102,241,.15);
+}
+
+.selected {
+  border-color: #4338ca;
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+/* 상태별 강조색 (선택 시 추가 배색) */
+.filterPill.good.selected {
+  border-color: #059669;
+  background: #ecfdf5;
+  color: #065f46;
+}
+.filterPill.normal.selected {
+  border-color: #6b7280;
+  background: #f3f4f6;
+  color: #111827;
+}
+.filterPill.warning.selected {
+  border-color: #dc2626;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.filterActions {
+  margin-left: auto; /* 오른쪽 끝 정렬 */
+}
+
+.resetBtn {
+  padding: 10px 14px;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.resetBtn:hover {
+  background: #fef2f2;
 }

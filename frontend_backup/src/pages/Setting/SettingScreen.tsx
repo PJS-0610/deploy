@@ -527,8 +527,12 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                           </div>
                           <div className={styles.currentRight}>
                             <span className={styles.currentValue}>
-                              {value}
-                            </span>
+  {value}
+  {type === 'temp' && '°C'}
+  {type === 'humidity' && '%'}
+  {type === 'co2' && 'ppm'}
+</span>
+
                             <span
                               className={styles.badge}
                               style={{ backgroundColor: colorForStatus(statusTxt), marginLeft: 8 }}
@@ -560,19 +564,19 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   value={setting.target || ''}
   onChange={e => handleSettingChange(type, 'target', e.target.value)}
   className={styles.input}
-  style={{ width: '80px', marginRight: '8px' }}
+  style={{ width: '86px', marginRight: '8px' }}
   placeholder={
     type === 'temp' ? '24°C' :
     type === 'humidity' ? '50%' :
     type === 'co2' ? '400ppm' : 'Target'
   }
 />
-                            <button
+                            {/* <button
                               onClick={() => handleTriggerToggle(type)}
                               className={`${styles.chip} ${setting.triggerEnabled ? styles.chipOn : styles.chipOff}`}
                             >
                               {setting.triggerEnabled ? 'AUTO' : 'MANUAL'}
-                            </button>
+                            </button> */}
                             <button
                               onClick={() => handleApplySettings(type)}
                               disabled={isLoading}
@@ -589,7 +593,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                 </div>
 
                 {/* 자동 Feedback 및 전체 제어 */}
-                <div className={styles.footerRow}>
+                {/* <div className={styles.footerRow}>
                   <div className={styles.checkboxRow}>
                     <input
                       type="checkbox"
@@ -601,7 +605,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                     <label htmlFor="autoFeedback" className={styles.checkboxLabel}>
                       AUTO Feedback
                     </label>
-                  </div>
+                  </div> */}
 
                   <div className={styles.footerActions}>
                     <button
@@ -619,7 +623,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                       {isLoading ? 'APPLY ALL' : 'APPLY ALL'}
                     </button>
                   </div>
-                </div>
+                
               </div>
 
               {/* 로그 영역 */}
