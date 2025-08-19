@@ -1196,7 +1196,9 @@ def find_latest_sensor_data_from_s3(query: str) -> dict:
         else:
             target_time = now
     else:
-        target_time = now
+        # "현재", "지금" 등의 쿼리는 실제 가장 최근 데이터를 찾기 위해 
+        # find_closest_sensor_data 함수를 사용
+        return find_closest_sensor_data(now)
     
     
     # 최근 데이터 검색을 위해 현재부터 과거로 역순 검색
@@ -2128,6 +2130,71 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
                 return [top_doc], context
     else:
         # 시간 정보 없음 → 최근 데이터
+        # "현재"/"지금" 쿼리의 경우 일관된 최근 데이터 제공을 위해 find_closest_sensor_data 사용
+        if is_recent_query(query):
+            closest_data = find_closest_sensor_data(datetime_cls.now())
+            if closest_data:
+                data = closest_data['data']
+                
+                # 데이터 타입 확인
+                is_houravg = 'hourtemp' in data or 'houravg' in closest_data['key']
+                is_minavg = 'minavg' in closest_data['key'] or 'mintrend' in closest_data['key']
+                
+                # 적절한 포맷으로 변환
+                if is_minavg:
+                    content = f"분별 측정 센서 데이터:\n"
+                    if 'mintemp' in data:
+                        content += f"온도: {data['mintemp']}도\n"
+                    if 'minhum' in data:
+                        content += f"습도: {data['minhum']}%\n"
+                    if 'mingas' in data:
+                        content += f"이산화탄소: {data['mingas']}ppm\n"
+                    schema = 'minavg'
+                elif is_houravg:
+                    content = f"시간별 평균 센서 데이터:\n"
+                    content += f"이것은 해당 시간대 전체의 평균값입니다.\n"
+                    if 'hourtemp' in data:
+                        content += f"⭐ 시간별 평균 온도: {data['hourtemp']}도 (60분간 평균)\n"
+                    if 'hourhum' in data:
+                        content += f"⭐ 시간별 평균 습도: {data['hourhum']}% (60분간 평균)\n"
+                    if 'hourgas' in data:
+                        content += f"⭐ 시간별 평균 이산화탄소: {data['hourgas']}ppm (60분간 평균)\n"
+                    schema = 'houravg'
+                else:
+                    content = json.dumps(data, ensure_ascii=False, indent=2)
+                    schema = 'closest'
+                
+                top_doc = {
+                    'score': 100,
+                    'schema': schema,
+                    'content': content,
+                    'id': closest_data['key'],
+                    'tag': 'D1'
+                }
+                
+                # 타임스탬프를 한국어로 변환
+                from datetime import datetime as datetime_cls
+                try:
+                    timestamp_str = data.get('timestamp', '')
+                    if timestamp_str:
+                        dt = datetime_cls.fromisoformat(timestamp_str.replace('T', ' '))
+                        if is_minavg:
+                            korean_time = f"{dt.year}년 {dt.month}월 {dt.day}일 {dt.hour}시 {dt.minute}분"
+                        else:
+                            korean_time = f"{dt.year}년 {dt.month}월 {dt.day}일 {dt.hour}시"
+                    else:
+                        korean_time = "시간 정보 없음"
+                except:
+                    korean_time = "시간 정보 없음"
+                
+                if is_houravg:
+                    context = f"[D1] {korean_time} 시간별 평균 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}\n"
+                elif is_minavg:
+                    context = f"[D1] {korean_time} 분별 측정 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}\n"
+                else:
+                    context = f"[D1] {korean_time} 측정 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}\n"
+                
+                return [top_doc], context
         target_dt = datetime_cls.now()
     
     # 3) 단일 시간 검색 - granularity 기반 검색 후 fallback으로 이동
