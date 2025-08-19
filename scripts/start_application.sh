@@ -119,6 +119,12 @@ REACT_APP_API_BASE_URL=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_
 REACT_APP_DEBUG=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_DEBUG" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "false")
 REACT_APP_ADMIN_API_KEY=$(aws ssm get-parameter --name "/test_pjs/backend/ADMIN_API_KEY" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "admin-0816-key-0610-aws2")
 
+# 새로운 프론트엔드 환경변수 가져오기
+REACT_APP_ADMIN_HEADER_NAME=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_ADMIN_HEADER_NAME" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "x-api-key")
+REACT_APP_CHATBOT_ASK_PATH=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_CHATBOT_ASK_PATH" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "/chatbot/ask")
+REACT_APP_CHATBOT_HEALTH_PATH=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_CHATBOT_HEALTH_PATH" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "/chatbot/health")
+REACT_APP_CONTROL_API_BASE_URL=$REACT_APP_API_BASE_URL
+
 # 도메인 정보
 DOMAIN_NAME=$(aws ssm get-parameter --name "/test_pjs/domain" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "localhost")
 
@@ -137,6 +143,10 @@ echo "- DOMAIN_NAME=$DOMAIN_NAME"
 echo "- IOT_ENDPOINT_URL=$IOT_ENDPOINT_URL"
 echo "- IOT_TOPIC_CONTROL=$IOT_TOPIC_CONTROL"
 echo "- DYNAMODB_CONTROL_TABLE=$DYNAMODB_CONTROL_TABLE"
+echo "- REACT_APP_ADMIN_HEADER_NAME=$REACT_APP_ADMIN_HEADER_NAME"
+echo "- REACT_APP_CHATBOT_ASK_PATH=$REACT_APP_CHATBOT_ASK_PATH"
+echo "- REACT_APP_CHATBOT_HEALTH_PATH=$REACT_APP_CHATBOT_HEALTH_PATH"
+echo "- REACT_APP_CONTROL_API_BASE_URL=$REACT_APP_CONTROL_API_BASE_URL"
 echo "- ADMIN_API_KEY=***[SECURED]***"
 
 # 백엔드 .env 파일 생성
@@ -184,6 +194,10 @@ cat > /home/ec2-user/app/frontend_backup/.env << EOF
 REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
 REACT_APP_DEBUG=$REACT_APP_DEBUG
 REACT_APP_ADMIN_API_KEY=$REACT_APP_ADMIN_API_KEY
+REACT_APP_ADMIN_HEADER_NAME=$REACT_APP_ADMIN_HEADER_NAME
+REACT_APP_CHATBOT_ASK_PATH=$REACT_APP_CHATBOT_ASK_PATH
+REACT_APP_CHATBOT_HEALTH_PATH=$REACT_APP_CHATBOT_HEALTH_PATH
+REACT_APP_CONTROL_API_BASE_URL=$REACT_APP_CONTROL_API_BASE_URL
 REACT_APP_ENV=production
 PORT=$PORT
 BROWSER=none
