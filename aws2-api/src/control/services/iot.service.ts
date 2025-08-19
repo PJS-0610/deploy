@@ -38,14 +38,23 @@ export class IoTService {
     try {
       const topic = this.controlTopic;
       
-      // One-line JSON 메시지 생성
+      // 센서 타입에 따른 제어 타입 매핑
+      const controlTypeMap = {
+        'temp': 'AirConditioner',
+        'humidity': 'Humidifier',
+        'gas': 'AirCleaner'
+      };
+      
+      const controlType = controlTypeMap[controlLog.sensor_type] || 'Unknown';
+      
+      // IoT 메시지 양식에 맞게 생성
       const message = {
-        id: controlLog.id,
-        timestamp: controlLog.timestamp,
-        sensor_type: controlLog.sensor_type,
-        before_value: controlLog.before_value,
-        status: controlLog.status,
-        after_value: controlLog.after_value
+        message: {
+          timestamp: controlLog.timestamp,
+          control_type: controlType,
+          before_value: controlLog.before_value.toString(),
+          after_value: controlLog.after_value.toString()
+        }
       };
 
       // JSON을 한 줄로 압축
@@ -112,13 +121,23 @@ export class IoTService {
     try {
       const topic = `${this.controlTopic}/${sensorType}`;
       
+      // 센서 타입에 따른 제어 타입 매핑
+      const controlTypeMap = {
+        'temp': 'AirConditioner',
+        'humidity': 'Humidifier',
+        'gas': 'AirCleaner'
+      };
+      
+      const controlType = controlTypeMap[controlLog.sensor_type] || 'Unknown';
+      
+      // IoT 메시지 양식에 맞게 생성
       const message = {
-        id: controlLog.id,
-        timestamp: controlLog.timestamp,
-        sensor_type: controlLog.sensor_type,
-        before_value: controlLog.before_value,
-        status: controlLog.status,
-        after_value: controlLog.after_value
+        message: {
+          timestamp: controlLog.timestamp,
+          control_type: controlType,
+          before_value: controlLog.before_value.toString(),
+          after_value: controlLog.after_value.toString()
+        }
       };
 
       const payload = JSON.stringify(message);

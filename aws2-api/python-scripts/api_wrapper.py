@@ -12,7 +12,6 @@ try:
         build_prompt, 
         build_general_prompt,
         generate_answer_with_nova,
-        show_last_detail_if_any,
         expand_followup_query_with_last_window,
         save_turn_to_s3,
         get_or_create_session,
@@ -47,25 +46,6 @@ def process_query(query: str, session_id: str = None) -> dict:
         # 세션 가져오기 또는 생성
         session = get_or_create_session(session_id)
         
-        # 상세 재요청 처리
-        detail_ans = show_last_detail_if_any(query, session=session)
-        if detail_ans:
-            turn_id = session.increment_turn()
-            result = {
-                "answer": detail_ans,
-                "route": "sensor_detail",
-                "session_id": session.session_id,
-                "turn_id": turn_id,
-                "processing_time": (datetime.now() - start_time).total_seconds(),
-                "mode": "context_reuse"
-            }
-            
-            if ENABLE_CHATLOG_SAVE:
-                session.add_to_history(query, detail_ans, "sensor")
-                save_turn_to_s3(session.session_id, turn_id, "sensor", query, detail_ans, top_docs=[])
-            
-            return result
-
         # 후속질문 확장
         expanded_query = expand_followup_query_with_last_window(query, session=session)
         if expanded_query != query:
