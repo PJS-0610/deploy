@@ -113,6 +113,9 @@ BACKEND_PORT=$(aws ssm get-parameter --name "/test_pjs/backend/PORT" --with-decr
 # 보안 관련 환경변수 가져오기
 ADMIN_API_KEY=$(aws ssm get-parameter --name "/test_pjs/backend/ADMIN_API_KEY" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "admin-default-key")
 
+# 시간대 설정 가져오기
+TZ_VALUE=$(aws ssm get-parameter --name "/test_pjs/backend/TZ" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "Asia/Seoul")
+
 # 프론트엔드 환경변수 가져오기
 PORT=$(aws ssm get-parameter --name "/test_pjs/frontend/PORT" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "3002")
 REACT_APP_API_BASE_URL=$(aws ssm get-parameter --name "/test_pjs/frontend/REACT_APP_API_BASE_URL" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "https://aws2aws2.com")
@@ -127,6 +130,20 @@ REACT_APP_CONTROL_API_BASE_URL=$REACT_APP_API_BASE_URL
 
 # 도메인 정보
 DOMAIN_NAME=$(aws ssm get-parameter --name "/test_pjs/domain" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "localhost")
+
+# 시간대 설정 (SSM Parameter Store에서 가져온 값 사용)
+echo "시간대를 $TZ_VALUE로 설정 중..."
+timedatectl set-timezone $TZ_VALUE
+export TZ=$TZ_VALUE
+
+# 시간 동기화 서비스 확인 및 시작
+systemctl enable chronyd
+systemctl start chronyd
+
+# 설정 확인 및 로그 출력
+echo "시간대 설정 완료:"
+timedatectl status
+echo "현재 시간: $(date)"
 
 # IoT Core 설정
 IOT_ENDPOINT_URL=$(aws ssm get-parameter --name "/test_pjs/backend/IOT_ENDPOINT_URL" --with-decryption --query "Parameter.Value" --output text 2>/dev/null || echo "https://your-iot-endpoint.iot.ap-northeast-2.amazonaws.com")
@@ -147,6 +164,7 @@ echo "- REACT_APP_ADMIN_HEADER_NAME=$REACT_APP_ADMIN_HEADER_NAME"
 echo "- REACT_APP_CHATBOT_ASK_PATH=$REACT_APP_CHATBOT_ASK_PATH"
 echo "- REACT_APP_CHATBOT_HEALTH_PATH=$REACT_APP_CHATBOT_HEALTH_PATH"
 echo "- REACT_APP_CONTROL_API_BASE_URL=$REACT_APP_CONTROL_API_BASE_URL"
+echo "- TZ=$TZ_VALUE"
 echo "- ADMIN_API_KEY=***[SECURED]***"
 
 # 백엔드 .env 파일 생성
@@ -156,6 +174,7 @@ cat > /home/ec2-user/app/aws2-api/.env << EOF
 NODE_ENV=production
 PORT=$BACKEND_PORT
 BACKEND_PORT=$BACKEND_PORT
+TZ=$TZ_VALUE
 AWS_REGION=$AWS_REGION
 AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
@@ -463,6 +482,7 @@ EOF
 # ecosystem.config.js 확인 및 PM2 시작
 echo "애플리케이션 시작 중..."
 export HOME=/home/ec2-user
+export TZ=$TZ_VALUE
 
 echo "현재 디렉토리: $(pwd)"
 echo "파일 목록 확인:"
@@ -473,16 +493,16 @@ if [ -f "/home/ec2-user/app/ecosystem.config.js" ]; then
     echo "ecosystem.config.js 내용 미리보기:"
     head -10 /home/ec2-user/app/ecosystem.config.js
     
-    su - ec2-user -c "cd /home/ec2-user/app && pm2 start ecosystem.config.js" || {
+    su - ec2-user -c "cd /home/ec2-user/app && TZ=$TZ_VALUE pm2 start ecosystem.config.js" || {
         echo "ecosystem.config.js 시작 실패. 상세 로그:"
         su - ec2-user -c "cd /home/ec2-user/app && pm2 logs" || true
         echo "package.json으로 대체 시도..."
-        su - ec2-user -c "cd /home/ec2-user/app && pm2 start npm --name 'app' -- start"
+        su - ec2-user -c "cd /home/ec2-user/app && TZ=$TZ_VALUE pm2 start npm --name 'app' -- start"
     }
 else
     echo "ecosystem.config.js가 없습니다: $(ls -la /home/ec2-user/app/ | grep ecosystem || echo 'ecosystem 파일 없음')"
     echo "package.json으로 시작..."
-    su - ec2-user -c "cd /home/ec2-user/app && pm2 start npm --name 'app' -- start"
+    su - ec2-user -c "cd /home/ec2-user/app && TZ=$TZ_VALUE pm2 start npm --name 'app' -- start"
 fi
 
 # PM2 자동 시작 설정 및 프로세스 저장
