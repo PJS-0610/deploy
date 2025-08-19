@@ -8,10 +8,11 @@ import { ControlLogEntity } from '../entities/dynamodb-control.entity';
 export class IoTService {
   private readonly logger = new Logger(IoTService.name);
   private client: IoTDataPlaneClient;
-  private readonly topicPrefix = 'device/control';
+  private readonly controlTopic: string;
 
   constructor() {
     const endpoint = process.env.IOT_ENDPOINT_URL;
+    this.controlTopic = process.env.IOT_TOPIC_CONTROL || 'device/control/environment';
     
     if (!endpoint || endpoint.includes('your-iot-endpoint')) {
       this.logger.warn('IoT 엔드포인트가 설정되지 않았습니다. 테스트 모드로 동작합니다.');
@@ -35,7 +36,7 @@ export class IoTService {
    */
   async publishControlMessage(controlLog: ControlLogEntity): Promise<boolean> {
     try {
-      const topic = `${this.topicPrefix}/environment`;
+      const topic = this.controlTopic;
       
       // One-line JSON 메시지 생성
       const message = {
@@ -109,7 +110,7 @@ export class IoTService {
     controlLog: ControlLogEntity
   ): Promise<boolean> {
     try {
-      const topic = `${this.topicPrefix}/${sensorType}`;
+      const topic = `${this.controlTopic}/${sensorType}`;
       
       const message = {
         id: controlLog.id,
@@ -155,7 +156,7 @@ export class IoTService {
       };
 
       const command = new PublishCommand({
-        topic: `${this.topicPrefix}/health`,
+        topic: `${this.controlTopic}/health`,
         qos: 0, // At most once for health check
         payload: Buffer.from(JSON.stringify(testMessage), 'utf8'),
       });

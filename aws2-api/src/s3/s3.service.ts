@@ -26,13 +26,14 @@ export class S3Service {
   /**
    * S3에서 JSON 또는 NDJSON 파일을 읽어서 파싱
    */
-  async getJson(key: string) {
+  async getJson(key: string, bucket?: string) {
     if (!key) throw new Error('key is required');
 
-    console.log(`📥 S3에서 파일 읽기 시작: ${key}`);
+    const targetBucket = bucket || this.bucket;
+    console.log(`📥 S3에서 파일 읽기 시작: ${targetBucket}/${key}`);
 
     const res = await this.s3.send(
-      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      new GetObjectCommand({ Bucket: targetBucket, Key: key }),
     );
 
     const text = await res.Body?.transformToString('utf-8');

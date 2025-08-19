@@ -11,12 +11,20 @@ import {
   Res,
   UseGuards,
   Headers,
+  Param,
+  Query,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { ChatbotService } from './chatbot.service';
 import { ChatbotQueryDto, ChatbotResponseDto, ChatbotHealthDto } from './dto/chatbot.dto';
+import { 
+  ChatbotHistoryQueryDto, 
+  ChatbotSessionsQueryDto,
+  ChatbotHistoryResponseDto,
+  ChatbotSessionsResponseDto 
+} from './dto/history.dto';
 
 @Controller('chatbot')
 export class ChatbotController {
@@ -125,6 +133,148 @@ export class ChatbotController {
     
     // 헬스체크는 캐싱하지 않음
     res.setHeader('Cache-Control', 'no-cache');
+    
+    return result;
+  }
+
+  /**
+   * @api {GET} /chatbot/history/:sessionId 특정 세션의 챗봇 히스토리 조회
+   * @apiName GetChatbotHistory
+   * @apiGroup Chatbot
+   * 
+   * @apiDescription 특정 세션 ID의 모든 대화 이력을 시간순으로 조회합니다.
+   * 
+   * @apiHeader {String} X-API-Key API 인증 키 (필수)
+   * 
+   * @apiParam {String} sessionId 조회할 세션 ID
+   * @apiQuery {Number} [limit=20] 한 번에 가져올 턴 수 (1-100)
+   * @apiQuery {String} [startDate] 시작 날짜 (YYYY-MM-DD)
+   * @apiQuery {String} [endDate] 종료 날짜 (YYYY-MM-DD)
+   * 
+   * @apiSuccess {String} session_id 세션 ID
+   * @apiSuccess {Number} total_turns 총 턴 수
+   * @apiSuccess {Object[]} turns 대화 턴 배열
+   * @apiSuccess {String} start_date 조회 시작 날짜
+   * @apiSuccess {String} end_date 조회 종료 날짜
+   * 
+   * @apiExample {curl} Example usage:
+   *     curl -X GET http://localhost:3001/chatbot/history/user123?limit=10 \
+   *          -H "X-API-Key: your-api-key"
+   * 
+   * @apiSuccessExample {json} Success-Response:
+   *     HTTP/1.1 200 OK
+   *     {
+   *       "session_id": "user123",
+   *       "total_turns": 5,
+   *       "turns": [
+   *         {
+   *           "session_id": "user123",
+   *           "turn_id": 1,
+   *           "ts_kst": "2025-08-19 11:30:45",
+   *           "route": "general",
+   *           "query": "안녕하세요",
+   *           "answer": "안녕하세요! 무엇을 도와드릴까요?",
+   *           "docs": [],
+   *           "last_sensor_ctx": {},
+   *           "s3_key": "chatlog/user123/0001_1234567890.json"
+   *         }
+   *       ],
+   *       "start_date": "2025-08-19",
+   *       "end_date": "2025-08-19"
+   *     }
+   */
+  @UseGuards(ThrottlerGuard, ApiKeyGuard)
+  @Get('history/:sessionId')
+  async getChatbotHistory(
+    @Param('sessionId') sessionId: string,
+    @Query(ValidationPipe) queryDto: ChatbotHistoryQueryDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<ChatbotHistoryResponseDto> {
+    const result = await this.chatbotService.getChatbotHistory(sessionId, queryDto);
+    
+    // 히스토리는 캐싱 (5분)
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    
+    return result;
+  }
+
+  /**
+   * @api {GET} /chatbot/sessions 챗봇 세션 목록 조회
+   * @apiName GetChatbotSessions
+   * @apiGroup Chatbot
+   * 
+   * @apiDescription 챗봇 세션 목록을 최신순으로 조회합니다.
+   * 
+   * @apiHeader {String} X-API-Key API 인증 키 (필수)
+   * 
+   * @apiQuery {Number} [limit=20] 한 번에 가져올 세션 수 (1-100)
+   * @apiQuery {String} [startDate] 시작 날짜 (YYYY-MM-DD)
+   * @apiQuery {String} [endDate] 종료 날짜 (YYYY-MM-DD)
+   * 
+   * @apiSuccess {Number} total_sessions 총 세션 수
+   * @apiSuccess {Object[]} sessions 세션 배열
+   * 
+   * @apiExample {curl} Example usage:
+   *     curl -X GET http://localhost:3001/chatbot/sessions?limit=10 \
+   *          -H "X-API-Key: your-api-key"
+   * 
+   * @apiSuccessExample {json} Success-Response:
+   *     HTTP/1.1 200 OK
+   *     {
+   *       "total_sessions": 3,
+   *       "sessions": [
+   *         {
+   *           "session_id": "user123",
+   *           "first_turn_date": "2025-08-19 11:30:45",
+   *           "last_turn_date": "2025-08-19 11:35:20",
+   *           "total_turns": 5,
+   *           "last_query": "고마워",
+   *           "last_answer": "도움이 되어서 기뻐요!"
+   *         }
+   *       ]
+   *     }
+   */
+  @UseGuards(ThrottlerGuard, ApiKeyGuard)
+  @Get('sessions')
+  async getChatbotSessions(
+    @Query(ValidationPipe) queryDto: ChatbotSessionsQueryDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<ChatbotSessionsResponseDto> {
+    const result = await this.chatbotService.getChatbotSessions(queryDto);
+    
+    // 세션 목록은 캐싱 (5분)
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    
+    return result;
+  }
+
+  /**
+   * @api {GET} /chatbot/history/date/:date 날짜별 챗봇 히스토리 조회
+   * @apiName GetChatbotHistoryByDate
+   * @apiGroup Chatbot
+   * 
+   * @apiDescription 특정 날짜의 모든 챗봇 대화 이력을 조회합니다.
+   * 
+   * @apiHeader {String} X-API-Key API 인증 키 (필수)
+   * 
+   * @apiParam {String} date 조회할 날짜 (YYYY-MM-DD)
+   * @apiQuery {Number} [limit=50] 한 번에 가져올 턴 수 (1-100)
+   * 
+   * @apiExample {curl} Example usage:
+   *     curl -X GET http://localhost:3001/chatbot/history/date/2025-08-19 \
+   *          -H "X-API-Key: your-api-key"
+   */
+  @UseGuards(ThrottlerGuard, ApiKeyGuard)
+  @Get('history/date/:date')
+  async getChatbotHistoryByDate(
+    @Param('date') date: string,
+    @Query('limit') limit: number = 50,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<ChatbotHistoryResponseDto[]> {
+    const result = await this.chatbotService.getChatbotHistoryByDate(date, limit);
+    
+    // 날짜별 히스토리는 긴 캐싱 (30분)
+    res.setHeader('Cache-Control', 'public, max-age=1800');
     
     return result;
   }
