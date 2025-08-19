@@ -1125,8 +1125,8 @@ def _deterministic_sensor_signal(query: str) -> bool:
     return has_time_literal or has_ko_time_tokens or has_range
 
 def decide_route(query: str) -> str:
-    # UTF-8 문제 해결을 위한 간단한 센서 감지
-    sensor_keywords = ["온도", "습도", "CO2", "이산화탄소", "공기질", "센서"]
+    # UTF-8 문제 해결을 위한 간단한 센서 감지 (장소 키워드 포함)
+    sensor_keywords = ["온도", "습도", "CO2", "이산화탄소", "공기질", "센서", "강의실", "실내", "실온", "방안", "교실", "사무실"]
     time_keywords = ["시", "분", "일", "월", "년", "전", "후", "오전", "오후"]
     
     has_sensor = any(keyword in query for keyword in sensor_keywords)
@@ -1154,7 +1154,8 @@ def decide_route(query: str) -> str:
 def find_latest_sensor_data_from_s3(query: str) -> dict:
     """현재 시간 기준으로 가장 최근 센서 데이터 파일을 S3에서 찾기"""
     from datetime import datetime as datetime_cls, timedelta
-    now = datetime_cls.now()
+    # KST 기준 현재 시간 사용
+    now = datetime_cls.now(KST).replace(tzinfo=None)
     
     # 시간 오프셋 처리 (예: '30분 전')
     offset_value, offset_unit = extract_time_offset(query)
@@ -2132,7 +2133,9 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
         # 시간 정보 없음 → 최근 데이터
         # "현재"/"지금" 쿼리의 경우 일관된 최근 데이터 제공을 위해 find_closest_sensor_data 사용
         if is_recent_query(query):
-            closest_data = find_closest_sensor_data(datetime_cls.now())
+            # KST 기준 현재 시간 생성 (일관성을 위해)
+            kst_now = datetime_cls.now(KST).replace(tzinfo=None)
+            closest_data = find_closest_sensor_data(kst_now)
             if closest_data:
                 data = closest_data['data']
                 
@@ -2195,7 +2198,8 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
                     context = f"[D1] {korean_time} 측정 데이터 (s3://{S3_BUCKET_DATA}/{closest_data['key']})\n{top_doc['content']}\n"
                 
                 return [top_doc], context
-        target_dt = datetime_cls.now()
+        # KST 기준 현재 시간 사용
+        target_dt = datetime_cls.now(KST).replace(tzinfo=None)
     
     # 3) 단일 시간 검색 - granularity 기반 검색 후 fallback으로 이동
     # (granularity 기반 검색을 먼저 시도하도록 주석 처리)
@@ -3570,8 +3574,8 @@ def expand_followup_query_with_last_window(query: str, session=None) -> str:
     if is_recent_query(query):
         return query
     
-    # 센서 관련 질문이면서 시간 정보가 없는 경우도 후속질문으로 처리
-    sensor_keywords = ("온도", "습도", "공기질", "이산화탄소", "CO2", "gas", "temperature", "humidity")
+    # 센서 관련 질문이면서 시간 정보가 없는 경우도 후속질문으로 처리 (장소 키워드 포함)
+    sensor_keywords = ("온도", "습도", "공기질", "이산화탄소", "CO2", "gas", "temperature", "humidity", "강의실", "실내", "실온", "방안", "교실", "사무실")
     is_sensor_query = any(keyword in query for keyword in sensor_keywords)
     
     # 후속질문 힌트가 있거나, 센서 관련 질문이면서 시간 정보가 없는 경우
