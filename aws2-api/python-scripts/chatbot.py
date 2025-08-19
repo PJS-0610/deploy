@@ -441,6 +441,136 @@ def calculate_daily_average_temperature(query: str):
         'hour_data': sorted(hour_data, key=lambda x: x['hour'])
     }
 
+def calculate_today_average_all_sensors():
+    """오늘 날짜의 모든 센서 일간 평균 계산"""
+    from datetime import datetime as datetime_cls
+    import boto3
+    import json
+    
+    # 오늘 날짜 사용
+    now = datetime_cls.now()
+    year, month, day = now.year, now.month, now.day
+    
+    # S3에서 오늘 날짜의 houravg 데이터 검색
+    s3 = boto3.client("s3", region_name=REGION)
+    paginator = s3.get_paginator("list_objects_v2")
+    
+    temperature_values = []
+    humidity_values = []
+    gas_values = []
+    hour_data = []
+    
+    try:
+        search_prefix = f"{S3_PREFIX}houravg/{year:04d}/{month:02d}/{day:02d}/"
+        pages = paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=search_prefix, PaginationConfig={'MaxItems': 100})
+        
+        for page in pages:
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if key.lower().endswith(".json"):
+                    try:
+                        obj_data = s3.get_object(Bucket=S3_BUCKET_DATA, Key=key)
+                        data = json.loads(obj_data['Body'].read().decode('utf-8'))
+                        
+                        # 온도 값 추출
+                        temp_value = None
+                        temp_fields = ['hourtemp', 'temperature', 'temp', 'avg_temp']
+                        for field in temp_fields:
+                            if field in data and data[field] is not None:
+                                temp_value = data[field]
+                                break
+                        
+                        # 습도 값 추출
+                        humidity_value = None
+                        humidity_fields = ['hourhum', 'humidity', 'hum', 'avg_humidity']
+                        for field in humidity_fields:
+                            if field in data and data[field] is not None:
+                                humidity_value = data[field]
+                                break
+                        
+                        # 공기질(가스) 값 추출
+                        gas_value = None
+                        gas_fields = ['hourgas', 'gas', 'co2', 'avg_gas']
+                        for field in gas_fields:
+                            if field in data and data[field] is not None:
+                                gas_value = data[field]
+                                break
+                        
+                        # averages 구조 내부도 확인
+                        if 'averages' in data:
+                            avg_data = data['averages']
+                            if temp_value is None:
+                                for field in ['temperature', 'temp', 'hourtemp']:
+                                    if field in avg_data and avg_data[field] is not None:
+                                        temp_value = avg_data[field]
+                                        break
+                            if humidity_value is None:
+                                for field in ['humidity', 'hum', 'hourhum']:
+                                    if field in avg_data and avg_data[field] is not None:
+                                        humidity_value = avg_data[field]
+                                        break
+                            if gas_value is None:
+                                for field in ['gas', 'co2', 'hourgas']:
+                                    if field in avg_data and avg_data[field] is not None:
+                                        gas_value = avg_data[field]
+                                        break
+                        
+                        # 데이터가 하나라도 있으면 저장
+                        if temp_value is not None or humidity_value is not None or gas_value is not None:
+                            hour_info = {
+                                'hour': int(key.split('/')[-1].split('_')[0][-2:]),  # 시간 추출
+                                'key': key
+                            }
+                            
+                            if temp_value is not None:
+                                temperature_values.append(temp_value)
+                                hour_info['temp'] = temp_value
+                            if humidity_value is not None:
+                                humidity_values.append(humidity_value)
+                                hour_info['humidity'] = humidity_value  
+                            if gas_value is not None:
+                                gas_values.append(gas_value)
+                                hour_info['gas'] = gas_value
+                                
+                            hour_data.append(hour_info)
+                    except Exception:
+                        continue
+    except Exception:
+        return None
+    
+    # 최소한 하나의 센서 데이터는 있어야 함
+    if not temperature_values and not humidity_values and not gas_values:
+        return None
+    
+    # 평균 계산
+    result = {
+        'date': f"{year}년 {month}월 {day}일",
+        'hour_data': sorted(hour_data, key=lambda x: x['hour'])
+    }
+    
+    if temperature_values:
+        temp_avg = sum(temperature_values) / len(temperature_values)
+        result['temp_average'] = round(temp_avg, 2)
+        result['temp_min'] = round(min(temperature_values), 2)
+        result['temp_max'] = round(max(temperature_values), 2)
+        result['temp_count'] = len(temperature_values)
+    
+    if humidity_values:
+        humidity_avg = sum(humidity_values) / len(humidity_values)
+        result['humidity_average'] = round(humidity_avg, 2)
+        result['humidity_min'] = round(min(humidity_values), 2)
+        result['humidity_max'] = round(max(humidity_values), 2)
+        result['humidity_count'] = len(humidity_values)
+    
+    if gas_values:
+        gas_avg = sum(gas_values) / len(gas_values)
+        result['gas_average'] = round(gas_avg, 2)
+        result['gas_min'] = round(min(gas_values), 2)
+        result['gas_max'] = round(max(gas_values), 2)
+        result['gas_count'] = len(gas_values)
+    
+    return result
+
 def calculate_daily_average_all_sensors(query: str):
     """특정 날짜의 일간 평균 온도, 습도, 공기질 계산 (houravg 데이터 활용)"""
     import re
@@ -450,11 +580,15 @@ def calculate_daily_average_all_sensors(query: str):
     
     # 날짜 추출
     date_match = re.search(r"(\d{1,2})\s*월\s*(\d{1,2})\s*일", query)
-    if not date_match:
+    if date_match:
+        year = datetime_cls.now().year
+        month, day = int(date_match.group(1)), int(date_match.group(2))
+    elif "오늘" in query:
+        # "오늘" 키워드인 경우 현재 날짜 사용
+        now = datetime_cls.now()
+        year, month, day = now.year, now.month, now.day
+    else:
         return None
-    
-    year = datetime_cls.now().year
-    month, day = int(date_match.group(1)), int(date_match.group(2))
     
     # S3에서 해당 날짜의 houravg 데이터 검색
     s3 = boto3.client("s3", region_name=REGION)
@@ -1611,6 +1745,68 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
     import re
     from datetime import datetime as datetime_cls
     
+    # 원본 질의 저장 (전처리되기 전)
+    original_query = query
+    
+    # 먼저 원본 질의로 일간 평균인지 확인 (우선순위 높음)
+    # 일간 평균 질의: ("평균" + "일" + 센서) 또는 ("오늘" + "평균" + 센서)
+    has_daily_keywords = (("평균" in original_query and "일" in original_query and ("온도" in original_query or "습도" in original_query or "공기질" in original_query or "이산화탄소" in original_query)) or
+                         ("오늘" in original_query and "평균" in original_query and ("온도" in original_query or "습도" in original_query or "공기질" in original_query or "이산화탄소" in original_query)))
+    has_average_keywords = ("평균" in query and ("온도" in query or "습도" in query or "공기질" in query or "temperature" in query or "humidity" in query or "gas" in query))
+    
+    # 원본 질의에서 특정 시간이 언급된 경우 일간 평균이 아님
+    has_specific_time = bool(re.search(r"\d{1,2}\s*시|\d{1,2}\s*:\s*\d{1,2}|오전|오후", original_query))
+    
+    is_daily_avg_query = (has_daily_keywords and not has_specific_time)
+    
+    # 일간 평균 질의면 바로 처리
+    # DEBUG: 조건 확인 로그
+    print(f"[DEBUG] 원본 질의: {original_query}")
+    print(f"[DEBUG] 처리된 질의: {query}")
+    print(f"[DEBUG] is_daily_avg_query: {is_daily_avg_query}")
+    print(f"[DEBUG] has_daily_keywords: {has_daily_keywords}")
+    print(f"[DEBUG] has_specific_time: {has_specific_time}")
+    
+    if is_daily_avg_query:
+        # "오늘" 질문은 전용 함수 사용 (원본 질의 기준)
+        if "오늘" in original_query:
+            daily_avg_data = calculate_today_average_all_sensors()
+        else:
+            daily_avg_data = calculate_daily_average_all_sensors(original_query)
+        if daily_avg_data:
+            # 후속 질문용 컨텍스트 저장
+            context_data = {
+                "date": daily_avg_data['date']
+            }
+            
+            # 결과를 컨텍스트로 구성
+            context = f"[D1] {daily_avg_data['date']} 센서 데이터 분석 결과\n"
+            
+            if 'temp_average' in daily_avg_data:
+                context_data['temp_average'] = daily_avg_data['temp_average']
+                context += f"일간 평균 온도: {daily_avg_data['temp_average']}도 (최저: {daily_avg_data['temp_min']}도, 최고: {daily_avg_data['temp_max']}도)\n"
+            
+            if 'humidity_average' in daily_avg_data:
+                context_data['humidity_average'] = daily_avg_data['humidity_average']
+                context += f"일간 평균 습도: {daily_avg_data['humidity_average']}% (최저: {daily_avg_data['humidity_min']}%, 최고: {daily_avg_data['humidity_max']}%)\n"
+            
+            if 'gas_average' in daily_avg_data:
+                context_data['gas_average'] = daily_avg_data['gas_average']
+                context += f"일간 평균 공기질(CO2): {daily_avg_data['gas_average']}ppm (최저: {daily_avg_data['gas_min']}ppm, 최고: {daily_avg_data['gas_max']}ppm)\n"
+        
+            context += f"해당 날짜의 센서 데이터가 정상적으로 수집되었습니다.\n"
+            
+            set_followup_context("daily_average", context_data, session)
+            
+            top_doc = {
+                'score': 100,
+                'schema': 'daily_average',
+                'content': context,
+                'id': f"daily_avg_{daily_avg_data['date'].replace(' ', '_')}",
+                'tag': 'D1'
+            }
+            
+            return [top_doc], context
     
     # 1) 시간 정보 추출
     dt_strings = extract_datetime_strings(query)
@@ -1656,19 +1852,27 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
                 except:
                     continue
     
-    # 일간 평균 온도 요청 확인 (시간이 명시되지 않은 경우만)
-    # 인코딩 문제를 피하기 위해 키워드 기반으로 검사 + 바이트 패턴 백업
-    has_daily_keywords = ("평균" in query and "온도" in query and "일" in query)
-    has_average_keywords = ("평균" in query and ("온도" in query or "temperature" in query))
-    
     # 바이트 패턴으로 백업 검사 (한글 인코딩 문제 대응)
     try:
         query_bytes = query.encode('utf-8')
-        has_daily_keywords_bytes = (b'\xed\x8f\x89\xea\xb7\xa0' in query_bytes and  # 평균
-                                   b'\xec\x98\xa8\xeb\x8f\x84' in query_bytes and   # 온도
-                                   b'\xec\x9d\xbc' in query_bytes)                  # 일
+        # (평균 + 일 + 센서) or (오늘 + 평균 + 센서)
+        has_daily_keywords_bytes = ((b'\xed\x8f\x89\xea\xb7\xa0' in query_bytes and  # 평균
+                                    b'\xec\x9d\xbc' in query_bytes and               # 일
+                                    (b'\xec\x98\xa8\xeb\x8f\x84' in query_bytes or   # 온도
+                                     b'\xec\x8a\xb5\xeb\x8f\x84' in query_bytes or   # 습도
+                                     b'\xea\xb3\xb5\xea\xb8\xb0\xec\xa7\x88' in query_bytes or  # 공기질
+                                     b'\xec\x9d\xb4\xec\x82\xb0\xed\x99\x94\xed\x83\x84\xec\x86\x8c' in query_bytes)) or  # 이산화탄소
+                                   (b'\xec\x98\xa4\xeb\x8a\x98' in query_bytes and  # 오늘
+                                    b'\xed\x8f\x89\xea\xb7\xa0' in query_bytes and  # 평균
+                                    (b'\xec\x98\xa8\xeb\x8f\x84' in query_bytes or   # 온도
+                                     b'\xec\x8a\xb5\xeb\x8f\x84' in query_bytes or   # 습도
+                                     b'\xea\xb3\xb5\xea\xb8\xb0\xec\xa7\x88' in query_bytes or  # 공기질
+                                     b'\xec\x9d\xb4\xec\x82\xb0\xed\x99\x94\xed\x83\x84\xec\x86\x8c' in query_bytes)))  # 이산화탄소
+        # 평균 + (온도 or 습도 or 공기질)
         has_average_keywords_bytes = (b'\xed\x8f\x89\xea\xb7\xa0' in query_bytes and  # 평균
-                                     b'\xec\x98\xa8\xeb\x8f\x84' in query_bytes)      # 온도
+                                     (b'\xec\x98\xa8\xeb\x8f\x84' in query_bytes or    # 온도
+                                      b'\xec\x8a\xb5\xeb\x8f\x84' in query_bytes or    # 습도
+                                      b'\xea\xb3\xb5\xea\xb8\xb0\xec\xa7\x88' in query_bytes))  # 공기질
     except:
         has_daily_keywords_bytes = False
         has_average_keywords_bytes = False
@@ -1716,67 +1920,6 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
             
             # 범위 쿼리는 복수 시간 처리로 전환
             dt_strings = time_range
-    
-    if is_daily_avg_query:
-        pass
-        
-        # 습도나 공기질이 포함된 질의인지 확인
-        has_humidity = "습도" in query or "humidity" in query.lower()
-        has_gas = "공기질" in query or "이산화탄소" in query or "co2" in query.lower() or "가스" in query
-        has_temperature = "온도" in query or "temperature" in query.lower()
-        
-        if has_humidity or has_gas or (has_temperature and ("습도" in query or "공기질" in query)):
-            # 전체 센서 데이터 일간 평균 계산
-            daily_avg_data = calculate_daily_average_all_sensors(query)
-        else:
-            # 온도만 일간 평균 계산 (기존)
-            daily_avg_data = calculate_daily_average_temperature(query)
-            
-        if daily_avg_data:
-            # 후속 질문용 컨텍스트 저장
-            context_data = {
-                "date": daily_avg_data['date']
-            }
-            
-            # 결과를 컨텍스트로 구성
-            context = f"[D1] {daily_avg_data['date']} 센서 데이터 분석 결과\n"
-            
-            if 'average' in daily_avg_data:  # 온도만 (기존 형식)
-                context_data.update({
-                    "average": daily_avg_data['average'],
-                    "min": daily_avg_data['min'],
-                    "max": daily_avg_data['max']
-                })
-                context += f"일간 평균 온도: {daily_avg_data['average']}도\n"
-                context += f"최저 온도: {daily_avg_data['min']}도\n"
-                context += f"최고 온도: {daily_avg_data['max']}도\n"
-                context += f"측정 시간 수: {daily_avg_data['data_count']}시간\n"
-            else:  # 전체 센서 데이터
-                if 'temp_average' in daily_avg_data:
-                    context_data['temp_average'] = daily_avg_data['temp_average']
-                    context += f"일간 평균 온도: {daily_avg_data['temp_average']}도 (최저: {daily_avg_data['temp_min']}도, 최고: {daily_avg_data['temp_max']}도)\n"
-                
-                if 'humidity_average' in daily_avg_data:
-                    context_data['humidity_average'] = daily_avg_data['humidity_average']
-                    context += f"일간 평균 습도: {daily_avg_data['humidity_average']}% (최저: {daily_avg_data['humidity_min']}%, 최고: {daily_avg_data['humidity_max']}%)\n"
-                
-                if 'gas_average' in daily_avg_data:
-                    context_data['gas_average'] = daily_avg_data['gas_average']
-                    context += f"일간 평균 공기질(CO2): {daily_avg_data['gas_average']}ppm (최저: {daily_avg_data['gas_min']}ppm, 최고: {daily_avg_data['gas_max']}ppm)\n"
-            
-            context += f"해당 날짜의 센서 데이터가 정상적으로 수집되었습니다.\n"
-            
-            set_followup_context("daily_average", context_data, session)
-            
-            top_doc = {
-                'score': 100,
-                'schema': 'daily_average',
-                'content': context,
-                'id': f"daily_avg_{daily_avg_data['date'].replace(' ', '_')}",
-                'tag': 'D1'
-            }
-            
-            return [top_doc], context
     
     
     offset_value, offset_unit = extract_time_offset(query)
@@ -3585,6 +3728,12 @@ def expand_followup_query_with_last_window(query: str, session=None) -> str:
     if not is_sensor_query:
         return query
     
+    # 일간 평균 질문은 후속질문 처리 안함 (독립적인 질문)
+    is_daily_avg = (("평균" in query and "일" in query and any(s in query for s in ["온도", "습도", "공기질", "이산화탄소"])) or
+                   ("오늘" in query and "평균" in query and any(s in query for s in ["온도", "습도", "공기질", "이산화탄소"])))
+    if is_daily_avg:
+        return query
+    
     if not (has_followup_hint or is_sensor_query):
         return query
     
@@ -3630,10 +3779,18 @@ def expand_followup_query_with_last_window(query: str, session=None) -> str:
                 return expanded_query
                 
         elif context_type == "daily_average":
-            # 일간 평균 후속 처리 (해당 날짜 전체 데이터에 대한 요청)
+            # 일간 평균 후속 처리 
             date_str = context_data.get("date")
             if date_str:
-                # "평균 습도와 공기질" 형태로 변환하여 일간 평균 처리되도록 함
+                # "그때" 같은 시점 참조 질문은 일간 평균이 아닌 특정 시점으로 처리
+                if "그때" in query or "그 시간" in query or "그 시점" in query:
+                    # 가장 최근 타임스탬프 사용 (시점 참조)
+                    timestamp_dt = get_followup_timestamp(session)
+                    if timestamp_dt:
+                        expanded_query = f"{timestamp_dt.strftime('%Y년 %m월 %d일 %H시 %M분')} {query}"
+                        return expanded_query
+                
+                # 일반적인 후속 질문은 일간 평균으로 처리
                 if "평균" not in query:
                     expanded_query = f"{date_str}의 평균 {query}"
                 else:
@@ -3988,17 +4145,28 @@ def chat_loop(session=None):
                     cached_dt = datetime.strptime(cached_sensor_data['timestamp'], '%Y-%m-%d %H:%M:%S')
                     set_followup_timestamp(cached_dt, session)
                 
-                # 요청된 필드만 추출해서 응답 생성
+                # 현재/최근 질문은 모든 센서 데이터 표시, 그 외는 요청된 필드만 표시
                 need_fields = detect_fields_in_query(query)
+                is_current_recent = is_recent_query(query) or "현재" in query
                 response_parts = []
                 timestamp_str = cached_sensor_data['timestamp']
                 
-                if 'temperature' in need_fields and cached_sensor_data.get('temperature') is not None:
-                    response_parts.append(f"온도 {cached_sensor_data['temperature']}℃")
-                if 'humidity' in need_fields and cached_sensor_data.get('humidity') is not None:
-                    response_parts.append(f"습도 {cached_sensor_data['humidity']}%")
-                if 'gas' in need_fields and cached_sensor_data.get('gas') is not None:
-                    response_parts.append(f"CO2 {cached_sensor_data['gas']}ppm")
+                # 현재/최근 질문이면 모든 센서 데이터 표시
+                if is_current_recent:
+                    if cached_sensor_data.get('temperature') is not None:
+                        response_parts.append(f"온도 {cached_sensor_data['temperature']}℃")
+                    if cached_sensor_data.get('humidity') is not None:
+                        response_parts.append(f"습도 {cached_sensor_data['humidity']}%")
+                    if cached_sensor_data.get('gas') is not None:
+                        response_parts.append(f"공기질(CO2) {cached_sensor_data['gas']}ppm")
+                else:
+                    # 일반 질문은 요청된 필드만 표시
+                    if 'temperature' in need_fields and cached_sensor_data.get('temperature') is not None:
+                        response_parts.append(f"온도 {cached_sensor_data['temperature']}℃")
+                    if 'humidity' in need_fields and cached_sensor_data.get('humidity') is not None:
+                        response_parts.append(f"습도 {cached_sensor_data['humidity']}%")
+                    if 'gas' in need_fields and cached_sensor_data.get('gas') is not None:
+                        response_parts.append(f"CO2 {cached_sensor_data['gas']}ppm")
                 
                 if response_parts:
                     quick_answer = f"{timestamp_str}: {', '.join(response_parts)}"
