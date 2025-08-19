@@ -461,7 +461,7 @@
 
 /* 활성 토글 */
 .toggleBtnActive {
-  background: #111827;
+  background: #f59e0b; 
   color: #fff;
 }
 
@@ -736,3 +736,28 @@
 :global(.status-good)    { color: #16a34a; font-weight: 600; }
 :global(.status-normal)  { color: #6b7280; }
 :global(.status-warning) { color: #dc2626; font-weight: 600; }
+
+/* STATUS 배지 스타일 */
+/* STATUS 배지 스타일 */
+.statusBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;  /* 12px → 4px (네모 모양) */
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: white;
+  margin-left: 8px;
+}
+
+.statusGOOD {
+  background-color:#15803d;;
+}
+
+.statusNORMAL {
+  background-color: #6b7280;
+}
+
+.statusWARNING {
+  background-color: #dc2626;
+}

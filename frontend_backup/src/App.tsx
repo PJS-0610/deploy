@@ -68,15 +68,6 @@ const App: React.FC = () => {
           gas: { dangerMax: 1000 },
         }}
       />
-      {/* 🛠️ 개발 환경 전용 디버그 패널 */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="debug-info">
-          <div>Route: {appState.currentRoute}</div>         {/* 현재 활성 라우트 */}
-          <div>Role: {appState.selectedRole || 'None'}</div> {/* 선택된 사용자 역할 */}
-          <div>Auth: {appState.isAuthenticated ? 'Yes' : 'No'}</div> {/* 인증 상태 */}
-          <div>Menu: {appState.activeMenu}</div>             {/* 활성 메뉴 */}
-        </div>
-      )}
 
       {/* 🧭 중앙 라우터 컴포넌트 */}
       {/* 

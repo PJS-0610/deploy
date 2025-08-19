@@ -9,7 +9,15 @@ import {
 
 export class ControlLogService {
   private static readonly API_BASE_URL =
-    process.env.REACT_APP_API_BASE_URL || '';
+    process.env.REACT_APP_CONTROL_API_BASE_URL
+    || process.env.REACT_APP_API_BASE_URL
+    || (window.location.hostname === 'localhost'
+          ? ''
+          : '');   // ✅ 히스토리와 동일하게
+
+  private static readonly NORMALIZED_BASE_URL =
+    ControlLogService.API_BASE_URL.replace(/\/+$/, '');
+
   private static readonly CONTROL_ENDPOINT = "/control";
   private static readonly API_KEY =
     process.env.REACT_APP_ADMIN_API_KEY || '';
@@ -32,23 +40,22 @@ export class ControlLogService {
     this.validateApiKey();
 
     const payload = {
-      timestamp: logData.timestamp || new Date().toISOString().slice(0, 19),
+      timestamp: logData.timestamp || new Date().toISOString(),
       sensor_type: logData.sensor_type,
       before_value: logData.before_value,
       status: logData.status,
       after_value: logData.after_value,
     };
 
-    const response = await fetch(`${this.API_BASE_URL}${this.CONTROL_ENDPOINT}/log`, {
+    // ✅ 절대경로로 보장
+    const url = `${this.NORMALIZED_BASE_URL}${this.CONTROL_ENDPOINT}/log`;
+
+    const response = await fetch(url, {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify(payload),
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     return (await response.json()) as ControlResponseDto;
   }
 
@@ -71,6 +78,7 @@ export class ControlLogService {
     for (const sensor of sensors) {
       try {
         const log: ControlLogDto = {
+          timestamp: new Date().toISOString(),  // ← 반드시 포함
           sensor_type: sensor.type,
           before_value: sensor.data.current,
           status: sensor.data.status,

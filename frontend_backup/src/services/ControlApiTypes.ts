@@ -61,14 +61,28 @@ export enum SensorType {
 
 export enum Status {
   GOOD = 'good',
-  WARNING = 'warning',
-  CRITICAL = 'critical',
+  NORMAL = 'normal', 
+  WARNING = 'warning'
 }
 
 // ===== 공통 유틸 =====
+// ControlApiTypes.ts
+
+// 1) Z 보존 (slice 제거)
 export function formatDateForApi(date: Date = new Date()): string {
-  return date.toISOString().slice(0, 19);
+  return date.toISOString();        // ✅ "....Z" 유지
 }
+
+// 2) 무Z 문자열 방지용 보정 유틸
+function normalizeIso(ts: string): string {
+  if (!ts) return ts;
+  // 이미 Z 또는 ±HH:MM 있으면 그대로
+  if (/Z$/.test(ts) || /[+-]\d\d:\d\d$/.test(ts)) return ts;
+  // 'YYYY-MM-DDTHH:mm:ss' 같이 끝나면 Z 붙여 UTC 로 해석
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(ts)) return ts + 'Z';
+  return ts;
+}
+
 
 export function mapSensorType(frontendType: SensorType | string): string {
   const mapping: Record<string, string> = {
@@ -79,14 +93,30 @@ export function mapSensorType(frontendType: SensorType | string): string {
   return mapping[frontendType] || 'temp';
 }
 
-export function determineStatus(
-  current: number,
-  target: number,
-  threshold: number
+export function determineStatusBySensor(
+  sensor: string,
+  current: number
 ): Status {
-  if (current >= threshold) return Status.CRITICAL;
-  if (Math.abs(current - target) > 2) return Status.WARNING;
-  return Status.GOOD;
+  switch (sensor.toLowerCase()) {
+    case 'temp':
+      if (current >= 24 && current <= 27) return Status.GOOD;
+      if ((current >= 23 && current < 24) || (current > 27 && current <= 28)) return Status.NORMAL;
+      return Status.WARNING;
+
+    case 'humidity':
+      if (current >= 50 && current <= 70) return Status.GOOD;
+      if ((current >= 40 && current < 50) || (current > 70 && current <= 80)) return Status.NORMAL;
+      return Status.WARNING;
+
+    case 'gas':
+    case 'co2': // 백엔드에서 gas 로 올 수도 있음
+      if (current <= 2000) return Status.GOOD;
+      if (current > 2000 && current <= 2500) return Status.NORMAL;
+      return Status.WARNING;
+
+    default:
+      return Status.GOOD; // 기본값
+  }
 }
 
 export function getSensorDisplayName(sensorType: string): string {
@@ -119,45 +149,27 @@ export function getSensorUnit(sensorType: string): string {
 
 export function getStatusDisplayName(status: string): string {
   switch (status.toLowerCase()) {
-    case 'critical':
-      return 'Critical';
-    case 'warning':
-      return 'Warning';
-    case 'good':
-    case 'normal':
-      return 'Normal';
-    default:
-      return 'Unknown';
-  }
-}
-
-export function getSensorIcon(sensorType: string): string {
-  switch (sensorType) {
-    case 'temp':
-      return '🌡️';
-    case 'humidity':
-      return '💧';
-    case 'gas':
-    case 'co2':
-      return '🌬️';
-    default:
-      return '📊';
+    case 'good':    return 'Good';
+    case 'normal':  return 'Normal';
+    case 'warning': return 'Warning';
+    case 'critical':return 'Critical';
+    default:        return 'Unknown';
   }
 }
 
 export function getStatusColor(status: string): string {
   switch (status.toLowerCase()) {
-    case 'critical':
-      return '#dc2626';
-    case 'warning':
-      return '#d97706';
     case 'good':
+      return '#34D399'; // 초록
     case 'normal':
-      return '#059669';
+      return '#D1D5DB'; // 회색
+    case 'warning':
+      return '#F87171'; // 빨강
     default:
-      return '#6b7280';
+      return '#D1D5DB';
   }
 }
+
 
 // 상태(라벨) 계산 보조
 export function getTemperatureStatus(temperature: number): string {
@@ -184,11 +196,12 @@ export function getGasStatus(gas: number): string {
   return 'DANGEROUS';
 }
 
-// 화면 출력용 포맷터
+// 화면 출력 포맷터에서 사용
 export function formatLogForDisplay(log: ControlLogEntity): FormattedLogData {
+  const ts = normalizeIso(log.timestamp);  // ✅ 보정
   return {
     ...log,
-    displayTime: new Date(log.timestamp).toLocaleTimeString('ko-KR', {
+    displayTime: new Date(ts).toLocaleTimeString('ko-KR', {
       hour: '2-digit',
       minute: '2-digit',
     }),

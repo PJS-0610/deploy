@@ -119,11 +119,11 @@
 /* 그리드 레이아웃 - 새로운 스타일 */
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1.2fr;  /* ← 이 부분 수정 */
   gap: 32px;
   margin-bottom: 24px;
   width: 100%;
-  min-height: 400px;
+  min-height: 200px;
 }
 
 /* 그리드 아이템들 */

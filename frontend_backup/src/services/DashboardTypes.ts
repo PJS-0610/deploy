@@ -295,16 +295,43 @@ export class DashboardAPI {
   /**
    * 🔧 개발용 센서 상태 결정
    */
-  private static getSensorStatus(sensorType: SensorType, value: number): SensorStatus {
-    const thresholds = {
-      temperature: { warning: 30, danger: 35 },
-      humidity: { warning: 80, danger: 90 },
-      gas: { warning: 800, danger: 1000 },
-    };
+  // /mintrend 기준에 맞게: GOOD/NORMAL/WARNING → 대시보드의 GOOD/WARNING/DANGER로 매핑
+private static getSensorStatus(sensorType: SensorType, value: number): SensorStatus {
+  switch (sensorType) {
+    case 'temperature': {
+      // 🚨 WARNING: temp < 22 또는 temp > 28  → DANGER
+      if (value < 22 || value > 28) return 'DANGER';
+      // ✅ GOOD: 24 ≤ temp ≤ 27
+      if (value >= 24 && value <= 27) return 'GOOD';
+      // ⚠️ NORMAL: 23 ≤ temp < 24 또는 27 < temp ≤ 28
+      // (대시보드는 3단계라 NORMAL을 WARNING으로 표시)
+      // ⚠️ + 빈구간 방지: 22 ≤ temp < 23도 WARNING으로 처리
+      if ((value >= 23 && value < 24) || (value > 27 && value <= 28) || (value >= 22 && value < 23)) {
+        return 'WARNING';
+      }
+      return 'GOOD';
+    }
 
-    const threshold = thresholds[sensorType];
-    if (value >= threshold.danger) return 'DANGER';
-    if (value >= threshold.warning) return 'WARNING';
-    return 'GOOD';
+    case 'humidity': {
+      // 🚨 WARNING: hum < 40% 또는 hum > 80%  → DANGER
+      if (value < 40 || value > 80) return 'DANGER';
+      // ✅ GOOD: 50% ≤ hum ≤ 70%
+      if (value >= 50 && value <= 70) return 'GOOD';
+      // ⚠️ NORMAL: 40% ≤ hum < 50% 또는 70% < hum ≤ 80% → WARNING
+      return 'WARNING';
+    }
+
+    case 'gas': {
+      // 🚨 WARNING: gas > 2500ppm → DANGER
+      if (value > 2500) return 'DANGER';
+      // ✅ GOOD: gas ≤ 2000ppm
+      if (value <= 2000) return 'GOOD';
+      // ⚠️ NORMAL: 2000 < gas ≤ 2500 → WARNING
+      return 'WARNING';
+    }
+
+    default:
+      return 'GOOD';
   }
+}
 }

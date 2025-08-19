@@ -1,5 +1,6 @@
+// export default SettingScreen;
 // export default Settings;
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Bell, User, ChevronDown } from 'lucide-react';
 import styles from './SettingScreen.module.css';
 
@@ -10,10 +11,9 @@ import {
   // 화면에 쓰는 타입과 유틸들
   type FormattedLogData,
   mapSensorType,
-  getSensorIcon,
   getSensorUnit,
   formatLogForDisplay,
-  determineStatus,
+  determineStatusBySensor,
   getStatusColor,
 } from '../../services/ControlApiTypes';
 
@@ -29,9 +29,10 @@ import { MintrendService, type MintrendResponse } from '../Dashboard/hooks/Mintr
 const renderSensorType = (t?: string) => {
   if (!t) return '-';
   const map: Record<string, string> = {
-    temp: '온도',
-    humidity: '습도',
-    co2: 'CO₂',
+    temp: 'TEMPERATURE',
+    humidity: 'HUMIDITY',
+    gas: 'CO₂ CONCENTRATION',
+    co2: 'CO₂ CONCENTRATION',
     pm10: 'PM10',
     pm25: 'PM2.5',
     tvoc: 'TVOC',
@@ -53,11 +54,11 @@ const pickLive = (type: SensorKey, m: MintrendResponse['data'] | null) => {
 
 // 상태 텍스트 → 색상
 const colorForStatus = (s?: string) => {
-  if (!s) return '#6b7280'; // gray
+  if (!s) return '#6b7280';
   const u = s.toUpperCase();
-  if (['GOOD', 'OK', 'NORMAL', 'EXCELLENT'].includes(u)) return '#15803d'; // green
-  if (['WARN', 'WARNING', 'WARM', 'HIGH', 'MODERATE'].includes(u)) return '#f59e0b'; // amber
-  if (['CRITICAL', 'DANGEROUS', 'POOR', 'HOT', 'ALERT'].includes(u)) return '#dc2626'; // red
+  if (u === 'GOOD' || u === 'OK') return '#15803d'; // 초록
+  if (u === 'NORMAL') return '#6b7280'; // 회색
+  if (u === 'WARNING' || u === 'WARN') return '#dc2626'; // 빨강
   return '#6b7280';
 };
 
@@ -84,26 +85,10 @@ type SettingField = keyof SensorSetting;
 // =========================
 const API_CALL_INTERVAL = 2000; // 2초 간격으로 조회 제한
 const INITIAL_SETTINGS: SettingsState = {
-  temp: { current: 24, target: 24, threshold: 28, triggerEnabled: true },
-  humidity: { current: 30, target: 50, threshold: 70, triggerEnabled: true },
-  co2: { current: 500, target: 400, threshold: 1000, triggerEnabled: true }
+  temp: { current: 24, target: 0, threshold: 28, triggerEnabled: true },
+  humidity: { current: 30, target: 0, threshold: 70, triggerEnabled: true },
+  co2: { current: 500, target: 0, threshold: 1000, triggerEnabled: true }
 };
-
-// 원시 센서 코드 → 화면 표시용 라벨
-const labelSensor = (t?: string) => {
-  if (!t) return '-';
-  const key = t.toLowerCase();
-  const map: Record<string, string> = {
-    temp: '온도',
-    humidity: '습도',
-    co2: 'CO₂',
-    pm10: 'PM10',
-    pm25: 'PM2.5',
-    tvoc: 'TVOC',
-  };
-  return map[key] ?? key.toUpperCase();
-};
-
 
 interface SettingScreenProps {
   onNavigateToChatbot: () => void;
@@ -158,6 +143,28 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
     }
   }, []);
 
+  const [visibleCount, setVisibleCount] = useState(30);   // 처음 30개 표시
+  const BATCH = 30;                                       // 스크롤 한 번에 30개 더
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    const el = loadMoreRef.current;
+
+    const io = new IntersectionObserver((entries) => {
+      const [entry] = entries;
+      if (entry.isIntersecting) {
+        setVisibleCount((prev) => {
+          if (prev >= logs.length) return prev;  // 모두 노출했으면 증가 안 함
+          return Math.min(prev + BATCH, logs.length);
+        });
+      }
+    }, { root: null, rootMargin: '0px', threshold: 1.0 });
+
+    io.observe(el);
+    return () => io.unobserve(el);
+  }, [logs.length]);
+
   useEffect(() => {
     loadMintrend();                       // 최초 1회
     const id = setInterval(loadMintrend, 10000); // 10초마다
@@ -209,24 +216,6 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   };
 
   // =========================
-  // 유틸 / 헬퍼
-  // =========================
-  const getStatusIcon = (current: number, target: number, threshold: number): string => {
-    if (current >= threshold) return '🔴';
-    if (current > target + 2) return '⚠️';
-    return '✅';
-  };
-
-  const getSensorInfo = (type: SensorKey): { icon: string; name: string; unit: string } => {
-    const mappedType = mapSensorType(type as SensorType);
-    return {
-      icon: getSensorIcon(mappedType),
-      name: type === 'temp' ? 'TEMPERATURE' : type === 'humidity' ? 'HUMIDITY' : 'CO₂ CONCENTRATION',
-      unit: getSensorUnit(mappedType),
-    };
-  };
-
-  // =========================
   // 로그 조회 (throttle)
   // =========================
   const fetchLogs = useCallback(async (): Promise<void> => {
@@ -250,7 +239,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
       setLastApiCall(now);
       setDebugInfo('📡 API 호출 중.');
 
-      const data = await ControlHistoryService.fetchControlHistory(10);
+      const data = await ControlHistoryService.fetchControlHistoryAll(90); // 최근 90일 전부 모아서
       if (data.success) {
         const formattedLogs = data.logs.map(formatLogForDisplay);
         setLogs(formattedLogs);
@@ -266,7 +255,6 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
       setIsLoading(false);
     }
   }, [isLoading, lastApiCall, setLogs, setDebugInfo]);
-
 
   // =========================
   // 입력 변경 / 토글
@@ -302,7 +290,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
     const setting = settings[type];
 
     try {
-      const status: Status = determineStatus(setting.current, setting.target, setting.threshold);
+      const status: Status = determineStatusBySensor(type, setting.current);
 
       const logData: ControlLogDto = {
         timestamp: new Date().toISOString(),
@@ -312,7 +300,6 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         after_value: setting.target,
       };
 
-      // 기존 logData 만들던 코드 그대로 두고…
       const result = await ControlLogService.createControlLog(logData);
 
       if (result.success) {
@@ -321,11 +308,9 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
           [type]: { ...prev[type], status },
         }));
         setDebugInfo('✅ 적용 완료');
-        addNotification(`${getSensorInfo(type).name} 설정이 적용되었습니다.`);
         await fetchLogs();
       } else {
         setDebugInfo('⚠️ 적용 실패(success=false)');
-        addNotification(`${getSensorInfo(type).name} 설정 적용에 실패했습니다.`);
       }
     } catch (err) {
       console.error(err);
@@ -335,15 +320,14 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
     }
   };
 
-
   // =========================
   // 전체 적용
   // =========================
   const handleApplyAll = async (): Promise<void> => {
     try {
-      const tempStatus = determineStatus(settings.temp.current, settings.temp.target, settings.temp.threshold);
-      const humidityStatus = determineStatus(settings.humidity.current, settings.humidity.target, settings.humidity.threshold);
-      const co2Status = determineStatus(settings.co2.current, settings.co2.target, settings.co2.threshold);
+      const tempStatus = determineStatusBySensor('temp', settings.temp.current);
+      const humidityStatus = determineStatusBySensor('humidity', settings.humidity.current);
+      const co2Status = determineStatusBySensor('gas', settings.co2.current);
 
       const batchResult = await ControlLogService.createBatchControlLogs({
         temp: { current: settings.temp.current, target: settings.temp.target, threshold: settings.temp.threshold, status: tempStatus },
@@ -359,28 +343,6 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
       setDebugInfo('❌ 전체 적용 중 오류');
     }
   };
-
-
-  // =========================
-  // 연결 테스트
-  // =========================
-  const handleConnectionTest = async (): Promise<void> => {
-    setIsLoading(true);
-    setDebugInfo('🔗 연결 테스트 중...');
-    try {
-      const data = await ControlHistoryService.fetchControlHistory(1);
-      const ok = !!data && data.success !== undefined;
-      setConnectionStatus(ok ? '설정됨' : '설정 필요');
-      setDebugInfo(ok ? '✅ 연결 테스트 성공' : '⚠️ 연결 테스트 실패');
-      alert(ok ? '✅ API 연결 정상입니다.' : '⚠️ API 설정/연결이 필요합니다.');
-    } catch {
-      setConnectionStatus('설정 필요');
-      setDebugInfo('❌ 연결 테스트 오류');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
 
   // =========================
   // AI 추천(LLM 모사)
@@ -402,45 +364,6 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
 
     addNotification(`AI 추천 설정이 적용되었습니다. (온도: ${optimalTemp}℃, 습도: ${optimalHumidity}%, CO₂: ${optimalCO2}ppm)`);
     alert(`🤖 LLM 추천 완료!\n온도: ${optimalTemp}℃\n습도: ${optimalHumidity}%\nCO₂: ${optimalCO2}ppm`);
-  };
-
-  // =========================
-  // 테스트 데이터 전송
-  // =========================
-  const handleSendTestData = async (): Promise<void> => {
-    if (isLoading) return;
-
-    const testData: ControlLogDto = {
-      timestamp: new Date().toISOString(),
-      sensor_type: 'temp' as SensorType,
-      before_value: 25,
-      status: 'warning' as Status,
-      after_value: 23
-    };
-
-    try {
-      setDebugInfo(`🧪 테스트 데이터 전송: ${JSON.stringify(testData)}`);
-      setIsLoading(true);
-      const result = await ControlLogService.createControlLog(testData);
-      console.log('🧪 테스트 결과:', result);
-      setDebugInfo(`🧪 테스트 성공: ${JSON.stringify(result)}`);
-
-      if (result.success) {
-        addNotification(`테스트 데이터 전송이 완료되었습니다. (IoT: ${result.iotMessagesSent}개)`);
-        alert(`🧪 테스트 성공!\nID: ${result.controlLogs?.[0]?.id ?? '-'}\nIoT: ${result.iotMessagesSent}개`);
-        setTimeout(() => fetchLogs(), 600);
-      } else {
-        addNotification('테스트 데이터 전송에 실패했습니다.');
-        alert('🧪 테스트 실패: success=false');
-      }
-    } catch (err: unknown) {
-      const error = err as Error;
-      console.error('🧪 테스트 실패:', error);
-      setDebugInfo(`🧪 테스트 실패: ${error?.message ?? ''}`);
-      alert(`🧪 테스트 실패: ${error?.message ?? ''}`);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // =========================
@@ -581,9 +504,6 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
           <div className={styles.settingContainer}>
             {/* 기존 설정 헤더 정보 */}
             <div className={styles.settingHeader}>
-              <p className={styles.subtitle}>
-                🔧 Refrigerator 모드  | 상태: {connectionStatus}
-              </p>
             </div>
 
             {/* 기존 설정 본문 */}
@@ -596,7 +516,6 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                     <h3 className={`${styles.sectionTitle} ${styles.borderBlue}`}>SENSOR DATA</h3>
                     {(Object.keys(settings) as SensorKey[]).map(type => {
                       const setting = settings[type];
-                      const sensorInfo = getSensorInfo(type);
                       const live = pickLive(type, mintrend);
                       const value = (live.value ?? setting.current);
                       const statusTxt = live.status;
@@ -604,19 +523,19 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                       return (
                         <div key={type} className={styles.currentItem}>
                           <div className={styles.currentLeft}>
-                            <span className={styles.currentName}>{sensorInfo.name}</span>
+                            <span className={styles.currentName}>{renderSensorType(type)}</span>
                           </div>
                           <div className={styles.currentRight}>
                             <span className={styles.currentValue}>
-                              {value}{sensorInfo.unit}
+                              {value}
                             </span>
                             <span
                               className={styles.badge}
                               style={{ backgroundColor: colorForStatus(statusTxt), marginLeft: 8 }}
                               aria-label="sensor-status"
-                              title={statusTxt ?? 'N/A'}
+                              title={(statusTxt ?? 'N/A').toUpperCase()}
                             >
-                              {statusTxt ?? 'N/A'}
+                              {(statusTxt ?? 'N/A').toUpperCase()}
                             </span>
                           </div>
                         </div>
@@ -624,55 +543,45 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                     })}
                   </div>
 
-                  {/* 두 번째 컬럼: CONTROLS */}
+                  {/* 두 번째 컬럼: CONTROLS - 가로 배치로 수정 */}
                   <div>
                     <h3 className={`${styles.sectionTitle} ${styles.borderGreen}`}>CONTROLS</h3>
                     {(Object.keys(settings) as SensorKey[]).map(type => {
                       const setting = settings[type];
-                      const sensorInfo = getSensorInfo(type);
 
                       return (
-                        <div key={type} className={styles.controlBox}>
-                          <div className={styles.controlHeader}>
-                            <span className={styles.controlTitle}>
-                              {sensorInfo.name}
-                            </span>
+                        <div key={type} className={styles.currentItem}>
+                          <div className={styles.currentLeft}>
+                            <span className={styles.currentName}>{renderSensorType(type)}</span>
+                          </div>
+                          <div className={styles.currentRight}>
+                            <input
+  type="number"
+  value={setting.target || ''}
+  onChange={e => handleSettingChange(type, 'target', e.target.value)}
+  className={styles.input}
+  style={{ width: '80px', marginRight: '8px' }}
+  placeholder={
+    type === 'temp' ? '24°C' :
+    type === 'humidity' ? '50%' :
+    type === 'co2' ? '400ppm' : 'Target'
+  }
+/>
                             <button
                               onClick={() => handleTriggerToggle(type)}
                               className={`${styles.chip} ${setting.triggerEnabled ? styles.chipOn : styles.chipOff}`}
                             >
                               {setting.triggerEnabled ? 'AUTO' : 'MANUAL'}
                             </button>
+                            <button
+                              onClick={() => handleApplySettings(type)}
+                              disabled={isLoading}
+                              className={`${styles.btn} ${styles.btnPrimary} ${isLoading ? styles.btnDisabled : ''}`}
+                              style={{ marginLeft: '8px', padding: '6px 12px', fontSize: '12px' }}
+                            >
+                              {isLoading ? '⏳' : 'APPLY'}
+                            </button>
                           </div>
-
-                          <div className={styles.fieldRow}>
-                            <div className={styles.field}>
-                              <label className={styles.label}>TARGET</label>
-                              <input
-                                type="number"
-                                value={setting.target}
-                                onChange={e => handleSettingChange(type, 'target', e.target.value)}
-                                className={styles.input}
-                              />
-                            </div>
-                            <div className={styles.field}>
-                              <label className={styles.label}>THRESOLD</label>
-                              <input
-                                type="number"
-                                value={setting.threshold}
-                                onChange={e => handleSettingChange(type, 'threshold', e.target.value)}
-                                className={styles.input}
-                              />
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={() => handleApplySettings(type)}
-                            disabled={isLoading}
-                            className={`${styles.btn} ${styles.btnPrimary} ${styles.btnBlock} ${isLoading ? styles.btnDisabled : ''}`}
-                          >
-                            {isLoading ? '⏳ 적용중...' : 'APPLY'}
-                          </button>
                         </div>
                       );
                     })}
@@ -699,7 +608,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                       onClick={handleLLMRecommendation}
                       className={`${styles.btn} ${styles.btnViolet}`}
                     >
-                      AI 추천(LLM이 나은가?)
+                      LLM SUGGESTION
                     </button>
 
                     <button
@@ -707,7 +616,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                       disabled={isLoading}
                       className={`${styles.btn} ${styles.btnSuccess} ${isLoading ? styles.btnDisabled : ''}`}
                     >
-                      {isLoading ? '적용 중...' : 'APPLY ALL'}
+                      {isLoading ? 'APPLY ALL' : 'APPLY ALL'}
                     </button>
                   </div>
                 </div>
@@ -733,18 +642,19 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                 </div>
 
                 <div className={styles.tableWrap}>
+                  <div ref={loadMoreRef} style={{ height: 1 }} />
                   <table className={styles.table}>
                     <thead>
                       <tr>
                         <th>TIMESTAMP</th>
-                        <th>SENSOR</th>
+                        <th>SENSOR TYPE</th>
                         <th>BEFORE</th>
                         <th>STATUS</th>
                         <th>AFTER</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {logs.slice(0, 6).map((log, index) => (
+                      {logs.slice(0, visibleCount).map((log, index) => (
                         <tr key={log.id} className={index < logs.length - 1 ? styles.rowBorder : ''}>
                           <td>{log.displayTime}</td>
                           <td>{renderSensorType(log.sensor_type)}</td>
@@ -760,13 +670,12 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                               className={styles.badge}
                               style={{ backgroundColor: getStatusColor(log.status) }}
                             >
-                              {log.status === 'critical' ? '🔴 Critical' :
-                                log.status === 'warning' ? '⚠️ Warning' : '✅ Normal'}
+                              {log.status?.toUpperCase()}
                             </span>
                           </td>
                           <td>
                             <div className={styles.inlineRow}>
-                              <span className={styles.valueGreen}>
+                              <span className={styles.valueBlue}>
                                 {log.after_value}{log.displayUnit}
                               </span>
                             </div>
@@ -779,11 +688,11 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                   {logs.length === 0 && (
                     <div className={styles.empty}>로그가 없습니다.</div>
                   )}
-                </div> {/* .tableWrap */}
-              </div> {/* .cardLogs */}
-            </div> {/* .main */}
-          </div> {/* .settingContainer */}
-        </div> {/* .dashboardContent */}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   );

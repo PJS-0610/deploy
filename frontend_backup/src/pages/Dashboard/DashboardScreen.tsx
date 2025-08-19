@@ -711,7 +711,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                               return (
                                 <span>
                                   {mintrendData.data.mintemp.toFixed(2)}°C{' '}
-                                  <span className={MintrendService.getStatusColorClass(tempStatus)}>({tempStatus})</span>
+                                  <span className={`${styles.statusBadge} ${styles[`status${tempStatus}`]}`}>{tempStatus}</span>
                                 </span>
 
 
@@ -740,7 +740,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                               return (
                                 <span>
                                   {mintrendData.data.minhum.toFixed(2)}%{' '}
-                                  <span className={MintrendService.getStatusColorClass(humStatus)}>({humStatus})</span>
+                                  <span className={`${styles.statusBadge} ${styles[`status${humStatus}`]}`}>{humStatus}</span>
                                 </span>
                               );
                             }
@@ -766,7 +766,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                               return (
                                 <span>
                                   {mintrendData.data.mingas.toFixed(2)}ppm{' '}
-                                  <span className={MintrendService.getStatusColorClass(gasStatus)}>({gasStatus})</span>
+                                  <span className={`${styles.statusBadge} ${styles[`status${gasStatus}`]}`}>{gasStatus}</span>
                                 </span>
                               );
                             }
@@ -798,19 +798,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   <div className={styles.sectionTitleRow}>
                     <h2 className={styles.sectionTitle}>QUICKSIGHT ANALYTICS DASHBOARD</h2>
 
-                    {/* QuickSight 센서 선택 드롭다운 */}
-                    <div className={styles.sensorSelector}>
-                      <select
-                        value={selectedQuickSightSensor}
-                        onChange={(e) => handleQuickSightSensorSelect(e.target.value as QuickSightSensorType)}
-                        className={styles.sensorSelect}
-                      >
-                        {QUICKSIGHT_SENSOR_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                    {/* QuickSight 센서 선택 토글 버튼 */}
+                    <div className={styles.toggleGroup}>
+                      {QUICKSIGHT_SENSOR_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => handleQuickSightSensorSelect(option.value as QuickSightSensorType)}
+                          className={`${styles.toggleBtn} ${selectedQuickSightSensor === option.value ? styles.toggleBtnActive : ''
+                            }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
