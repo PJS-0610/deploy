@@ -9,6 +9,9 @@ async function bootstrap() {
   const allowedOrigins = [
     'http://localhost:3000', // 개발 환경
     'https://localhost:3000', // 로컬 HTTPS
+    'http://localhost:3001', // 로컬 HTTPS
+    'https://localhost:3001', // 로컬 HTTPS
+
     'http://localhost:3002', // 프론트엔드 개발 환경
     'https://localhost:3002', // 프론트엔드 로컬 HTTPS`
   ];
@@ -19,6 +22,10 @@ async function bootstrap() {
       const allowedOrigins = [
         'http://localhost:3002',
         'https://localhost:3002',
+
+        'http://localhost:3001', // 로컬 HTTPS
+        'https://localhost:3001', // 로컬 HTTPS
+
         'https://aws2aws2.com',
         'http://aws2aws2.com'
       ];
@@ -38,7 +45,8 @@ async function bootstrap() {
       'x-amz-date',
       'x-amz-security-token',
       'x-amz-content-sha256',
-      'x-api-key'//희연이가 추가함
+      'x-api-key',//희연이가 추가함
+      'X-Session-Id'//세션 ID 헤더 추가
     ],
     exposedHeaders: ['Content-Length', 'Content-Type'],
   });
@@ -60,7 +68,7 @@ async function bootstrap() {
         res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
         res.header(
           'Access-Control-Allow-Headers',
-          'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, x-amz-date, x-amz-security-token, x-amz-content-sha256, x-api-key'
+          'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, x-amz-date, x-amz-security-token, x-amz-content-sha256, x-api-key, X-Session-Id'
         );//희연이가 추가함
         return res.sendStatus(204);
       }
