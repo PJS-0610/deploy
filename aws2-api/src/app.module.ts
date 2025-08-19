@@ -10,6 +10,7 @@ import { QuickSightModule } from './quicksight/quicksight.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { LoginModule } from './login/login.module';
 import { ControlModule } from './control/control.module';
+import { RecommendModule } from './recommend/recommend.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -32,7 +33,8 @@ import { AppService } from './app.service';
     QuickSightModule, 
     ChatbotModule, 
     LoginModule,
-    ControlModule
+    ControlModule,
+    RecommendModule
   ],
   controllers: [AppController, HealthController, S3Controller],
   providers: [AppService],
