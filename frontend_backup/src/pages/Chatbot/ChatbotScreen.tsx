@@ -145,6 +145,7 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
       case 'History':
         onNavigateToHistory();
         break;
+      case 'Control':
       case 'Settings':
         onNavigateToSettings?.();
         break;

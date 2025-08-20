@@ -510,6 +510,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
       case 'History':
         onNavigateToHistory();
         break;
+      case 'Control':
       case 'Settings':
         onNavigateToSettings?.();
         break;

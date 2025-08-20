@@ -16,7 +16,7 @@
  * - Dashboard: 메인 대시보드
  * - Chatbot: AI 질의응답
  * - History: 데이터 이력
- * - Settings: 설정 (향후 구현)
+ * - Control: 제어 및 설정
  * - Logout: 로그아웃
  */
 
@@ -51,7 +51,7 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   },
   {
     icon: React.createElement(Settings, { size: 20 }),
-    label: 'Settings',
+    label: 'Control',
     path: '/settings'
   },
   {

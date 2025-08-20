@@ -8,6 +8,20 @@ import { X, Thermometer, Droplets, Wind } from 'lucide-react';
 import { recommendApi, type OptimalRecommendRequest } from '../../services/RecommendAPI';
 import styles from './AIRecommendationModal.module.css';
 
+// Window 타입 확장
+declare global {
+  interface Window {
+    lastParsedRecommendations?: {
+      optimal_temperature?: number;
+      optimal_humidity?: number;
+      optimal_co2?: number;
+      current_temperature?: number;
+      current_humidity?: number;
+      current_co2?: number;
+    };
+  }
+}
+
 interface AIRecommendationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,23 +55,23 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
     external_humidity: '',
     external_air_quality: '',
   });
-  
+
   const [validation, setValidation] = useState<ValidationState>({
     external_temperature: null,
     external_humidity: null,
     external_air_quality: null,
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const validateField = (field: keyof FormData, value: string): string | null => {
     if (!value.trim()) return null;
-    
+
     const num = parseFloat(value);
     if (isNaN(num)) return '유효한 숫자를 입력해주세요.';
-    
+
     switch (field) {
       case 'external_temperature':
         if (num < -50 || num > 60) return '온도는 -50°C ~ 60°C 범위 내에서 입력해주세요.';
@@ -79,14 +93,14 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
         ...prev,
         [field]: value
       }));
-      
+
       // 실시간 유효성 검증
       const validationError = validateField(field, value);
       setValidation(prev => ({
         ...prev,
         [field]: validationError
       }));
-      
+
       // 전체 에러 메시지 초기화
       if (error) setError(null);
     }
@@ -101,7 +115,7 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
       // 입력값 검증 및 변환
       const requestData: OptimalRecommendRequest = {};
       let hasValidInput = false;
-      
+
       // 온도 검증
       if (formData.external_temperature.trim()) {
         const temp = parseFloat(formData.external_temperature);
@@ -116,7 +130,7 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
         requestData.external_temperature = temp;
         hasValidInput = true;
       }
-      
+
       // 습도 검증
       if (formData.external_humidity.trim()) {
         const humidity = parseFloat(formData.external_humidity);
@@ -131,7 +145,7 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
         requestData.external_humidity = humidity;
         hasValidInput = true;
       }
-      
+
       // 공기질 검증
       if (formData.external_air_quality.trim()) {
         const airQuality = parseFloat(formData.external_air_quality);
@@ -152,34 +166,81 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
         return;
       }
 
-      // API 호출
+      // API 호출 (개선된 에러 처리)
+      console.log('🔥 API 호출 시작:', requestData);
       const response = await recommendApi.getOptimal(requestData);
+      console.log('🔥 API 응답 전체:', response);
 
       if (response.success && response.data) {
+        console.log('🔥 API 응답 데이터:', response.data);
+        console.log('🔥 답변:', response.data.answer);
+        console.log('🔥 파싱된 추천값:', response.data.parsed_recommendations);
+
         setRecommendation(response.data.answer);
+        // 파싱된 추천값도 저장
+        if (response.data.parsed_recommendations) {
+          window.lastParsedRecommendations = response.data.parsed_recommendations;
+          console.log('🔥 window에 저장된 파싱값:', window.lastParsedRecommendations);
+        }
       } else {
-        setError(response.error || '추천을 받아오는데 실패했습니다.');
+        console.error('🔥 API 호출 실패:', response);
+
+        // 개선된 에러 메시지 처리
+        let errorMessage = response.error || '추천을 받아오는데 실패했습니다.';
+
+        // 특정 에러에 대한 사용자 친화적 메시지
+        if (errorMessage.includes('API 키')) {
+          errorMessage = '인증에 실패했습니다. 관리자에게 문의하세요.';
+        } else if (errorMessage.includes('요청 한도')) {
+          errorMessage = 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.';
+        } else if (errorMessage.includes('서버')) {
+          errorMessage = '서버에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
+        }
+
+        setError(errorMessage);
       }
     } catch (err) {
-      setError('서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      console.error('🔥 예상치 못한 에러:', err);
+      setError('네트워크 연결을 확인하고 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const parseRecommendationValues = (answer: string) => {
-    // 추천 답변에서 수치 추출 - 실제 API 응답 형식에 맞게 개선
-    const tempMatch = answer.match(/최적온도는?\s*(\d+(?:\.\d+)?)도/);
-    const humidityMatch = answer.match(/최적습도는?\s*(\d+(?:\.\d+)?)%/);
-    const co2Match = answer.match(/최적CO2?는?\s*(\d+(?:\.\d+)?)ppm/);
+  console.log('🔥 파싱 시작 - 답변:', answer);
 
-    return {
-      temperature: tempMatch ? Math.round(parseFloat(tempMatch[1])) : 24,
-      humidity: humidityMatch ? Math.round(parseFloat(humidityMatch[1])) : 50,
-      co2: co2Match ? Math.round(parseFloat(co2Match[1])) : 400,
-      answer
-    };
-  };
+  // 1) 답변 문자열에서 정규식 매칭
+  const tempMatch = answer.match(/최적온도는?\s*([\d.]+)도/);
+  const humidityMatch = answer.match(/최적습도는?\s*([\d.]+)%/);
+  const co2Match = answer.match(/최적CO2는?\s*([\d.]+)ppm/);
+
+  // 2) RecommendAPI가 window에 넣어둔 파싱 결과 사용
+  const parsedRecs = window.lastParsedRecommendations;
+
+  // 3) null 병합(??)로 "있으면 그 값, 없으면 대체" 로직
+  const temperature = Math.round(
+    (parsedRecs?.optimal_temperature) ??
+    (tempMatch ? parseFloat(tempMatch[1]) :
+      (parsedRecs?.current_temperature ?? 24))
+  );
+
+  const humidity = Math.round(
+    (parsedRecs?.optimal_humidity) ??
+    (humidityMatch ? parseFloat(humidityMatch[1]) :
+      (parsedRecs?.current_humidity ?? 50))
+  );
+
+  const co2 = Math.round(
+    (parsedRecs?.optimal_co2) ??
+    (co2Match ? parseFloat(co2Match[1]) :
+      (parsedRecs?.current_co2 ?? 400))
+  );
+
+  const result = { temperature, humidity, co2, answer };
+  console.log('🔥 최종 파싱 결과:', result);
+  return result;
+};
 
   const handleApply = () => {
     if (recommendation) {
@@ -211,7 +272,7 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>AI 환경 추천</h2>
-          <button 
+          <button
             className={styles.closeButton}
             onClick={onClose}
             aria-label="닫기"
@@ -312,7 +373,7 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
           >
             초기화
           </button>
-          
+
           <button
             onClick={handleGetRecommendation}
             className={`${styles.button} ${styles.buttonPrimary}`}

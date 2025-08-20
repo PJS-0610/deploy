@@ -14,6 +14,12 @@
  */
 
 import { apiService, type ApiResponse } from './apiService';
+import getApiUrl from '../config/env';
+
+// API 기본 설정
+const API_KEY = 'admin-0816-key-0610-aws2';
+const REQUEST_TIMEOUT = 10000; // 10초
+const MAX_RETRIES = 3;
 
 /**
  * 🌡️ 최적 환경 추천 요청 데이터 타입
@@ -45,6 +51,15 @@ export interface OptimalRecommendResponse {
   };
   /** 생성된 쿼리 */
   generated_query: string;
+  /** 파싱된 추천 값들 */
+  parsed_recommendations?: {
+    optimal_temperature?: number;
+    optimal_humidity?: number;
+    optimal_co2?: number;
+    current_temperature?: number;
+    current_humidity?: number;
+    current_co2?: number;
+  };
 }
 
 /**
@@ -62,6 +77,63 @@ export interface RecommendHealthResponse {
 }
 
 /**
+ * 🔧 LLM 응답 파싱 유틸리티 함수
+ */
+const parseRecommendationAnswer = (answer: string) => {
+  console.log('🔥 parseRecommendationAnswer 시작:', answer);
+  
+  const result: {
+    optimal_temperature?: number;
+    optimal_humidity?: number;
+    optimal_co2?: number;
+    current_temperature?: number;
+    current_humidity?: number;
+    current_co2?: number;
+  } = {};
+
+  // 현재 값 파싱 (더 넓은 패턴 매칭)
+  const currentTempMatch = answer.match(/현재\s*실내온도\s*([\d.]+)도/);
+  if (currentTempMatch) {
+    result.current_temperature = parseFloat(currentTempMatch[1]);
+    console.log('🔥 현재 온도 파싱:', result.current_temperature);
+  }
+
+  const currentHumidityMatch = answer.match(/실내습도\s*([\d.]+)%/);
+  if (currentHumidityMatch) {
+    result.current_humidity = parseFloat(currentHumidityMatch[1]);
+    console.log('🔥 현재 습도 파싱:', result.current_humidity);
+  }
+
+  const currentCo2Match = answer.match(/실내CO2\s*([\d.]+)ppm/);
+  if (currentCo2Match) {
+    result.current_co2 = parseFloat(currentCo2Match[1]);
+    console.log('🔥 현재 CO2 파싱:', result.current_co2);
+  }
+
+  // 최적 값 파싱 (더 넓은 패턴 매칭)
+  const optimalTempMatch = answer.match(/최적온도는?\s*([\d.]+)도/);
+  if (optimalTempMatch) {
+    result.optimal_temperature = parseFloat(optimalTempMatch[1]);
+    console.log('🔥 최적 온도 파싱:', result.optimal_temperature);
+  }
+
+  const optimalHumidityMatch = answer.match(/최적습도는?\s*([\d.]+)%/);
+  if (optimalHumidityMatch) {
+    result.optimal_humidity = parseFloat(optimalHumidityMatch[1]);
+    console.log('🔥 최적 습도 파싱:', result.optimal_humidity);
+  }
+
+  const optimalCo2Match = answer.match(/최적CO2는?\s*([\d.]+)ppm/);
+  if (optimalCo2Match) {
+    result.optimal_co2 = parseFloat(optimalCo2Match[1]);
+    console.log('🔥 최적 CO2 파싱:', result.optimal_co2);
+  }
+
+  console.log('🔥 parseRecommendationAnswer 최종 결과:', result);
+  return result;
+};
+
+/**
  * 🔧 Recommend API 서비스 클래스
  */
 class RecommendAPIService {
@@ -77,8 +149,20 @@ class RecommendAPIService {
   async getOptimalRecommendation(
     request: OptimalRecommendRequest
   ): Promise<ApiResponse<OptimalRecommendResponse>> {
+    console.log('🔥 RecommendAPI 요청:', request);
+    
     // API Key 헤더 추가가 필요한 경우를 대비한 커스텀 요청
-    return this.postWithApiKey('/recommend/optimal', request);
+    const response = await this.postWithApiKey<OptimalRecommendResponse>('/recommend/optimal', request);
+    console.log('🔥 RecommendAPI 응답:', response);
+    
+    // 성공한 경우 LLM 응답을 파싱하여 추가
+    if (response.success && response.data) {
+      console.log('🔥 파싱 전 답변:', response.data.answer);
+      response.data.parsed_recommendations = parseRecommendationAnswer(response.data.answer);
+      console.log('🔥 파싱 후 결과:', response.data.parsed_recommendations);
+    }
+    
+    return response;
   }
 
   /**
@@ -86,43 +170,119 @@ class RecommendAPIService {
    * 
    * API 엔드포인트: GET /recommend/health
    * Python 환경 및 추천봇 모듈의 동작 상태를 확인합니다.
+   * mintrendServices와 동일한 패턴으로 구현
    * 
    * @returns Promise<ApiResponse<RecommendHealthResponse>> - 헬스체크 결과
    */
   async checkRecommendHealth(): Promise<ApiResponse<RecommendHealthResponse>> {
-    return apiService.get<RecommendHealthResponse>('/recommend/health');
+    try {
+      const url = getApiUrl('/recommend/health');
+      console.log('🩺 헬스체크 요청:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-API-Key': API_KEY,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🩺 헬스체크 실패:', { status: response.status, body: errorText });
+        
+        return {
+          success: false,
+          error: this.getErrorMessage(response.status, errorText)
+        };
+      }
+
+      const result = await response.json();
+      console.log('🩺 헬스체크 성공:', result);
+      
+      return {
+        success: true,
+        data: result
+      };
+    } catch (error) {
+      console.error('🩺 헬스체크 에러:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
   }
 
   /**
    * 🔑 API Key가 필요한 POST 요청 (내부 메서드)
    * 
-   * 추천 API는 X-API-Key 헤더가 필요하므로 별도 처리
+   * mintrendServices API 패턴을 따라 구현:
+   * - 적절한 에러 처리
+   * - 타임아웃 설정
+   * - 재시도 로직
+   * - 표준화된 응답 형식
    * 
    * @param endpoint - API 엔드포인트
    * @param data - 요청 데이터
+   * @param retryCount - 현재 재시도 횟수
    * @returns Promise<ApiResponse<T>> - 응답 데이터
    */
   private async postWithApiKey<T>(
     endpoint: string, 
-    data: any
+    data: any,
+    retryCount: number = 0
   ): Promise<ApiResponse<T>> {
     try {
-      const url = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001'}${endpoint}`;
+      const url = getApiUrl(endpoint);
+      console.log('🔥 API 요청:', {
+        url,
+        endpoint,
+        data,
+        retry: retryCount
+      });
+      
+      // AbortController로 타임아웃 설정
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
       
       const response = await fetch(url, {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': 'admin-0816-key-0610-aws2', // API 키 설정
+          'Accept': 'application/json',
+          'X-API-Key': API_KEY,
         },
         body: JSON.stringify(data),
       });
 
+      clearTimeout(timeoutId);
+      console.log('🔥 응답 상태:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('🔥 에러 응답:', { status: response.status, body: errorText });
+        
+        // 500번대 에러는 재시도
+        if (response.status >= 500 && retryCount < MAX_RETRIES) {
+          console.log(`🔄 재시도 ${retryCount + 1}/${MAX_RETRIES}`);
+          await this.delay(1000 * (retryCount + 1)); // 점진적 지연
+          return this.postWithApiKey(endpoint, data, retryCount + 1);
+        }
+        
+        // 400번대 에러는 즉시 실패
+        const errorMessage = this.getErrorMessage(response.status, errorText);
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      console.log('🔥 성공 응답:', result);
       
       return {
         success: true,
@@ -130,12 +290,63 @@ class RecommendAPIService {
       };
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('🔥 API 호출 에러:', error);
       
+      // 네트워크 에러나 타임아웃은 재시도
+      if (this.isRetryableError(error) && retryCount < MAX_RETRIES) {
+        console.log(`🔄 네트워크 에러 재시도 ${retryCount + 1}/${MAX_RETRIES}`);
+        await this.delay(1000 * (retryCount + 1));
+        return this.postWithApiKey(endpoint, data, retryCount + 1);
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
         error: errorMessage
       };
+    }
+  }
+
+  /**
+   * 🕒 지연 유틸리티 함수
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * 🔍 재시도 가능한 에러인지 확인
+   */
+  private isRetryableError(error: any): boolean {
+    if (error?.name === 'AbortError') return true; // 타임아웃
+    if (error?.message?.includes('fetch')) return true; // 네트워크 에러
+    if (error?.message?.includes('ECONNRESET')) return true; // 연결 리셋
+    return false;
+  }
+
+  /**
+   * 📋 HTTP 상태 코드별 에러 메시지 생성
+   */
+  private getErrorMessage(status: number, body: string): string {
+    switch (status) {
+      case 400:
+        return `잘못된 요청: ${body || '요청 데이터를 확인해주세요'}`;
+      case 401:
+        return 'API 키가 유효하지 않습니다';
+      case 403:
+        return 'API 접근 권한이 없습니다';
+      case 404:
+        return '요청한 API 엔드포인트를 찾을 수 없습니다';
+      case 429:
+        return 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요';
+      case 500:
+        return '서버 내부 오류가 발생했습니다';
+      case 502:
+        return '서버 게이트웨이 오류입니다';
+      case 503:
+        return '서버가 일시적으로 사용 불가능합니다';
+      default:
+        return `HTTP ${status} 오류: ${body || 'Unknown error'}`;
     }
   }
 

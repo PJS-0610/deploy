@@ -86,9 +86,9 @@ type SettingField = keyof SensorSetting;
 // =========================
 const API_CALL_INTERVAL = 5000; // 5초 간격으로 조회 제한 (로그 폭발 방지)
 const INITIAL_SETTINGS: SettingsState = {
-  temp: { current: 24, target: 24, threshold: 28, triggerEnabled: true },
-  humidity: { current: 30, target: 30, threshold: 70, triggerEnabled: true },
-  co2: { current: 500, target: 500, threshold: 1000, triggerEnabled: true }
+  temp: { current: 0, target: 0, threshold: 28, triggerEnabled: true },
+  humidity: { current: 0, target: 0, threshold: 70, triggerEnabled: true },
+  co2: { current: 0, target: 0, threshold: 1000, triggerEnabled: true }
 };
 
 interface SettingScreenProps {
@@ -105,7 +105,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   onNavigateToRole,
 }) => {
   // 사이드바 및 메뉴 상태
-  const [activeMenu, setActiveMenu] = useState('Settings');
+  const [activeMenu, setActiveMenu] = useState('Control');
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
 
   // 설정값 상태
@@ -190,6 +190,17 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
     return () => clearInterval(id);
   }, [loadMintrend]);
 
+  // 실시간 센서 데이터로 현재값 업데이트
+  useEffect(() => {
+    if (mintrend) {
+      setSettings(prev => ({
+        temp: { ...prev.temp, current: Math.round(mintrend.mintemp || prev.temp.current) },
+        humidity: { ...prev.humidity, current: Math.round(mintrend.minhum || prev.humidity.current) },
+        co2: { ...prev.co2, current: Math.round(mintrend.mingas || prev.co2.current) }
+      }));
+    }
+  }, [mintrend]);
+
   // =========================
   // 메뉴 클릭 핸들러
   // =========================
@@ -206,6 +217,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
       case 'History':
         onNavigateToHistory();
         break;
+      case 'Control':
       case 'Settings':
         // 현재 화면 유지
         break;
@@ -255,8 +267,8 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
       setIsLoading(true);
       setLastApiCall(now);
       
-      // REFRESH 버튼: 30일, 일반 로딩: 7일
-      const totalDays = fullRefresh ? 30 : 7;
+      // REFRESH 버튼: 30일, 일반 로딩: 3일
+      const totalDays = fullRefresh ? 30 : 3;
       const actionText = fullRefresh ? '전체 새로고침' : '최근 로그 조회';
       
       // 진행 상황 초기화
@@ -596,9 +608,9 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
           setConnectionStatus('설정됨');
           console.log('✅ API 설정 확인 완료');
           
-          // 페이지 진입 시 최근 7일 로그 자동 로딩
-          setDebugInfo('📡 최근 7일 로그 자동 로딩 중...');
-          await fetchLogs(false); // 7일 조회
+          // 페이지 진입 시 최근 3일 로그 자동 로딩
+          setDebugInfo('📡 최근 3일 로그 자동 로딩 중...');
+          await fetchLogs(false); // 3일 조회
         } else {
           setConnectionStatus('설정 필요');
           console.warn('⚠️ API 설정이 필요합니다');
@@ -787,9 +799,9 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                               className={styles.input}
                               style={{ width: '86px', marginRight: '8px' }}
                               placeholder={
-                                type === 'temp' ? '24°C' :
-                                  type === 'humidity' ? '50%' :
-                                    type === 'co2' ? '400ppm' : 'Target'
+                                type === 'temp' ? `${Math.round(pickLive(type, mintrend).value || 24)}°C` :
+                                  type === 'humidity' ? `${Math.round(pickLive(type, mintrend).value || 50)}%` :
+                                    type === 'co2' ? `${Math.round(pickLive(type, mintrend).value || 400)}ppm` : 'Target'
                               }
                             />
                             {/* <button
