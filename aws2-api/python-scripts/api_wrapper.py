@@ -31,7 +31,7 @@ try:
         UserSession,
         get_or_create_session,
         cleanup_expired_sessions,
-        #reset_session,
+        reset_session,
         save_session_history,
         load_session_history,
         list_session_files,
@@ -56,12 +56,6 @@ try:
         find_closest_available_data,
         detect_fields_in_query,
         
-        # 통계 및 분석 기능
-        calculate_daily_average_temperature,
-        calculate_today_average_all_sensors,
-        calculate_daily_average_all_sensors,
-        find_extrema_time_in_date,
-        
         # 시간 관련
         extract_datetime_strings,
         parse_dt,
@@ -75,7 +69,7 @@ try:
         _reset_last_ctx,
         _get_last_ctx,
         
-        # 상수 (chatbot.py에서 정의된 것들)
+        # 상수
         ENABLE_CHATLOG_SAVE,
         MAX_HISTORY_TURNS,
         RELEVANCE_THRESHOLD,
@@ -86,7 +80,6 @@ try:
         MAX_FILE_SIZE,
         REGION,
         S3_BUCKET_DATA,
-        S3_PREFIX,
         CHATLOG_BUCKET,
         CHATLOG_PREFIX,
         FIELD_SYNONYMS,
@@ -124,7 +117,7 @@ except ImportError as e:
 
 def process_query(query: str, session_id: str = None) -> dict:
     """
-    단일 질의를 처리하고 결과를 반환 (다중 사용자 지원, 고도화된 센서 데이터 분석)
+    단일 질의를 처리하고 결과를 반환 (다중 사용자 지원)
     """
     try:
         start_time = datetime.now()
@@ -161,88 +154,10 @@ def process_query(query: str, session_id: str = None) -> dict:
             
             return result
 
-        # 센서 질문 처리 - 고도화된 분석 시도
+        # 센서 질문 처리
         _reset_last_ctx(session=session)
-        
-        # 1. 일별 평균 온도 요청 검사
-        if daily_summary_requested(query) and ("온도" in query or "temperature" in query.lower()):
-            daily_temp_result = calculate_daily_average_temperature(query)
-            if daily_temp_result:
-                turn_id = session.increment_turn()
-                result = {
-                    "answer": daily_temp_result,
-                    "route": "sensor_daily_temp",
-                    "session_id": session.session_id,
-                    "turn_id": turn_id,
-                    "processing_time": (datetime.now() - start_time).total_seconds(),
-                    "mode": "daily_statistics"
-                }
-                session.add_to_history(query, daily_temp_result, "sensor_daily_temp")
-                if ENABLE_CHATLOG_SAVE:
-                    save_turn_to_s3(session.session_id, turn_id, "sensor_daily_temp", query, daily_temp_result, top_docs=[])
-                return result
-        
-        # 2. 일별 전체 센서 평균 요청 검사
-        if daily_summary_requested(query):
-            daily_all_result = calculate_daily_average_all_sensors(query)
-            if daily_all_result:
-                turn_id = session.increment_turn()
-                result = {
-                    "answer": daily_all_result,
-                    "route": "sensor_daily_all",
-                    "session_id": session.session_id,
-                    "turn_id": turn_id,
-                    "processing_time": (datetime.now() - start_time).total_seconds(),
-                    "mode": "daily_statistics"
-                }
-                session.add_to_history(query, daily_all_result, "sensor_daily_all")
-                if ENABLE_CHATLOG_SAVE:
-                    save_turn_to_s3(session.session_id, turn_id, "sensor_daily_all", query, daily_all_result, top_docs=[])
-                return result
-        
-        # 3. 오늘 전체 센서 평균 요청 검사
-        if "오늘" in query and any(keyword in query for keyword in ["평균", "전체", "모든"]):
-            today_all_result = calculate_today_average_all_sensors()
-            if today_all_result:
-                turn_id = session.increment_turn()
-                result = {
-                    "answer": today_all_result,
-                    "route": "sensor_today_all",
-                    "session_id": session.session_id,
-                    "turn_id": turn_id,
-                    "processing_time": (datetime.now() - start_time).total_seconds(),
-                    "mode": "today_statistics"
-                }
-                session.add_to_history(query, today_all_result, "sensor_today_all")
-                if ENABLE_CHATLOG_SAVE:
-                    save_turn_to_s3(session.session_id, turn_id, "sensor_today_all", query, today_all_result, top_docs=[])
-                return result
-        
-        # 4. 최고/최저값 시간 찾기 요청 검사
-        if any(keyword in query for keyword in ["최고", "최저", "가장.*더운", "가장.*차가운", "가장.*높은", "가장.*낮은"]):
-            extrema_result = find_extrema_time_in_date(query)
-            if extrema_result:
-                turn_id = session.increment_turn()
-                result = {
-                    "answer": extrema_result,
-                    "route": "sensor_extrema",
-                    "session_id": session.session_id,
-                    "turn_id": turn_id,
-                    "processing_time": (datetime.now() - start_time).total_seconds(),
-                    "mode": "extrema_analysis"
-                }
-                session.add_to_history(query, extrema_result, "sensor_extrema")
-                if ENABLE_CHATLOG_SAVE:
-                    save_turn_to_s3(session.session_id, turn_id, "sensor_extrema", query, extrema_result, top_docs=[])
-                return result
-        
-        # 5. 시간 범위 쿼리 처리
-        time_range = get_time_range_from_query(query) or get_duration_range_from_query(query)
-        if time_range:
-            # 시간 범위가 있는 경우 특별 처리
-            set_followup_context("time_range", {"start": time_range[0], "end": time_range[1]}, session=session)
-        
-        # 6. S3 로그에서 캐시된 데이터 확인
+
+        # S3 로그에서 캐시된 데이터 확인
         cached_sensor_data = find_sensor_data_from_s3_logs(query)
         
         if cached_sensor_data:
@@ -271,8 +186,7 @@ def process_query(query: str, session_id: str = None) -> dict:
                     "session_id": session.session_id,
                     "turn_id": turn_id,
                     "processing_time": (datetime.now() - start_time).total_seconds(),
-                    "mode": "cached_data",
-                    "fields": need_fields
+                    "mode": "cached_data"
                 }
                 
                 session.add_to_history(query, quick_answer, "sensor_cache")
@@ -280,26 +194,8 @@ def process_query(query: str, session_id: str = None) -> dict:
                     save_turn_to_s3(session.session_id, turn_id, "sensor_cache", query, quick_answer, top_docs=[])
                 
                 return result
-        
-        # 7. 최신 센서 데이터 빠른 검색 (최근 요청시)
-        if is_recent_query(query):
-            latest_data = find_latest_sensor_data_from_s3(query)
-            if latest_data:
-                turn_id = session.increment_turn()
-                result = {
-                    "answer": latest_data,
-                    "route": "sensor_latest",
-                    "session_id": session.session_id,
-                    "turn_id": turn_id,
-                    "processing_time": (datetime.now() - start_time).total_seconds(),
-                    "mode": "latest_data"
-                }
-                session.add_to_history(query, latest_data, "sensor_latest")
-                if ENABLE_CHATLOG_SAVE:
-                    save_turn_to_s3(session.session_id, turn_id, "sensor_latest", query, latest_data, top_docs=[])
-                return result
 
-        # 8. 일반 RAG 검색 (위의 특별 처리가 적용되지 않은 경우)
+        # S3에서 문서 검색
         top_docs, context = retrieve_documents_from_s3(query)
         
         # RAG 또는 일반 LLM 선택
