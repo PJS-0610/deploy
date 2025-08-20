@@ -98,7 +98,7 @@ export const chatbotUtils = {
    * @returns 검증 결과 객체 (isValid: boolean, error?: string)
    */
   validateMessage(msg: string): { isValid: boolean; error?: string } {
-    const text = (msg ?? '').trim();
+    const text = String(msg ?? '').trim();
     
     // 최소 길이 검증
     if (text.length < CHATBOT_CONSTANTS.MIN_MESSAGE_LENGTH) {

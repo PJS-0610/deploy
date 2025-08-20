@@ -131,7 +131,18 @@ export const useChatbot = () => {
 
   // 메시지 전송
   const sendMessage = useCallback(async (text?: string) => {
-    const messageText = text || chatbotState.inputMessage.trim();
+    // 안전한 메시지 텍스트 추출
+    let messageText = '';
+    try {
+      if (typeof text === 'string') {
+        messageText = text.trim();
+      } else {
+        messageText = (chatbotState.inputMessage || '').trim();
+      }
+    } catch (error) {
+      console.warn('sendMessage: text processing failed:', error);
+      messageText = '';
+    }
     
     // 입력 검증
     const validation = ChatbotUtils.validateMessage(messageText);

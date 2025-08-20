@@ -706,33 +706,49 @@ export const ChatbotInput: React.FC<ChatbotInputProps> = ({
         </div>
 
         <button
-          onClick={onSendMessage}
-          disabled={isLoading || !inputMessage.trim()}
+          onClick={() => {
+            try {
+              if (!isLoading && inputMessage && typeof inputMessage === 'string' && inputMessage.trim()) {
+                onSendMessage();
+              }
+            } catch (error) {
+              console.warn('Send button onClick error:', error);
+            }
+          }}
+          disabled={isLoading || !inputMessage || typeof inputMessage !== 'string' || !inputMessage.trim()}
           style={{
             padding: '14px',
             borderRadius: '50%',
             border: 'none',
-            backgroundColor: (isLoading || !inputMessage.trim()) ? '#d1d5db' : '#3b82f6',
+            backgroundColor: (isLoading || !inputMessage || typeof inputMessage !== 'string' || !inputMessage.trim()) ? '#d1d5db' : '#3b82f6',
             color: 'white',
-            cursor: (isLoading || !inputMessage.trim()) ? 'not-allowed' : 'pointer',
+            cursor: (isLoading || !inputMessage || typeof inputMessage !== 'string' || !inputMessage.trim()) ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             transition: 'all 0.2s ease',
             minWidth: '48px',
             minHeight: '48px',
-            boxShadow: (isLoading || !inputMessage.trim()) ? 'none' : '0 2px 8px rgba(59, 130, 246, 0.3)'
+            boxShadow: (isLoading || !inputMessage || typeof inputMessage !== 'string' || !inputMessage.trim()) ? 'none' : '0 2px 8px rgba(59, 130, 246, 0.3)'
           }}
           onMouseEnter={(e) => {
-            if (!isLoading && inputMessage.trim()) {
-              e.currentTarget.style.backgroundColor = '#2563eb';
-              e.currentTarget.style.transform = 'scale(1.05)';
+            try {
+              if (!isLoading && inputMessage && typeof inputMessage === 'string' && inputMessage.trim()) {
+                e.currentTarget.style.backgroundColor = '#2563eb';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }
+            } catch (error) {
+              console.warn('Button onMouseEnter error:', error);
             }
           }}
           onMouseLeave={(e) => {
-            if (!isLoading && inputMessage.trim()) {
-              e.currentTarget.style.backgroundColor = '#3b82f6';
-              e.currentTarget.style.transform = 'scale(1)';
+            try {
+              if (!isLoading && inputMessage && typeof inputMessage === 'string' && inputMessage.trim()) {
+                e.currentTarget.style.backgroundColor = '#3b82f6';
+                e.currentTarget.style.transform = 'scale(1)';
+              }
+            } catch (error) {
+              console.warn('Button onMouseLeave error:', error);
             }
           }}
         >

@@ -100,8 +100,16 @@ export const ChatbotUtils = {
     }
   },
 
-  validateMessage: (text: string) => {
-    const trimmed = (text ?? '').trim();
+  validateMessage: (text: any) => {
+    // null, undefined, 또는 trim 메서드가 없는 값들을 안전하게 처리
+    let trimmed = '';
+    try {
+      trimmed = typeof text === 'string' ? text.trim() : String(text || '').trim();
+    } catch (error) {
+      console.warn('validateMessage: text processing failed:', error);
+      trimmed = '';
+    }
+    
     if (!trimmed) return { isValid: false, error: '메시지를 입력해주세요.' };
     if (trimmed.length > 2000) return { isValid: false, error: '메시지가 너무 깁니다.' };
     return { isValid: true as const };
