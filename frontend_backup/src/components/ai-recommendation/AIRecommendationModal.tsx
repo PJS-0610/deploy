@@ -167,23 +167,15 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
       }
 
       // API 호출 (개선된 에러 처리)
-      console.log('🔥 API 호출 시작:', requestData);
       const response = await recommendApi.getOptimal(requestData);
-      console.log('🔥 API 응답 전체:', response);
 
       if (response.success && response.data) {
-        console.log('🔥 API 응답 데이터:', response.data);
-        console.log('🔥 답변:', response.data.answer);
-        console.log('🔥 파싱된 추천값:', response.data.parsed_recommendations);
-
         setRecommendation(response.data.answer);
         // 파싱된 추천값도 저장
         if (response.data.parsed_recommendations) {
           window.lastParsedRecommendations = response.data.parsed_recommendations;
-          console.log('🔥 window에 저장된 파싱값:', window.lastParsedRecommendations);
         }
       } else {
-        console.error('🔥 API 호출 실패:', response);
 
         // 개선된 에러 메시지 처리
         let errorMessage = response.error || '추천을 받아오는데 실패했습니다.';
@@ -200,7 +192,6 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
         setError(errorMessage);
       }
     } catch (err) {
-      console.error('🔥 예상치 못한 에러:', err);
       setError('네트워크 연결을 확인하고 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
@@ -208,8 +199,6 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
   };
 
   const parseRecommendationValues = (answer: string) => {
-  console.log('🔥 파싱 시작 - 답변:', answer);
-
   // 1) 답변 문자열에서 정규식 매칭
   const tempMatch = answer.match(/최적온도는?\s*([\d.]+)도/);
   const humidityMatch = answer.match(/최적습도는?\s*([\d.]+)%/);
@@ -238,7 +227,6 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
   );
 
   const result = { temperature, humidity, co2, answer };
-  console.log('🔥 최종 파싱 결과:', result);
   return result;
 };
 
@@ -285,7 +273,7 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
           <div className={styles.inputSection}>
             <h3 className={styles.sectionTitle}>외부 환경 조건 입력</h3>
             <p className={styles.sectionDescription}>
-              현재 외부 환경 조건을 입력하면 AI가 최적의 실내 환경을 추천해드립니다.
+              현재 외부 환경 조건을 입력하면 AI가 최적의 실내 환경을 추천해드립니다.<br></br>
               (최소 1개 이상 입력 필요)
             </p>
 
@@ -331,7 +319,7 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
               <div className={styles.inputGroup}>
                 <label className={styles.inputLabel}>
                   <Wind size={16} />
-                  외부 공기질 (CO2 ppm)
+                  외부 공기질 (CO₂ ppm)
                 </label>
                 <input
                   type="number"

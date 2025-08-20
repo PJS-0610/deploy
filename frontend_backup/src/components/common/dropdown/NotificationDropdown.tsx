@@ -43,6 +43,8 @@ type Props = {
   isOpen: boolean;                // 드롭다운 열림/닫힘 상태
   onClose: () => void;           // 드롭다운 닫기 함수 (필수)
   notifications: Notification[]; // 표시할 알림 목록 배열
+  onDeleteNotification?: (id: string) => void; // 개별 알림 삭제 함수
+  onClearAllNotifications?: () => void;        // 전체 알림 삭제 함수
 };
 
 /**
@@ -65,7 +67,9 @@ type Props = {
 const NotificationDropdown: React.FC<Props> = ({
   isOpen,
   onClose,
-  notifications
+  notifications,
+  onDeleteNotification,
+  onClearAllNotifications
 }) => {
   return (
     <BaseDropdown isOpen={isOpen} onClose={onClose} title="알림">
@@ -78,26 +82,60 @@ const NotificationDropdown: React.FC<Props> = ({
           <div className={styles.empty}>새로운 알림이 없습니다</div>
           
         ) : (
-          
-          /* 📋 알림 목록 - 각 알림을 개별 아이템으로 렌더링 */
-          notifications.map(notification => (
-            <div
-              key={notification.id}  // 고유 키로 React 최적화
-              
-              // 📌 동적 클래스 적용: 읽지 않은 알림은 강조 스타일
-              className={`${styles.item} ${!notification.read ? styles.itemUnread : ''}`}
-              
-              onClick={onClose}      // 알림 클릭 시 드롭다운 자동 닫기
-              role="button"          // 접근성: 버튼 역할 명시
-            >
-              
-              {/* 💬 알림 메시지 텍스트 */}
-              <span className={styles.message}>{notification.message}</span>
-              
-              {/* ⏰ 알림 발생 시간 정보 */}
-              <span className={styles.timestamp}>{notification.timestamp}</span>
-            </div>
-          ))
+          <>
+            {/* 🗑️ 전체 삭제 버튼 */}
+            {onClearAllNotifications && (
+              <div className={styles.clearAllContainer}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClearAllNotifications();
+                  }}
+                  className={styles.clearAllBtn}
+                  title="모든 알림 삭제"
+                >
+                  🗑️ 전체 삭제
+                </button>
+              </div>
+            )}
+
+            {/* 📋 알림 목록 - 각 알림을 개별 아이템으로 렌더링 */}
+            {notifications.map(notification => (
+              <div
+                key={notification.id}  // 고유 키로 React 최적화
+                
+                // 📌 동적 클래스 적용: 읽지 않은 알림은 강조 스타일
+                className={`${styles.item} ${!notification.read ? styles.itemUnread : ''}`}
+                
+                role="button"          // 접근성: 버튼 역할 명시
+              >
+                <div 
+                  className={styles.itemContent}
+                  onClick={onClose}      // 알림 클릭 시 드롭다운 자동 닫기
+                >
+                  {/* 💬 알림 메시지 텍스트 */}
+                  <span className={styles.message}>{notification.message}</span>
+                  
+                  {/* ⏰ 알림 발생 시간 정보 */}
+                  <span className={styles.timestamp}>{notification.timestamp}</span>
+                </div>
+
+                {/* ❌ 개별 삭제 버튼 */}
+                {onDeleteNotification && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteNotification(notification.id);
+                    }}
+                    className={styles.deleteBtn}
+                    title="이 알림 삭제"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </>
         )}
       </div>
     </BaseDropdown>

@@ -12,6 +12,8 @@ import {
   type FormattedLogData,
   mapSensorType,
   getSensorUnit,
+  getSensorDisplayName,
+  getStatusDisplayName,
   formatLogForDisplay,
   determineStatusBySensor,
   getStatusColor,
@@ -142,7 +144,12 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleString('ko-KR'));
 
   // 알림 상태
-  const [notifications, setNotifications] = useState<string[]>([]);
+  interface NotificationItem {
+    id: string;
+    message: string;
+    timestamp: string;
+  }
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState<boolean>(false);
 
   // AI 추천 모달 상태
@@ -194,9 +201,24 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   useEffect(() => {
     if (mintrend) {
       setSettings(prev => ({
-        temp: { ...prev.temp, current: Math.round(mintrend.mintemp || prev.temp.current) },
-        humidity: { ...prev.humidity, current: Math.round(mintrend.minhum || prev.humidity.current) },
-        co2: { ...prev.co2, current: Math.round(mintrend.mingas || prev.co2.current) }
+        temp: { 
+          ...prev.temp, 
+          current: Math.round(mintrend.mintemp || prev.temp.current),
+          // target이 0이거나 설정되지 않았다면 현재값을 기본값으로 사용
+          target: prev.temp.target || Math.round(mintrend.mintemp || 24)
+        },
+        humidity: { 
+          ...prev.humidity, 
+          current: Math.round(mintrend.minhum || prev.humidity.current),
+          // target이 0이거나 설정되지 않았다면 현재값을 기본값으로 사용
+          target: prev.humidity.target || Math.round(mintrend.minhum || 50)
+        },
+        co2: { 
+          ...prev.co2, 
+          current: Math.round(mintrend.mingas || prev.co2.current),
+          // target이 0이거나 설정되지 않았다면 현재값을 기본값으로 사용
+          target: prev.co2.target || Math.round(mintrend.mingas || 400)
+        }
       }));
     }
   }, [mintrend]);
@@ -238,12 +260,20 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
 
   const addNotification = (message: string): void => {
     const timestamp = new Date().toLocaleTimeString('ko-KR');
-    const notificationMessage = `[${timestamp}] ${message}`;
-    setNotifications(prev => [notificationMessage, ...prev.slice(0, 4)]); // 최대 5개 유지
+    const newNotification: NotificationItem = {
+      id: `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      message,
+      timestamp
+    };
+    setNotifications(prev => [newNotification, ...prev.slice(0, 4)]); // 최대 5개 유지
   };
 
   const clearNotifications = (): void => {
     setNotifications([]);
+  };
+
+  const removeNotification = (id: string): void => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id));
   };
 
   // =========================
@@ -293,15 +323,12 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
       const errorMessage = err?.message || err?.toString() || '알 수 없는 오류';
       
       if (errorMessage.includes('CORS') || errorMessage.includes('Access-Control-Allow-Origin')) {
-        console.error('🌐 CORS 오류 발생:', err);
         setDebugInfo('🌐 CORS 오류 - 서버의 Access-Control-Allow-Origin 설정을 확인하세요');
         setConnectionStatus('CORS 오류');
       } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_FAILED')) {
-        console.error('📡 네트워크 오류 발생:', err);
         setDebugInfo('📡 네트워크 연결 오류 - 서버 상태를 확인하세요');
         setConnectionStatus('네트워크 오류');
       } else {
-        console.error('❌ 조회 실패:', err);
         setDebugInfo('❌ 로그 조회 실패 - 잠시 후 다시 시도하세요');
         setConnectionStatus('오류');
       }
@@ -316,18 +343,21 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
     try {
       setDebugInfo('📡 최신 변경사항 확인 중...');
       
-      // 최근 1일만 조회 (429 오류 방지: 20개로 제한)
-      const response = await ControlHistoryService.fetchControlHistory(20, undefined, getDateStrKST(0));
+      // 서버 응답 대기를 위해 잠시 지연
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // 최근 1일만 조회 (429 오류 방지: 30개로 증가)
+      const response = await ControlHistoryService.fetchControlHistory(30, undefined, getDateStrKST(0));
       
       if (response && response.logs && response.logs.length > 0) {
         const formattedLogs = response.logs.map(formatLogForDisplay);
         const currentTime = new Date();
         
-        // 최근 5분 이내 로그만 필터링
+        // 최근 10분 이내 로그만 필터링 (5분 → 10분으로 확장)
         const recentLogs = formattedLogs.filter(log => {
           const logTime = new Date(log.timestamp);
           const diffMinutes = (currentTime.getTime() - logTime.getTime()) / (1000 * 60);
-          return diffMinutes <= 5;
+          return diffMinutes <= 10;
         });
         
         if (recentLogs.length > 0) {
@@ -336,7 +366,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
             const existingIds = new Set(prev.map(log => log.id));
             const newLogs = recentLogs.filter(log => !existingIds.has(log.id));
             const merged = [...newLogs, ...prev];
-            return merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            return merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 50); // 최대 50개로 제한
           });
           
           setDebugInfo(`✅ ${recentLogs.length}개 최신 로그 추가됨`);
@@ -347,7 +377,6 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         setDebugInfo('ℹ️ 새로운 로그 없음');
       }
     } catch (error) {
-      console.warn('최신 변경사항 조회 실패:', error);
       setDebugInfo('⚠️ 최신 변경사항 조회 실패');
     }
   }, []);
@@ -413,13 +442,10 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         
         // CORS 오류 특별 처리
         if (errorMessage.includes('CORS') || errorMessage.includes('Access-Control-Allow-Origin')) {
-          console.warn(`🌐 ${dateStr} CORS 오류 - 서버 설정 확인 필요:`, error);
           setDebugInfo(`🌐 ${dateStr}: CORS 오류 (서버 설정 확인 필요, 총 ${totalFound}개)`);
         } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_FAILED')) {
-          console.warn(`📡 ${dateStr} 네트워크 오류:`, error);
           setDebugInfo(`📡 ${dateStr}: 네트워크 연결 오류 (총 ${totalFound}개)`);
         } else {
-          console.warn(`❌ ${dateStr} 스캔 실패:`, error);
           setDebugInfo(`❌ ${dateStr} 스캔 실패 (총 ${totalFound}개)`);
         }
       }
@@ -444,17 +470,44 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   // =========================
   // 입력 변경 / 토글
   // =========================
-  const handleSettingChange = (type: SensorKey, field: SettingField, value: string): void => {
-    const numericValue = Number(value);
-    if (isNaN(numericValue)) return;
+  // Placeholder 값을 구하는 헬퍼 함수
+  const getPlaceholderValue = (type: SensorKey): number => {
+    return Math.round(pickLive(type, mintrend).value || (
+      type === 'temp' ? 24 :
+      type === 'humidity' ? 50 :
+      type === 'co2' ? 400 : 0
+    ));
+  };
 
-    setSettings(prev => ({
-      ...prev,
-      [type]: {
-        ...prev[type],
-        [field]: numericValue
-      }
-    }));
+  const handleSettingChange = (type: SensorKey, field: SettingField, value: string): void => {
+    // 빈 값을 허용하여 사용자가 모든 내용을 지우고 새로 입력할 수 있도록 함
+    if (value === '') {
+      // 빈 값일 때는 placeholder 값을 기본값으로 사용
+      const placeholderValue = getPlaceholderValue(type);
+      setSettings(prev => ({
+        ...prev,
+        [type]: {
+          ...prev[type],
+          [field]: placeholderValue
+        }
+      }));
+      return;
+    }
+
+    // 숫자와 소수점이 포함된 유효한 입력만 허용
+    if (!/^-?\d*\.?\d*$/.test(value)) return;
+
+    const numericValue = Number(value);
+    // NaN이 아니고 유효한 숫자인 경우에만 업데이트
+    if (!isNaN(numericValue)) {
+      setSettings(prev => ({
+        ...prev,
+        [type]: {
+          ...prev[type],
+          [field]: numericValue
+        }
+      }));
+    }
   };
 
   const handleTriggerToggle = (type: SensorKey): void => {
@@ -493,15 +546,44 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
           [type]: { ...prev[type], status },
         }));
         
-        // 성공 후 최신 변경사항만 조회
-        await fetchRecentChanges();
+        // 새로 생성된 로그를 즉시 UI에 추가
+        const newLogEntry = {
+          id: `temp_${Date.now()}`, // 임시 ID
+          timestamp: logData.timestamp || new Date().toISOString(),
+          sensor_type: logData.sensor_type,
+          before_value: logData.before_value,
+          status: logData.status,
+          after_value: logData.after_value,
+          displayTime: new Date(logData.timestamp || new Date()).toLocaleString('ko-KR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+          }),
+          displaySensorType: getSensorDisplayName(logData.sensor_type),
+          displayUnit: getSensorUnit(logData.sensor_type),
+          displayStatus: getStatusDisplayName(logData.status),
+        };
+
+        // 즉시 로그 목록에 추가
+        setLogs(prev => {
+          const updated = [newLogEntry, ...prev];
+          return updated.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 50);
+        });
+        
+        // 백그라운드에서 실제 로그 데이터로 업데이트
+        setTimeout(async () => {
+          await fetchRecentChanges();
+        }, 2000);
         
         addNotification(`${type.toUpperCase()} 센서 설정이 적용되었습니다.`);
       } else {
         setDebugInfo('⚠️ 적용 실패(success=false)');
       }
     } catch (err) {
-      console.error(err);
       setDebugInfo('❌ 적용 중 오류');
     } finally {
       setIsLoading(false);
@@ -526,15 +608,73 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
       });
 
       if (batchResult.success) {
-        // 성공 후 최신 변경사항만 조회
-        await fetchRecentChanges();
+        // 새로 생성된 배치 로그들을 즉시 UI에 추가
+        const timestamp = new Date().toISOString();
+        const newLogEntries = [
+          {
+            id: `temp_batch_${Date.now()}_1`,
+            timestamp,
+            sensor_type: 'temp',
+            before_value: settings.temp.current,
+            status: tempStatus,
+            after_value: settings.temp.target || settings.temp.current,
+            displayTime: new Date(timestamp).toLocaleString('ko-KR', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+            }),
+            displaySensorType: getSensorDisplayName('temp'),
+            displayUnit: getSensorUnit('temp'),
+            displayStatus: getStatusDisplayName(tempStatus),
+          },
+          {
+            id: `temp_batch_${Date.now()}_2`,
+            timestamp,
+            sensor_type: 'humidity',
+            before_value: settings.humidity.current,
+            status: humidityStatus,
+            after_value: settings.humidity.target || settings.humidity.current,
+            displayTime: new Date(timestamp).toLocaleString('ko-KR', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+            }),
+            displaySensorType: getSensorDisplayName('humidity'),
+            displayUnit: getSensorUnit('humidity'),
+            displayStatus: getStatusDisplayName(humidityStatus),
+          },
+          {
+            id: `temp_batch_${Date.now()}_3`,
+            timestamp,
+            sensor_type: 'gas',
+            before_value: settings.co2.current,
+            status: co2Status,
+            after_value: settings.co2.target || settings.co2.current,
+            displayTime: new Date(timestamp).toLocaleString('ko-KR', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+            }),
+            displaySensorType: getSensorDisplayName('gas'),
+            displayUnit: getSensorUnit('gas'),
+            displayStatus: getStatusDisplayName(co2Status),
+          }
+        ];
+
+        // 즉시 로그 목록에 추가
+        setLogs(prev => {
+          const updated = [...newLogEntries, ...prev];
+          return updated.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 50);
+        });
+
+        // 백그라운드에서 실제 로그 데이터로 업데이트
+        setTimeout(async () => {
+          await fetchRecentChanges();
+        }, 2000);
+
         addNotification('모든 센서 설정이 적용되었습니다.');
       } else {
         setDebugInfo(`⚠️ 일부 실패 (${batchResult.failCount}건)`);
         addNotification(`일부 센서 설정 적용에 실패했습니다. (${batchResult.failCount}건)`);
       }
     } catch (err) {
-      console.error(err);
       setDebugInfo('❌ 전체 적용 중 오류');
     } finally {
       setIsLoading(false);
@@ -580,15 +720,73 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
       });
 
       if (batchResult.success) {
-        // 성공 후 최신 변경사항만 조회
-        await fetchRecentChanges();
+        // AI 추천으로 생성된 배치 로그들을 즉시 UI에 추가
+        const timestamp = new Date().toISOString();
+        const aiLogEntries = [
+          {
+            id: `ai_batch_${Date.now()}_1`,
+            timestamp,
+            sensor_type: 'temp',
+            before_value: recommendation.temperature,
+            status: tempStatus,
+            after_value: recommendation.temperature,
+            displayTime: new Date(timestamp).toLocaleString('ko-KR', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+            }),
+            displaySensorType: getSensorDisplayName('temp'),
+            displayUnit: getSensorUnit('temp'),
+            displayStatus: getStatusDisplayName(tempStatus),
+          },
+          {
+            id: `ai_batch_${Date.now()}_2`,
+            timestamp,
+            sensor_type: 'humidity',
+            before_value: recommendation.humidity,
+            status: humidityStatus,
+            after_value: recommendation.humidity,
+            displayTime: new Date(timestamp).toLocaleString('ko-KR', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+            }),
+            displaySensorType: getSensorDisplayName('humidity'),
+            displayUnit: getSensorUnit('humidity'),
+            displayStatus: getStatusDisplayName(humidityStatus),
+          },
+          {
+            id: `ai_batch_${Date.now()}_3`,
+            timestamp,
+            sensor_type: 'gas',
+            before_value: recommendation.co2,
+            status: co2Status,
+            after_value: recommendation.co2,
+            displayTime: new Date(timestamp).toLocaleString('ko-KR', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+            }),
+            displaySensorType: getSensorDisplayName('gas'),
+            displayUnit: getSensorUnit('gas'),
+            displayStatus: getStatusDisplayName(co2Status),
+          }
+        ];
+
+        // 즉시 로그 목록에 추가
+        setLogs(prev => {
+          const updated = [...aiLogEntries, ...prev];
+          return updated.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 50);
+        });
+
+        // 백그라운드에서 실제 로그 데이터로 업데이트
+        setTimeout(async () => {
+          await fetchRecentChanges();
+        }, 2000);
+
         addNotification(`AI 추천 설정이 적용되었습니다. (온도: ${recommendation.temperature}℃, 습도: ${recommendation.humidity}%, CO₂: ${recommendation.co2}ppm)`);
       } else {
         setDebugInfo(`⚠️ AI 추천 적용 중 일부 실패 (${batchResult.failCount}건)`);
         addNotification(`AI 추천 설정 적용 중 일부 실패했습니다. (${batchResult.failCount}건)`);
       }
     } catch (err) {
-      console.error('AI 추천 적용 중 오류:', err);
       setDebugInfo('❌ AI 추천 적용 중 오류');
       addNotification('AI 추천 설정 적용 중 오류가 발생했습니다.');
     } finally {
@@ -606,17 +804,14 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         const isConfigured = !!data && data.success !== undefined;
         if (isConfigured) {
           setConnectionStatus('설정됨');
-          console.log('✅ API 설정 확인 완료');
           
           // 페이지 진입 시 최근 3일 로그 자동 로딩
           setDebugInfo('📡 최근 3일 로그 자동 로딩 중...');
           await fetchLogs(false); // 3일 조회
         } else {
           setConnectionStatus('설정 필요');
-          console.warn('⚠️ API 설정이 필요합니다');
         }
       } catch (err) {
-        console.error('❌ 초기화 중 오류:', err);
         setConnectionStatus('오류');
       }
     };
@@ -688,7 +883,11 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                     <span>알림</span>
                     {notifications.length > 0 && (
                       <button
-                        onClick={clearNotifications}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          clearNotifications();
+                        }}
                         className={styles.clearButton}
                       >
                         모두 삭제
@@ -701,9 +900,27 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                         새 알림이 없습니다.
                       </div>
                     ) : (
-                      notifications.map((notification, index) => (
-                        <div key={index} className={styles.notificationItem}>
-                          {notification}
+                      notifications.map((notification) => (
+                        <div key={notification.id} className={styles.notificationItem}>
+                          <div className={styles.notificationContent}>
+                            <div className={styles.notificationMessage}>
+                              {notification.message}
+                            </div>
+                            <div className={styles.notificationTime}>
+                              {notification.timestamp}
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              removeNotification(notification.id);
+                            }}
+                            className={styles.deleteButton}
+                            aria-label="알림 삭제"
+                          >
+                            ×
+                          </button>
                         </div>
                       ))
                     )}
@@ -794,29 +1011,41 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                           <div className={styles.currentRight}>
                             <input
                               type="number"
-                              value={setting.target || ''}
-                              onChange={e => handleSettingChange(type, 'target', e.target.value)}
+                              value={setting.target || getPlaceholderValue(type)}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSettingChange(type, 'target', e.target.value)}
+                              onInput={(e: React.FormEvent<HTMLInputElement>) => handleSettingChange(type, 'target', (e.target as HTMLInputElement).value)}
+                              onFocus={(e: React.FocusEvent<HTMLInputElement>) => {
+                                // 포커스 시 값이 placeholder 값과 같다면 빈 값으로 만들어서 사용자가 입력하기 쉽게 함
+                                if (Number(e.target.value) === getPlaceholderValue(type)) {
+                                  e.target.select(); // 전체 선택하여 덮어쓰기 쉽게 함
+                                }
+                              }}
                               className={styles.input}
-                              style={{ width: '86px', marginRight: '8px' }}
+                              step="0.1"
+                              min={
+                                type === 'temp' ? "0" : 
+                                type === 'humidity' ? "0" : 
+                                type === 'co2' ? "0" : "0"
+                              }
+                              max={
+                                type === 'temp' ? "50" : 
+                                type === 'humidity' ? "100" : 
+                                type === 'co2' ? "5000" : "1000"
+                              }
+                              inputMode="decimal"
+                              pattern="[0-9]*\.?[0-9]*"
                               placeholder={
-                                type === 'temp' ? `${Math.round(pickLive(type, mintrend).value || 24)}°C` :
-                                  type === 'humidity' ? `${Math.round(pickLive(type, mintrend).value || 50)}%` :
-                                    type === 'co2' ? `${Math.round(pickLive(type, mintrend).value || 400)}ppm` : 'Target'
+                                type === 'temp' ? `${getPlaceholderValue(type)}°C` :
+                                  type === 'humidity' ? `${getPlaceholderValue(type)}%` :
+                                    type === 'co2' ? `${getPlaceholderValue(type)}ppm` : 'Target'
                               }
                             />
-                            {/* <button
-                              onClick={() => handleTriggerToggle(type)}
-                              className={`${styles.chip} ${setting.triggerEnabled ? styles.chipOn : styles.chipOff}`}
-                            >
-                              {setting.triggerEnabled ? 'AUTO' : 'MANUAL'}
-                            </button> */}
                             <button
                               onClick={() => handleApplySettings(type)}
                               disabled={isLoading}
                               className={`${styles.btn} ${styles.btnPrimary} ${isLoading ? styles.btnDisabled : ''}`}
-                              style={{ marginLeft: '8px', padding: '6px 12px', fontSize: '12px' }}
                             >
-                              {isLoading ? '⏳' : 'APPLY'}
+                              {isLoading ? 'LOADING' : 'APPLY'}
                             </button>
                           </div>
                         </div>
@@ -866,7 +1095,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                   <button
                     onClick={() => {
                       if (isLoading) {
-                        alert('⏱️ 다른 작업이 진행 중입니다. 잠시 후 다시 시도해주세요.');
+                        alert('다른 작업이 진행 중입니다. 잠시 후 다시 시도해주세요.');
                         return;
                       }
                       fetchLogs(true); // 전체 새로고침 (30일)
@@ -874,7 +1103,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                     disabled={isLoading}
                     className={`${styles.btn} ${styles.btnSlate} ${isLoading ? styles.btnDisabled : ''}`}
                   >
-                    {isLoading ? '⏳ 새로고침중...' : 'REFRESH (30일)'}
+                    {isLoading ? 'REFRESHING' : 'REFRESH (30일)'}
                   </button>
                 </div>
 
@@ -882,7 +1111,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                 {scanProgress.isScanning && (
                   <div className={styles.scanProgress}>
                     <div className={styles.progressHeader}>
-                      <span className={styles.progressTitle}>📡 로그 스캔 진행 중...</span>
+                      <span className={styles.progressTitle}>로그 스캔 진행 중</span>
                       <span className={styles.progressStats}>
                         {scanProgress.current}/{scanProgress.total} 일자 완료 
                         ({scanProgress.foundLogs}개 로그 발견)
@@ -894,14 +1123,14 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                         className={styles.progressFill}
                         style={{ 
                           width: `${(scanProgress.current / scanProgress.total) * 100}%`,
-                          transition: 'width 0.3s ease'
+                          transition: 'none'
                         }}
                       />
                     </div>
                     
                     <div className={styles.progressDetails}>
                       <span className={styles.currentDate}>
-                        📅 현재: {scanProgress.currentDate}
+                        현재: {scanProgress.currentDate}
                       </span>
                       <span className={styles.progressPercent}>
                         {Math.round((scanProgress.current / scanProgress.total) * 100)}%
@@ -913,7 +1142,6 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                 {/* 스캔 완료 상태 표시 */}
                 {!scanProgress.isScanning && scanProgress.foundLogs > 0 && (
                   <div className={styles.scanComplete}>
-                    <span className={styles.completeIcon}>✅</span>
                     <span className={styles.completeText}>
                       스캔 완료: {scanProgress.total}일 동안 총 {scanProgress.foundLogs}개 로그 발견
                     </span>

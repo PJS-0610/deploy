@@ -160,13 +160,6 @@ class ApiService {
       // 환경설정에 따른 전체 URL 생성
       const url = getApiUrl(endpoint);
       
-      // 디버그 모드: 요청 정보 로깅
-      if (ENV_CONFIG.DEBUG) {
-        console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
-        if (options.body) {
-          console.log('📤 Request Body:', options.body);
-        }
-      }
 
       // 타임아웃이 적용된 HTTP 요청 실행
       const response = await this.fetchWithTimeout(url, options);
@@ -179,10 +172,6 @@ class ApiService {
       // JSON 응답 파싱
       const data = await response.json();
       
-      // 디버그 모드: 응답 데이터 로깅
-      if (ENV_CONFIG.DEBUG) {
-        console.log('📥 API Response:', data);
-      }
 
       // 성공 응답 반환
       return {
@@ -193,10 +182,6 @@ class ApiService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      // 디버그 모드: 에러 로깅
-      if (ENV_CONFIG.DEBUG) {
-        console.error('❌ API Error:', errorMessage);
-      }
 
       // 실패 응답 반환
       return {

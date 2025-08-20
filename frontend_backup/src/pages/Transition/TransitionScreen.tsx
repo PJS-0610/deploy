@@ -228,18 +228,7 @@ const TransitionScreen: React.FC<TransitionScreenProps> = ({
         animationStage === 'intense' ? '3' : 'Complete'
     }`];
 
-  // 진행률에 따른 상태 메시지
-  const getStatusMessage = () => {
-    if (transitionState.progress < 30) {
-      return '권한을 확인하고 있습니다...';
-    } else if (transitionState.progress < 60) {
-      return '리소스를 로딩하고 있습니다...';
-    } else if (transitionState.progress < 90) {
-      return '초기화를 완료하고 있습니다...';
-    } else {
-      return '준비가 완료되었습니다!';
-    }
-  };
+  
 
   return (
     <div className={`${styles.transitionContainer} ${isFadingOut ? styles.fadeOut : ''}`}>
@@ -282,16 +271,6 @@ const TransitionScreen: React.FC<TransitionScreenProps> = ({
                 className={styles.transitionArrowHead}
                 style={{ opacity: transitionState.arrowOpacity }}
               />
-            </div>
-          </div>
-
-          {/* 상태 메시지 */}
-          <div className={styles.transitionStatusContainer}>
-            <div className={styles.transitionStatusText}>
-              {getStatusMessage()}
-            </div>
-            <div className={styles.transitionProgressText}>
-              {Math.round(transitionState.progress)}% 완료
             </div>
           </div>
         </>

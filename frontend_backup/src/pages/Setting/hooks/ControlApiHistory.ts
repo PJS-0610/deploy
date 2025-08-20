@@ -51,7 +51,6 @@ private static async requestWithRetry(
       // ✅ 429/503/502/504 오류 처리 - 매우 보수적인 대기 시간
       if (res.status === 429 || res.status === 503 || res.status === 502 || res.status === 504) {
         if (attempt === maxRetries) {
-          console.warn(`⚠️ 최대 재시도 횟수 도달 (${maxRetries}), ${res.status} 응답 반환`);
           return res;
         }
         
@@ -65,7 +64,6 @@ private static async requestWithRetry(
           delay = Math.min(delay, 30000); // ✅ 다른 오류는 최대 30초
         }
         
-        console.warn(`⚠️ ${res.status} 오류, ${delay/1000}초 후 재시도 (${attempt + 1}/${maxRetries})`);
         await this.sleep(delay);
         continue;
       }
@@ -84,13 +82,6 @@ private static async requestWithRetry(
                             e.name === 'TypeError';
 
       if (attempt === maxRetries) {
-        if (isCorsError) {
-          console.error(`❌ CORS 오류로 최대 재시도 도달 (${maxRetries}회):`, e.message);
-        } else if (isNetworkError) {
-          console.error(`❌ 네트워크 오류로 최대 재시도 도달 (${maxRetries}회):`, e.message);
-        } else {
-          console.error(`❌ 알 수 없는 오류로 최대 재시도 도달 (${maxRetries}회):`, e);
-        }
         throw e;
       }
       
@@ -105,7 +96,6 @@ private static async requestWithRetry(
       const errorType = isCorsError ? 'CORS' : 
                        isNetworkError ? '네트워크' : '알 수 없는';
       
-      console.warn(`⚠️ ${errorType} 오류, ${delay/1000}초 후 재시도 (${attempt + 1}/${maxRetries}):`, e.message || e);
       await this.sleep(delay);
     }
   }
@@ -146,7 +136,6 @@ static async fetchControlHistoryAll(
   let total = 0;
   let consecutiveErrors = 0;
 
-  console.log(`🔄 Control History All 요청 시작: ${days}일, limit=${limitPerDay}`);
 
   for (let i = 0; i < days; i++) {
     const dateStr = this.getDateStrKST(-i);
@@ -167,12 +156,10 @@ static async fetchControlHistoryAll(
       );
 
       if (res.status === 429) {
-        console.warn(`⚠️ 429 on date=${dateStr}, skip this day`);
         consecutiveErrors++;
         
         // ✅ 연속 429 오류가 많으면 매우 긴 휴식
         if (consecutiveErrors >= 2) {
-          console.warn(`⚠️ 연속 429 오류 ${consecutiveErrors}회, 10초 휴식`);
           await this.sleep(10000); // 3초 → 10초
         } else {
           await this.sleep(3000); // ✅ 1초 → 3초로 증가
@@ -186,15 +173,12 @@ static async fetchControlHistoryAll(
       total += (data?.totalCount ?? logs.length ?? 0);
       consecutiveErrors = 0; // ✅ 성공하면 연속 오류 카운트 리셋
 
-      console.log(`📅 ${dateStr}: ${logs.length}개 로그 수집 완료`);
 
     } catch (error) {
-      console.warn(`❌ ${dateStr} 요청 실패:`, error);
       consecutiveErrors++;
       
       // ✅ 연속 오류 시 더 긴 휴식
       if (consecutiveErrors >= 5) {
-        console.warn(`❌ 연속 오류 ${consecutiveErrors}회, 조기 종료`);
         break;
       }
     }
@@ -204,7 +188,6 @@ static async fetchControlHistoryAll(
   }
 
   all.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  console.log(`✅ Control History All 완료: 총 ${all.length}개 로그 수집`);
   return { success: true, totalCount: total, logs: all };
 }
 
@@ -226,11 +209,6 @@ static async fetchControlHistory(
     params.append('_', String(Date.now())); // 캐시 우회
 
     const url = `${this.NORMALIZED_BASE_URL}${this.CONTROL_ENDPOINT}/history?${params.toString()}`;
-    console.log('🔍 Control History API 요청:', {
-      url,
-      headers: this.getHeaders(),
-      params: Object.fromEntries(params.entries())
-    });
 
     try {
       // ✅ retry 로직을 사용하도록 변경
@@ -241,34 +219,24 @@ static async fetchControlHistory(
         600
       );
       
-      console.log('🔍 Control History API 응답:', {
-        status: res.status,
-        statusText: res.statusText,
-        ok: res.ok
-      });
 
       if (res.status === 429) {
-        console.warn(`⚠️ 429 on date=${d}, skip and try next date`);
         await this.sleep(1000);
         continue;
       }
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error('🔍 Control History API Error:', errorText);
         throw new Error(`HTTP ${res.status}: ${res.statusText} - ${errorText}`);
       }
 
       const data = await res.json();
-      console.log('🔍 Control History API Success:', data);
       last = data;
 
       const count = data?.totalCount ?? data?.logs?.length ?? 0;
-      console.log(`📅 date=${d} → totalCount=${count}`);
       if (count > 0) return data; // ✅ 데이터 있으면 즉시 반환
       
     } catch (error) {
-      console.warn(`❌ ${d} 요청 실패:`, error);
       // 에러가 발생해도 다음 날짜 시도
       continue;
     }
@@ -284,16 +252,10 @@ static async fetchControlHistory(
   /** 연결 테스트 */
   static async testConnection(): Promise<boolean> {
     try {
-      console.log('🔗 연결 테스트 시작...');
-      console.log('🌐 Base URL:', this.API_BASE_URL);
-      console.log('🔑 API Key:', this.API_KEY ? '설정됨' : '누락');
-      
       const data = await this.fetchControlHistory(1);
       const success = data && data.success === true;
-      console.log(success ? '✅ 연결 테스트 성공' : '❌ 연결 테스트 실패');
       return success;
     } catch (error) {
-      console.error('❌ 연결 테스트 중 오류:', error);
       return false;
     }
   }

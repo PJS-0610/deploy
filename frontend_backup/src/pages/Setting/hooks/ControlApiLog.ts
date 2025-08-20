@@ -50,11 +50,6 @@ export class ControlLogService {
     // ✅ 절대경로로 보장
     const url = `${this.NORMALIZED_BASE_URL}${this.CONTROL_ENDPOINT}/log`;
 
-    console.log('📡 Control Log API Request:', {
-      url,
-      headers: this.getHeaders(),
-      payload
-    });
 
     const response = await fetch(url, {
       method: "POST",
@@ -62,20 +57,13 @@ export class ControlLogService {
       body: JSON.stringify(payload),
     });
     
-    console.log('📡 Control Log API Response:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok
-    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('📡 Control Log API Error:', errorText);
       throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
     }
     
     const result = await response.json();
-    console.log('📡 Control Log API Success:', result);
     return result as ControlResponseDto;
   }
 

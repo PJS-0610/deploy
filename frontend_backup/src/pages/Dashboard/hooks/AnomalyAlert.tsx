@@ -332,6 +332,7 @@ const useAnomalyDetection = (options: {
   enabled?: boolean;
   thresholds?: Partial<ThresholdSettings>;
   cooldownMs?: number; // 같은 유형 알림 최소 간격(밀리초)
+  onNotificationAdd?: (notification: { id: string; message: string; timestamp: string; read: boolean }) => void;
 } = {}) => {
   const config = {
     interval: 60000,
@@ -509,7 +510,7 @@ const useAnomalyDetection = (options: {
     };
   }, []);
 
-  const addAlert = useCallback((anomalyData: AnomalyData) => {
+  const addAlert = useCallback((anomalyData: AnomalyData, onNotificationAdd?: (notification: { id: string; message: string; timestamp: string; read: boolean }) => void) => {
     // 같은 타입/심각도별 쿨다운 적용
     const key = `${anomalyData.type}:${anomalyData.severity}`;
     const now = Date.now();
@@ -527,6 +528,17 @@ const useAnomalyDetection = (options: {
     };
 
     setAlerts(prev => [...prev, newAlert]);
+
+    // 헤더 알림 목록에 추가
+    if (onNotificationAdd) {
+      const notificationId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      onNotificationAdd({
+        id: notificationId,
+        message: anomalyData.message,
+        timestamp: new Date(anomalyData.timestamp).toLocaleString('ko-KR', { hour12: false }),
+        read: false
+      });
+    }
 
     const timer = setTimeout(() => {
       hideAlert(alertId);
@@ -570,11 +582,11 @@ const useAnomalyDetection = (options: {
       const key = `${anomaly.type}:${anomaly.severity}:${anomaly.timestamp}`;
       if (shownKeyRef.current.has(key)) continue;
       shownKeyRef.current.add(key);
-      addAlert(anomaly);
+      addAlert(anomaly, options.onNotificationAdd);
       lastAlertAtRef.current = now;       // 한 건만 띄우고 종료
       break;
     }
-  }, [fetchSensorData, detectAnomalies, addAlert]);
+  }, [fetchSensorData, detectAnomalies, addAlert, options.onNotificationAdd]);
 
   const startedRef = useRef(false);
 
@@ -605,7 +617,7 @@ const useAnomalyDetection = (options: {
     warningCount: alerts.filter(a => a.data.severity === 'warning').length,
     dangerCount: alerts.filter(a => a.data.severity === 'danger').length,
     checkNow: processAnomalies,
-    pushAnomaly: (a: AnomalyData) => addAlert(a),
+    pushAnomaly: (a: AnomalyData) => addAlert(a, options.onNotificationAdd),
     pushPreset: (p: {
       type: AnomalyType;
       severity: AnomalySeverity;
@@ -628,7 +640,7 @@ const useAnomalyDetection = (options: {
         ts,
         p.location
       );
-      addAlert(data);
+      addAlert(data, options.onNotificationAdd);
     },
   };
 };
@@ -641,6 +653,7 @@ interface AnomalyAlertProps {
   enabled?: boolean;
   maxAlerts?: number;
   thresholds?: Partial<ThresholdSettings>;
+  onNotificationAdd?: (notification: { id: string; message: string; timestamp: string; read: boolean }) => void;
 }
 
 const ANOMALY_CONFIG = {
@@ -723,6 +736,7 @@ const AnomalyAlert: React.FC<AnomalyAlertProps> = ({
   enabled = true,
   maxAlerts = 5,
   thresholds,
+  onNotificationAdd,
 }) => {
   const { alerts, hideAlert, checkNow, pushAnomaly, pushPreset } = useAnomalyDetection({
     interval,
@@ -730,6 +744,7 @@ const AnomalyAlert: React.FC<AnomalyAlertProps> = ({
     s3ApiEndpoint,
     enabled,
     thresholds,
+    onNotificationAdd,
   });
 
   // 글로벌 스타일 추가

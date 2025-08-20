@@ -22,146 +22,6 @@
 //  * - useRef를 이용한 외부 클릭 감지 최적화
 //  * - 각 드롭다운별 개별 ref 관리
 //  */
-
-// import React from 'react';
-// // Lucide React 아이콘 임포트
-// import { Filter, RotateCcw, ChevronRight, ChevronDown } from 'lucide-react';
-// // 서비스 및 유틸리티 임포트
-// import { HistoryUtils } from '../../services/HistoryTypes';
-// // 하위 컴포넌트 임포트
-// import Calendar from './Calendar';
-// // 타입 정의 임포트
-// import { HistoryFilterProps } from '../../services/HistoryTypes';
-// // CSS 모듈 스타일 임포트
-// import styles from './HistoryFilter.module.css';
-
-// /**
-//  * 📋 HistoryFilter 메인 컴포넌트
-//  * 
-//  * 히스토리 데이터 필터링을 위한 종합적인 UI를 제공합니다.
-//  * 다중 드롭다운 관리, 외부 클릭 감지, 필터 상태 관리 등을 담당합니다.
-//  * 
-//  * @param historyState - 히스토리 전체 상태 (필터, 데이터, UI 상태 등)
-//  * @param activeDropdown - 현재 열려있는 드롭다운 ID
-//  * @param setActiveDropdown - 드롭다운 열기/닫기 상태 설정 함수
-//  * @param updateFilter - 개별 필터 값 업데이트 함수
-//  * @param resetFilters - 모든 필터 초기화 함수
-//  * @param handleDateSelect - 날짜 선택 처리 함수
-//  * @param applyFilters - 필터 적용 및 데이터 조회 함수
-//  * @param toggleFilters - 필터 영역 표시/숨기기 토글 함수
-//  */
-
-// const HistoryFilter: React.FC<HistoryFilterProps> = ({
-//   historyState,
-//   activeDropdown,
-//   setActiveDropdown,
-//   updateFilter,
-//   resetFilters,
-//   handleDateSelect,
-//   applyFilters,
-//   toggleFilters
-// }) => {
-//   // 드롭다운 기반 토글은 제거(항상 펼침)
-//   /**
-//    * 🌡️ 센서 타입 필터 옵션
-//    * 시스템에서 지원하는 센서 종류들
-//    */
-//   const sensorTypeOptions = ['Temperature', 'Humidity', 'CO₂ Concentration'];
-
-//   /**
-//    * 🚨 상태 필터 옵션
-//    * 센서 데이터의 상태 분류
-//    */
-//   const statusOptions = ['GOOD', 'NORMAL', 'WARNING'];
-
-//   return (
-//     <section className={styles.filterSection}>
-//       <div className={styles.filterHeader}>
-//         {/* ✅ 큰 토글 제거: 정적 타이틀로 교체 */}
-//         <div className={styles.filterTitle}>
-//           <Filter size={16} />
-//           <span>Filter By</span>
-//         </div>
-//         <button
-//           className={styles.resetButton}  // 선택: 빨간 테두리 스타일 쓰고 싶으면
-//           onClick={() => {
-//             resetFilters();         // ✅ 필터 값/데이터 초기화
-//             setActiveDropdown(null); // ✅ 열려있던 드롭다운 닫기(옵션)
-//           }}
-//         >
-//           <RotateCcw size={14} />
-//           RESET FILTER
-//         </button>
-
-//       </div>
-
-//       {/* ✅ 항상 펼침 */}
-//       <div className={`${styles.filterContent} ${styles.filtersRow}`}>
-//         {/* 타임스탬프 필터 */}
-//         <div className={`${styles.filterGroup} ${styles.filterGroupRow}`}>
-//           <label className={styles.filterLabel}>TIMESTAMP</label>
-//           {/* ✅ 드롭다운 대신 인라인 달력 */}
-//           <div className={styles.calendarBox}>
-//             <Calendar
-//               selectedDate={historyState.selectedDate}
-//               onDateSelect={handleDateSelect}
-//               onClose={() => { }}
-//               onCheckNow={() => {
-//                 applyFilters();
-//               }}
-//             />
-//           </div>
-//         </div>
-
-//         {/* 센서 타입 필터 */}
-//         <div className={`${styles.filterGroup} ${styles.filterGroupRow}`}>
-//           {/* ✅ 드롭다운 → 칩 버튼 가로 나열 */}
-//           <div className={styles.chips}>
-//             <button
-//               className={`${styles.chip} ${!historyState.filters.sensorType ? styles.chipActive : ''}`}
-//               onClick={() => updateFilter('sensorType', null)}
-//             >
-//               All types
-//             </button>
-//             {sensorTypeOptions.map((type) => (
-//               <button
-//                 key={type}
-//                 className={`${styles.chip} ${historyState.filters.sensorType === type ? styles.chipActive : ''}`}
-//                 onClick={() => updateFilter('sensorType', type)}
-//               >
-//                 {type}
-//               </button>
-//             ))}
-//           </div>
-//         </div>
-
-//         {/* 상태 필터 */}
-//         <div className={`${styles.filterGroup} ${styles.filterGroupRow}`}>
-//           {/* ✅ 드롭다운 → 칩 버튼 가로 나열 */}
-//           <div className={styles.chips}>
-//             <button
-//               className={`${styles.chip} ${!historyState.filters.status ? styles.chipActive : ''}`}
-//               onClick={() => updateFilter('status', null)}
-//             >
-//               All status
-//             </button>
-//             {statusOptions.map((status) => (
-//               <button
-//                 key={status}
-//                 className={`${styles.chip} ${historyState.filters.status === status ? styles.chipActive : ''}`}
-//                 onClick={() => updateFilter('status', status)}
-//               >
-//                 {status}
-//               </button>
-//             ))}
-//           </div>
-//         </div>
-//         </div>
-//     </section>
-//   );
-// };
-
-// export default HistoryFilter;
 // src/components/history/HistoryFilter.tsx
 import React from 'react';
 import styles from './HistoryFilter.module.css';
@@ -211,7 +71,7 @@ return (
   <section className={styles.filterBar}>
     {/* 왼쪽: Timestamp 그룹 */}
     <div className={styles.filterGroup}>
-      <label className={styles.filterLabel}>Timestamp</label>
+      <label className={styles.filterLabel}>TIMESTAMP</label>
       <div className={styles.datePickerContainer}>
         <button
           type="button"
@@ -243,7 +103,7 @@ return (
     <div className={styles.filterGroupVertical}>
       {/* Sensor Type 그룹 */}
       <div className={styles.filterSubGroup}>
-        <label className={styles.filterLabel}>Sensor Type</label>
+        <label className={styles.filterLabel}>SENSOR TYPE</label>
         <div className={styles.pillRow}>
           <button
             type="button"
@@ -279,7 +139,7 @@ return (
 
       {/* Status 그룹 */}
       <div className={styles.filterSubGroup}>
-        <label className={styles.filterLabel}>Status</label>
+        <label className={styles.filterLabel}>STATUS</label>
         <div className={styles.pillRow}>
           <button
             type="button"
@@ -320,125 +180,11 @@ return (
         className={styles.resetBtn}
         onClick={() => { resetFilters(); setActiveDropdown(null); }}
       >
-        Reset Filter
+        RESET FILTER
       </button>
     </div>
   </section>
 );
-
-//   return (
-//     <section className={styles.filterSection}>
-//       {/* 헤더 */}
-//       <div className={styles.filterHeader}>
-//         <div className={styles.filterTitle}>
-//           <Filter size={16} />
-//           <span>Filter By</span>
-//         </div>
-
-//         <button
-//           type="button"
-//           className={styles.resetButton}
-//           onClick={() => {
-//             resetFilters();
-//             setActiveDropdown(null);
-//           }}
-//         >
-//           <RotateCcw size={14} />
-//           Reset Filter
-//         </button>
-//       </div>
-
-//       {/* 항상 펼침 + 가로 배치 */}
-//       <div className={`${styles.filterContent} ${styles.filtersRow}`}>
-//         {/* Timestamp (달력만 토글) */}
-//         <div className={`${styles.filterGroup} ${styles.filterGroupRow}`}>
-//           <label className={styles.filterLabel}>Timestamp</label>
-
-//           <div className={styles.datePickerContainer}>
-//             <button
-//               type="button"
-//               className={`${styles.filterDropdown} ${activeDropdown === 'timestamp' ? styles.active : ''
-//                 }`}
-//               onClick={openTimestamp}
-//             >
-//               <span>{selectedDateText}</span>
-//               <ChevronDown size={16} />
-//             </button>
-
-//             {activeDropdown === 'timestamp' && (
-//               <div className={styles.calendarBox} role="dialog" aria-modal="true">
-//                 <Calendar
-//                   selectedDate={historyState.selectedDate}
-//                   onDateSelect={(d) => {
-//                     handleDateSelect(d);
-//                   }}
-//                   onClose={() => setActiveDropdown(null)}
-//                   onCheckNow={() => {
-//                     applyFilters();
-//                     setActiveDropdown(null);
-//                   }}
-//                 />
-//               </div>
-//             )}
-//           </div>
-//         </div>
-
-// {/* Sensor Type */}
-// <div className={styles.sectionBox}>
-//   <div className={styles.sectionTitle}>Sensor Type</div>
-//   <div className={styles.chips}>
-//     {/* All */}
-//     <button
-//       type="button"
-//       key="sensor-all"
-//       className={`${styles.chip} ${!historyState?.filters?.sensorType ? styles.chipActive : ''}`}
-//       onClick={() => { updateFilter('sensorType', null); applyFilters(); }}
-//     >
-//       ALL SENSOR TYPE
-//     </button>
-
-//     {SENSOR_OPTIONS.map(opt => (
-//       <button
-//         key={`sensor-${opt.value}`}
-//         type="button"
-//         className={`${styles.chip} ${historyState?.filters?.sensorType === opt.value ? styles.chipActive : ''}`}
-//         onClick={() => { updateFilter('sensorType', opt.value); applyFilters(); }}
-//       >
-//         {opt.label}
-//       </button>
-//     ))}
-//   </div>
-// </div>
-
-// {/* Status */}
-// <div className={styles.sectionBox}>
-//   <div className={styles.sectionTitle}>Status</div>
-//   <div className={styles.chips}>
-//     <button
-//       type="button"
-//       key="status-all"
-//       className={`${styles.chip} ${!historyState?.filters?.status ? styles.chipActive : ''}`}
-//       onClick={() => { updateFilter('status', null); applyFilters(); }}
-//     >
-//       ALL STATUS
-//     </button>
-
-//     {STATUS_OPTIONS.map(st => (
-//       <button
-//         key={`status-${st}`}
-//         type="button"
-//         className={`${styles.chip} ${historyState?.filters?.status === st ? styles.chipActive : ''}`}
-//         onClick={() => { updateFilter('status', st); applyFilters(); }}
-//       >
-//         {st}
-//       </button>
-//     ))}
-//   </div>
-// </div>
-
-//       </div>
-//     </section>
-//   );
 };
 
 export default HistoryFilter;

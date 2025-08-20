@@ -409,13 +409,13 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
               alignItems: 'center',
               gap: '6px'
             }}>
-              📊 실시간 센서 데이터
+              Real-time Sensor Readings
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {[
-                { label: '🌡️ 온도', value: `${message.sensorData.temperature.toFixed(1)}°C`, status: message.status },
-                { label: '💧 습도', value: `${message.sensorData.humidity.toFixed(1)}%`, status: message.status },
-                { label: '🌬️ CO₂', value: `${message.sensorData.gasConcentration.toFixed(1)}ppm`, status: message.status },
+                { label: '🌡️ TEMPERATURE', value: `${message.sensorData.temperature.toFixed(1)}°C`, status: message.status },
+                { label: '💧 HUMIDITY', value: `${message.sensorData.humidity.toFixed(1)}%`, status: message.status },
+                { label: '🌬️ CO₂ CONCENTRATION', value: `${message.sensorData.gasConcentration.toFixed(1)}ppm`, status: message.status },
               ].map((item, idx) => (
                 <div key={idx} style={{ 
                   display: 'flex', 
@@ -579,7 +579,7 @@ export const TypingIndicator: React.FC = () => {
         .typing-dots span {
           animation: blink 1.4s infinite both;
           font-size: 8px;
-          color: #3b82f6;
+          color: #111827;
         }
         
         .typing-dots span:nth-child(1) {
@@ -680,7 +680,7 @@ export const ChatbotInput: React.FC<ChatbotInputProps> = ({
               width: '100%',
               padding: '14px 18px',
               borderRadius: '25px',
-              border: `2px solid ${isFocused ? '#3b82f6' : '#e5e7eb'}`,
+              border: `2px solid ${isFocused ? '#111827' : '#e5e7eb'}`,
               outline: 'none',
               fontSize: '14px',
               backgroundColor: isLoading ? '#f9fafb' : 'white',
@@ -720,7 +720,7 @@ export const ChatbotInput: React.FC<ChatbotInputProps> = ({
             padding: '14px',
             borderRadius: '50%',
             border: 'none',
-            backgroundColor: (isLoading || !inputMessage || typeof inputMessage !== 'string' || !inputMessage.trim()) ? '#d1d5db' : '#3b82f6',
+            backgroundColor: (isLoading || !inputMessage || typeof inputMessage !== 'string' || !inputMessage.trim()) ? '#d1d5db' : '#111827',
             color: 'white',
             cursor: (isLoading || !inputMessage || typeof inputMessage !== 'string' || !inputMessage.trim()) ? 'not-allowed' : 'pointer',
             display: 'flex',
@@ -734,7 +734,7 @@ export const ChatbotInput: React.FC<ChatbotInputProps> = ({
           onMouseEnter={(e) => {
             try {
               if (!isLoading && inputMessage && typeof inputMessage === 'string' && inputMessage.trim()) {
-                e.currentTarget.style.backgroundColor = '#2563eb';
+                e.currentTarget.style.backgroundColor = '#111827';
                 e.currentTarget.style.transform = 'scale(1.05)';
               }
             } catch (error) {

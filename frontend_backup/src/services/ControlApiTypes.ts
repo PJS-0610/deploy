@@ -201,9 +201,14 @@ export function formatLogForDisplay(log: ControlLogEntity): FormattedLogData {
   const ts = normalizeIso(log.timestamp);  // ✅ 보정
   return {
     ...log,
-    displayTime: new Date(ts).toLocaleTimeString('ko-KR', {
+    displayTime: new Date(ts).toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
     }),
     displaySensorType: getSensorDisplayName(log.sensor_type),
     displayUnit: getSensorUnit(log.sensor_type),

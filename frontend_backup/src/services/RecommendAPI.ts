@@ -80,7 +80,6 @@ export interface RecommendHealthResponse {
  * 🔧 LLM 응답 파싱 유틸리티 함수
  */
 const parseRecommendationAnswer = (answer: string) => {
-  console.log('🔥 parseRecommendationAnswer 시작:', answer);
   
   const result: {
     optimal_temperature?: number;
@@ -95,41 +94,34 @@ const parseRecommendationAnswer = (answer: string) => {
   const currentTempMatch = answer.match(/현재\s*실내온도\s*([\d.]+)도/);
   if (currentTempMatch) {
     result.current_temperature = parseFloat(currentTempMatch[1]);
-    console.log('🔥 현재 온도 파싱:', result.current_temperature);
   }
 
   const currentHumidityMatch = answer.match(/실내습도\s*([\d.]+)%/);
   if (currentHumidityMatch) {
     result.current_humidity = parseFloat(currentHumidityMatch[1]);
-    console.log('🔥 현재 습도 파싱:', result.current_humidity);
   }
 
   const currentCo2Match = answer.match(/실내CO2\s*([\d.]+)ppm/);
   if (currentCo2Match) {
     result.current_co2 = parseFloat(currentCo2Match[1]);
-    console.log('🔥 현재 CO2 파싱:', result.current_co2);
   }
 
   // 최적 값 파싱 (더 넓은 패턴 매칭)
   const optimalTempMatch = answer.match(/최적온도는?\s*([\d.]+)도/);
   if (optimalTempMatch) {
     result.optimal_temperature = parseFloat(optimalTempMatch[1]);
-    console.log('🔥 최적 온도 파싱:', result.optimal_temperature);
   }
 
   const optimalHumidityMatch = answer.match(/최적습도는?\s*([\d.]+)%/);
   if (optimalHumidityMatch) {
     result.optimal_humidity = parseFloat(optimalHumidityMatch[1]);
-    console.log('🔥 최적 습도 파싱:', result.optimal_humidity);
   }
 
   const optimalCo2Match = answer.match(/최적CO2는?\s*([\d.]+)ppm/);
   if (optimalCo2Match) {
     result.optimal_co2 = parseFloat(optimalCo2Match[1]);
-    console.log('🔥 최적 CO2 파싱:', result.optimal_co2);
   }
 
-  console.log('🔥 parseRecommendationAnswer 최종 결과:', result);
   return result;
 };
 
@@ -149,17 +141,12 @@ class RecommendAPIService {
   async getOptimalRecommendation(
     request: OptimalRecommendRequest
   ): Promise<ApiResponse<OptimalRecommendResponse>> {
-    console.log('🔥 RecommendAPI 요청:', request);
-    
     // API Key 헤더 추가가 필요한 경우를 대비한 커스텀 요청
     const response = await this.postWithApiKey<OptimalRecommendResponse>('/recommend/optimal', request);
-    console.log('🔥 RecommendAPI 응답:', response);
     
     // 성공한 경우 LLM 응답을 파싱하여 추가
     if (response.success && response.data) {
-      console.log('🔥 파싱 전 답변:', response.data.answer);
       response.data.parsed_recommendations = parseRecommendationAnswer(response.data.answer);
-      console.log('🔥 파싱 후 결과:', response.data.parsed_recommendations);
     }
     
     return response;
@@ -177,7 +164,6 @@ class RecommendAPIService {
   async checkRecommendHealth(): Promise<ApiResponse<RecommendHealthResponse>> {
     try {
       const url = getApiUrl('/recommend/health');
-      console.log('🩺 헬스체크 요청:', url);
       
       const response = await fetch(url, {
         method: 'GET',
@@ -189,7 +175,6 @@ class RecommendAPIService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('🩺 헬스체크 실패:', { status: response.status, body: errorText });
         
         return {
           success: false,
@@ -198,14 +183,12 @@ class RecommendAPIService {
       }
 
       const result = await response.json();
-      console.log('🩺 헬스체크 성공:', result);
       
       return {
         success: true,
         data: result
       };
     } catch (error) {
-      console.error('🩺 헬스체크 에러:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
       return {
@@ -236,12 +219,6 @@ class RecommendAPIService {
   ): Promise<ApiResponse<T>> {
     try {
       const url = getApiUrl(endpoint);
-      console.log('🔥 API 요청:', {
-        url,
-        endpoint,
-        data,
-        retry: retryCount
-      });
       
       // AbortController로 타임아웃 설정
       const controller = new AbortController();
@@ -259,19 +236,12 @@ class RecommendAPIService {
       });
 
       clearTimeout(timeoutId);
-      console.log('🔥 응답 상태:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('🔥 에러 응답:', { status: response.status, body: errorText });
         
         // 500번대 에러는 재시도
         if (response.status >= 500 && retryCount < MAX_RETRIES) {
-          console.log(`🔄 재시도 ${retryCount + 1}/${MAX_RETRIES}`);
           await this.delay(1000 * (retryCount + 1)); // 점진적 지연
           return this.postWithApiKey(endpoint, data, retryCount + 1);
         }
@@ -282,7 +252,6 @@ class RecommendAPIService {
       }
 
       const result = await response.json();
-      console.log('🔥 성공 응답:', result);
       
       return {
         success: true,
@@ -290,11 +259,8 @@ class RecommendAPIService {
       };
 
     } catch (error) {
-      console.error('🔥 API 호출 에러:', error);
-      
       // 네트워크 에러나 타임아웃은 재시도
       if (this.isRetryableError(error) && retryCount < MAX_RETRIES) {
-        console.log(`🔄 네트워크 에러 재시도 ${retryCount + 1}/${MAX_RETRIES}`);
         await this.delay(1000 * (retryCount + 1));
         return this.postWithApiKey(endpoint, data, retryCount + 1);
       }
@@ -386,7 +352,7 @@ export const recommendAPIService = new RecommendAPIService();
  * });
  * 
  * if (response.success) {
- *   console.log(response.data?.answer);
+ *   // 응답 데이터 사용
  * }
  * ```
  */

@@ -32,15 +32,16 @@
 .item {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   width: 100%;
   padding: 12px 14px;
   background: transparent;
   border: 0;
   outline: none;
-  cursor: pointer;
   font-size: 14px;
   color: #111827;
+  position: relative;
 }
 .item:hover {
   background: #f9fafb;
@@ -88,4 +89,59 @@
   inset: 0;
   background: transparent;
   z-index: 999;
+}
+
+/* 알림 아이템 내용 영역 */
+.itemContent {
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+/* 개별 삭제 버튼 */
+.deleteBtn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: #9ca3af;
+  transition: all 0.2s ease;
+}
+
+.deleteBtn:hover {
+  background: #f3f4f6;
+  color: #dc2626;
+}
+
+/* 전체 삭제 버튼 컨테이너 */
+.clearAllContainer {
+  padding: 8px 14px;
+  border-bottom: 1px solid #f3f4f6;
+  text-align: center;
+}
+
+/* 전체 삭제 버튼 */
+.clearAllBtn {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.clearAllBtn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
 }

@@ -23,12 +23,6 @@ const BEARER_TOKEN = process.env.REACT_APP_BEARER_TOKEN || '';
 const WITH_CREDENTIALS =
   String(process.env.REACT_APP_WITH_CREDENTIALS || '').toLowerCase() === 'true';
 
-console.log('🔧 ChatbotHistoryAPI Configuration:', {
-  API_BASE_URL,
-  ADMIN_API_KEY: ADMIN_API_KEY ? `${ADMIN_API_KEY.substring(0, 8)}...` : 'NOT_SET',
-  ADMIN_HEADER_NAME,
-  WITH_CREDENTIALS
-});
 
 const API_TIMEOUT = 30000; // 히스토리 조회는 30초로 설정
 
@@ -55,7 +49,7 @@ class ChatbotHistoryAPIImpl {
       const { getSessionId } = require('../../../utils/sessionUtils');
       headers['X-Session-Id'] = getSessionId();
     } catch (error) {
-      console.warn('Failed to get session ID:', error);
+      // Failed to get session ID - continue without it
     }
 
     // 선택: Bearer 토큰
@@ -63,7 +57,6 @@ class ChatbotHistoryAPIImpl {
       headers['Authorization'] = `Bearer ${BEARER_TOKEN}`;
     }
 
-    console.log('📡 ChatbotHistoryAPI Request headers:', headers);
     return headers;
   }
 
@@ -116,27 +109,18 @@ class ChatbotHistoryAPIImpl {
       const queryString = searchParams.toString();
       const url = `${this.baseURL}/chatbot/history/${sessionId}${queryString ? '?' + queryString : ''}`;
 
-      console.log('📡 ChatbotHistoryAPI.getChatbotHistory:', { 
-        sessionId, 
-        url, 
-        params,
-        headers: this.buildHeaders() 
-      });
 
       const response = await this.fetchWithTimeout(url, {
         method: 'GET',
         headers: this.buildHeaders(),
       });
 
-      console.log('📡 Response status:', response.status, response.statusText);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         let detail = '';
         try {
           const errorData = await response.json();
           detail = errorData?.message || errorData?.error || '';
-          console.error('📡 Error response data:', errorData);
         } catch {}
         throw new Error(
           detail || `히스토리 조회 실패: ${response.status} ${response.statusText}`
@@ -144,11 +128,9 @@ class ChatbotHistoryAPIImpl {
       }
 
       const data = await response.json();
-      console.log('📡 Success response data:', data);
       return data as ChatbotHistoryResponse;
 
     } catch (error) {
-      console.error('ChatbotHistoryAPI.getChatbotHistory error:', error);
       throw error instanceof Error ? error : new Error('히스토리 조회 중 오류가 발생했습니다.');
     }
   }
@@ -178,27 +160,18 @@ class ChatbotHistoryAPIImpl {
       const queryString = searchParams.toString();
       const url = `${this.baseURL}/chatbot/sessions${queryString ? '?' + queryString : ''}`;
 
-      console.log('📡 ChatbotHistoryAPI.getChatbotSessions:', { 
-        url, 
-        params,
-        queryString,
-        headers: this.buildHeaders() 
-      });
 
       const response = await this.fetchWithTimeout(url, {
         method: 'GET',
         headers: this.buildHeaders(),
       });
 
-      console.log('📡 Sessions Response status:', response.status, response.statusText);
-      console.log('📡 Sessions Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         let detail = '';
         try {
           const errorData = await response.json();
           detail = errorData?.message || errorData?.error || '';
-          console.error('📡 Error response data:', errorData);
         } catch {}
         throw new Error(
           detail || `세션 목록 조회 실패: ${response.status} ${response.statusText}`
@@ -206,11 +179,9 @@ class ChatbotHistoryAPIImpl {
       }
 
       const data = await response.json();
-      console.log('📡 Success response data:', data);
       return data as ChatbotSessionsResponse;
 
     } catch (error) {
-      console.error('ChatbotHistoryAPI.getChatbotSessions error:', error);
       throw error instanceof Error ? error : new Error('세션 목록 조회 중 오류가 발생했습니다.');
     }
   }
@@ -251,7 +222,6 @@ class ChatbotHistoryAPIImpl {
       return data as ChatbotHistoryResponse[];
 
     } catch (error) {
-      console.error('ChatbotHistoryAPI.getChatbotHistoryByDate error:', error);
       throw error instanceof Error ? error : new Error('날짜별 히스토리 조회 중 오류가 발생했습니다.');
     }
   }

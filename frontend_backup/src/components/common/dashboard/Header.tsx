@@ -44,6 +44,9 @@ interface DashboardHeaderProps {
   isAdminMenuOpen: boolean;               // 관리자 메뉴 드롭다운 열림 상태
   setIsNotificationOpen: React.Dispatch<React.SetStateAction<boolean>>; // 알림 드롭다운 상태 설정
   setIsAdminMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;     // 관리자 메뉴 상태 설정
+  onDeleteNotification?: (id: string) => void;       // 개별 알림 삭제 함수
+  onClearAllNotifications?: () => void;              // 전체 알림 삭제 함수
+  onLogout?: () => void;                             // 로그아웃 함수
 }
 
 /**
@@ -68,6 +71,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   isAdminMenuOpen,
   setIsNotificationOpen,
   setIsAdminMenuOpen,
+  onDeleteNotification,
+  onClearAllNotifications,
+  onLogout,
 }) => {
   return (
     <header className={styles.header}>
@@ -106,6 +112,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             isOpen={isNotificationOpen}                          // 열림 상태 전달
             onClose={() => setIsNotificationOpen(false)}         // 닫기 이벤트 핸들러
             notifications={notificationData.notifications}       // 알림 목록 데이터 전달
+            onDeleteNotification={onDeleteNotification}          // 개별 알림 삭제 함수
+            onClearAllNotifications={onClearAllNotifications}    // 전체 알림 삭제 함수
           />
         </div>
 
@@ -128,6 +136,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           <AdminDropdown
             isOpen={isAdminMenuOpen}                      // 열림 상태 전달
             onClose={() => setIsAdminMenuOpen(false)}     // 닫기 이벤트 핸들러
+            onLogout={onLogout}                           // 로그아웃 핸들러
           />
         </div>
       </div>

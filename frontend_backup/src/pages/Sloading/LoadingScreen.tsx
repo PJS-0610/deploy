@@ -347,11 +347,6 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onLoadingComplete }) => {
           
           {/* ⚡ 동적 로딩 애니메이션 - 진행률 기반 화살표 */}
           <LoadingAnimation progress={loadingState.progress} />
-          
-          {/* 💬 로딩 상태 메시지 */}
-          <div className={styles.loadingText}>
-            시스템을 초기화하고 있습니다...
-          </div>
         </>
       )}
       

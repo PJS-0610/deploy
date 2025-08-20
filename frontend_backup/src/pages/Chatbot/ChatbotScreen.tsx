@@ -93,6 +93,25 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
     setIsHistoryExpanded(prev => !prev);
   };
 
+  // 🗑️ 개별 알림 삭제 함수
+  const handleDeleteNotification = (notificationId: string) => {
+    setNotificationData(prevData => {
+      const updatedNotifications = prevData.notifications.filter(n => n.id !== notificationId);
+      return {
+        count: updatedNotifications.filter(n => !n.read).length,
+        notifications: updatedNotifications
+      };
+    });
+  };
+
+  // 🗑️ 전체 알림 삭제 함수
+  const handleClearAllNotifications = () => {
+    setNotificationData({
+      count: 0,
+      notifications: []
+    });
+  };
+
   // 🆕 현재 세션 ID 추출
   const getCurrentSessionId = (): string | null => {
     try {
@@ -207,6 +226,8 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
                 isOpen={isNotificationOpen}
                 onClose={() => setIsNotificationOpen(false)}
                 notifications={notificationData.notifications}
+                onDeleteNotification={handleDeleteNotification}
+                onClearAllNotifications={handleClearAllNotifications}
               />
             </div>
 
@@ -228,6 +249,7 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
               <AdminDropdown
                 isOpen={isAdminMenuOpen}
                 onClose={() => setIsAdminMenuOpen(false)}
+                onLogout={onNavigateToRole}
               />
             </div>
           </div>

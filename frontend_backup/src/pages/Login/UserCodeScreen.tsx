@@ -147,7 +147,6 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
           <span className={styles.logoText}>AWS²</span>
           <div className={styles.logoGiot}>
             GIOT
-            <div className={styles.wifiIcon}></div>
           </div>
         </div>
         <div className={styles.subtitle}>Air Watch System</div>
@@ -159,21 +158,16 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
 
           {/* 👤 역할 표시기 - 현재 선택된 역할(사용자) 표시 */}
           <div className={styles.roleIndicator}>
-            <span className={styles.roleLabel}>선택된 역할:</span>
-            <span className={styles.roleValue}>사용자</span>
+            <span className={styles.roleLabel}>SELECTED ROLE:</span>
+            <span className={styles.roleValue}>USER</span>
           </div>
 
-          {/* 🔑 아이콘과 제목 - 코드 입력 화면임을 시각적으로 표현 */}
-          <div className={styles.iconContainer}>
-            <span className={styles.icon}>🔑</span>
-          </div>
-
-          <h2 className={styles.title}>사용자 코드 입력</h2>
+          <h2 className={styles.title}>ENTER USER CODE</h2>
 
           {/* 📝 코드 입력 폼 - 메인 인증 인터페이스 */}
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.formGroup}>
-              <label className={styles.label}>접근 코드</label>
+              <label className={styles.label}>ACCESS CODE</label>
               <input
                 type="text"
                 value={code}
@@ -187,7 +181,7 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
                 autoCapitalize="characters"  // 모바일에서 대문자 권장
                 spellCheck={false}
                 style={{ textTransform: 'uppercase' }} // 표시도 항상 대문자
-                placeholder="코드를 입력하세요"
+                placeholder="ENTER YOUR CODE"
                 className={`${styles.input} ${error ? styles.inputError : ''}`}
                 disabled={isLoading}
               />
@@ -205,7 +199,7 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
                 disabled={isLoading}
                 className={styles.secondaryButton}
               >
-                뒤로가기
+                GO BACK
               </button>
 
               <button
@@ -219,7 +213,7 @@ const UserCodeScreen: React.FC<UserCodeScreenProps> = ({ onCodeSuccess, onGoBack
                     확인 중...
                   </>
                 ) : (
-                  '접속하기'
+                  'ENTER'
                 )}
               </button>
             </div>

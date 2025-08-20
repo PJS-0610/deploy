@@ -27,13 +27,14 @@
 
 /* 상단 헤더 */
 .header {
-  background: #fff;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   padding: 16px 24px;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-top: 3px solid #232F3E;
 }
 
 .headerLeft {
@@ -46,7 +47,7 @@
   margin: 0;
   font-size: 28px;
   font-weight: 700;
-  color: #1f2937;
+  color: #000105;
 }
 
 .pageSubtitle {

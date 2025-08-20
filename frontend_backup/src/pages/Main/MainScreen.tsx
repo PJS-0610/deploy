@@ -124,7 +124,7 @@ const MainScreen: React.FC<MainScreenProps> = ({ onNavigateToDashboard }) => {
         </div>
         
         {/* 📄 서브 텍스트 - 시스템 설명 */}
-        <div className={styles.mainLogoSubtext}>Green IoT System</div>
+        <div className={styles.mainLogoSubtext}>Air Watch System</div>
 
         {/* 🔽 화살표 인디케이터 - 진행 방향 안내 */}
         <div className={styles.mainArrowContainer}>
@@ -134,44 +134,9 @@ const MainScreen: React.FC<MainScreenProps> = ({ onNavigateToDashboard }) => {
         </div>
       </div>
 
-      {/* 📊 상태 표시 영역 - 시스템 초기화 및 연결 상태 */}
-      <div className={styles.statusContainer}>
-        {/* 💬 상태 메시지 - 현재 진행 상황 안내 */}
-        <div className={styles.statusText}>시스템을 시작하고 있습니다...</div>
-        
-        {/* 🔘 상태 인디케이터들 - 각 구성요소의 연결 상태 */}
-        <div className={styles.statusIndicators}>
-          {/* ☁️ AWS 연결 상태 */}
-          <div className={styles.statusIndicator}>
-            <div className={`${styles.statusDot} ${styles.statusDotConnected}`}></div>
-            <span className={styles.statusLabel}>AWS 연결됨</span>
-          </div>
-          
-          {/* 📡 IoT 센서 상태 */}
-          <div className={styles.statusIndicator}>
-            <div className={`${styles.statusDot} ${styles.statusDotConnected}`}></div>
-            <span className={styles.statusLabel}>IoT 센서 활성화</span>
-          </div>
-        </div>
-
-        {/* 🎯 수동 진행 버튼 - 사용자가 원할 때 직접 진행 */}
-        <button 
-          onClick={onNavigateToDashboard} 
-          className={styles.mainRetryButton} 
-          style={{marginTop: '20px'}}
-        >
-          Get Started
-        </button>
-      </div>
-
-      {/* 💡 클릭 힌트 - 사용자 가이드 */}
-      <div className={styles.clickHint}>
-        화면을 클릭하거나 Get Started 버튼을 눌러주세요
-      </div>
-
       {/* 📜 하단 카피라이트 - 법적 정보 및 브랜딩 */}
       <div className={styles.mainCopyright}>
-        © 2024 AWS² GiOT System. All rights reserved.
+        © 2024 AWS² GIOT System. All rights reserved.
       </div>
     </div>
   );

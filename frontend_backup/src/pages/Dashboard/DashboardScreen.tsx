@@ -216,10 +216,7 @@ const QuickSightDashboard: React.FC<{
       <div className={styles.loadingContainer}>
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <div style={{ fontSize: '18px', marginBottom: '8px' }}>
-            📊 QuickSight 대시보드를 불러오는 중...
-          </div>
-          <div style={{ fontSize: '14px', color: '#6b7280' }}>
-            잠시만 기다려주세요
+            QuickSight 대시보드를 불러오는 중...
           </div>
         </div>
       </div>
@@ -313,8 +310,8 @@ const QuickSightDashboard: React.FC<{
             title={`QuickSight Dashboard - ${dashboardData.dashboard?.name ?? 'QuickSight'}`}
             allow="fullscreen"
             loading="lazy"
-            onLoad={() => console.log('✅ QuickSight iframe 로드 완료')}
-            onError={() => console.error('❌ QuickSight iframe 로드 실패')}
+            onLoad={() => {}}
+            onError={() => {}}
           />
         </div>
       ) : (
@@ -499,6 +496,33 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     }
   };
 
+  // 새로운 알림 추가 함수
+  const handleNotificationAdd = (notification: { id: string; message: string; timestamp: string; read: boolean }) => {
+    setNotificationData(prevData => ({
+      count: prevData.count + 1,
+      notifications: [notification, ...prevData.notifications]
+    }));
+  };
+
+  // 개별 알림 삭제 함수
+  const handleDeleteNotification = (notificationId: string) => {
+    setNotificationData(prevData => {
+      const updatedNotifications = prevData.notifications.filter(n => n.id !== notificationId);
+      return {
+        count: updatedNotifications.filter(n => !n.read).length,
+        notifications: updatedNotifications
+      };
+    });
+  };
+
+  // 전체 알림 삭제 함수
+  const handleClearAllNotifications = () => {
+    setNotificationData({
+      count: 0,
+      notifications: []
+    });
+  };
+
   // 메뉴 클릭 핸들러
   const handleMenuClick = (label: string, path: string) => {
     setActiveMenu(label);
@@ -636,6 +660,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 isOpen={isNotificationOpen}
                 onClose={() => setIsNotificationOpen(false)}
                 notifications={notificationData.notifications}
+                onDeleteNotification={handleDeleteNotification}
+                onClearAllNotifications={handleClearAllNotifications}
               />
             </div>
 
@@ -657,6 +683,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
               <AdminDropdown
                 isOpen={isAdminMenuOpen}
                 onClose={() => setIsAdminMenuOpen(false)}
+                onLogout={onNavigateToRole}
               />
             </div>
           </div>
@@ -858,6 +885,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           humidity: { warningMin: 40, warningMax: 80 },
           gas: { warningMax: 2500 },
         }}
+        onNotificationAdd={handleNotificationAdd}
       />
     </div >
   );

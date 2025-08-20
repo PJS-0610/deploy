@@ -36,14 +36,14 @@ import HistoryFilter from '../../components/history/HistoryFilter';
 
 const statusClass = (s?: string) => {
   switch (String(s || '').toUpperCase()) {
-    case 'GOOD': 
+    case 'GOOD':
       return `${styles.historyStatus} ${styles.good}`;
-    case 'WARNING': 
+    case 'WARNING':
       return `${styles.historyStatus} ${styles.warning}`;
     case 'DANGER':
       return `${styles.historyStatus} ${styles.danger}`;
     case 'NORMAL':
-    default: 
+    default:
       return `${styles.historyStatus} ${styles.normal}`;
   }
 };
@@ -165,6 +165,31 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
   }, [updateHistoryState]);
 
   /**
+   * 🗑️ 개별 알림 삭제 함수
+   * 특정 알림을 목록에서 제거하고 읽지 않은 개수를 업데이트
+   */
+  const handleDeleteNotification = (notificationId: string) => {
+    setNotificationData(prevData => {
+      const updatedNotifications = prevData.notifications.filter(n => n.id !== notificationId);
+      return {
+        count: updatedNotifications.filter(n => !n.read).length,
+        notifications: updatedNotifications
+      };
+    });
+  };
+
+  /**
+   * 🗑️ 전체 알림 삭제 함수
+   * 모든 알림을 목록에서 제거
+   */
+  const handleClearAllNotifications = () => {
+    setNotificationData({
+      count: 0,
+      notifications: []
+    });
+  };
+
+  /**
    * 🔄 필터 변경 감지 및 자동 적용
    * 날짜, 센서 타입, 상태 필터가 변경될 때마다 자동으로 데이터 갱신
    */
@@ -193,6 +218,9 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
           isAdminMenuOpen={isAdminMenuOpen}
           setIsNotificationOpen={setIsNotificationOpen}
           setIsAdminMenuOpen={setIsAdminMenuOpen}
+          onDeleteNotification={handleDeleteNotification}
+          onClearAllNotifications={handleClearAllNotifications}
+          onLogout={onNavigateToRole}
         />
 
         {/* 히스토리 메인 */}
@@ -224,10 +252,10 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>Timestamp</th>
-                      <th>Sensor Type</th>
-                      <th>Value</th>
-                      <th>Status</th>
+                      <th>TIMESTMP</th>
+                      <th>SENSOR TYPE</th>
+                      <th>VALUE</th>
+                      <th>STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -254,10 +282,10 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
                             <td>{fmt(first?.value)} {unitOf(typeKey(first))}</td>
 
                             <td>
-  <span className={statusClass(first?.status)}>
-    {String(first?.status || '-').toUpperCase()}
-  </span>
-</td>
+                              <span className={statusClass(first?.status)}>
+                                {String(first?.status || '-').toUpperCase()}
+                              </span>
+                            </td>
 
                           </tr>
 
@@ -267,10 +295,10 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({
                               <td>{fmt(r?.value)} {unitOf(typeKey(r))}</td>
 
                               <td>
-  <span className={statusClass(r?.status)}>
-    {String(r?.status || '-').toUpperCase()}
-  </span>
-</td>
+                                <span className={statusClass(r?.status)}>
+                                  {String(r?.status || '-').toUpperCase()}
+                                </span>
+                              </td>
 
                             </tr>
                           ))}
