@@ -35,8 +35,8 @@
 // App.tsx - 메인 애플리케이션 컴포넌트
 import React from 'react';
 import AppRouter from './components/AppRouter/AppRouter';
-import { useAppRouter } from './hooks/useAppRouter';
-import AnomalyAlert from './pages/Dashboard/hooks/AnomalyAlert';
+import { useAppRouter } from './Hooks/useAppRouter';
+import AnomalyAlert from './Hooks/AnomalyAlert';
 import './App.css';
 
 /**

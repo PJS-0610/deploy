@@ -48,7 +48,7 @@ import {
   RoleOption,
   RoleSelectAPI, 
   RoleSelectUtils 
-} from '../../services/RoleSelectionTypes';
+} from '../../Services/RoleSelectionTypes';
 import styles from './RoleSelectionScreen.module.css';
 
 // ========== 서브 컴포넌트 정의 ==========

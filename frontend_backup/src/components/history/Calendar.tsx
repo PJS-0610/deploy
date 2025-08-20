@@ -27,7 +27,7 @@ import React, { useState } from 'react';
 // Lucide React 아이콘 임포트
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 // 타입 정의 임포트
-import { CalendarProps, DayCell } from '../../services/HistoryTypes';
+import { CalendarProps, DayCell } from '../../Services/HistoryTypes';
 // CSS 모듈 스타일 임포트
 import styles from './Calendar.module.css';
 

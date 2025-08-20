@@ -6,7 +6,7 @@ import {
   TransitionUtils,
   TransitionResponse,
   TransitionError
-} from '../../services/TransitionTypes';
+} from '../../Services/TransitionTypes';
 import styles from './TransitionScreen.module.css';
 
 interface TransitionScreenProps {

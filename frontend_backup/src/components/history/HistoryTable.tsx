@@ -31,9 +31,9 @@ import React from 'react';
 // Lucide React 아이콘 임포트
 import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 // 서비스 및 유틸리티 임포트
-import { HistoryUtils } from '../../services/HistoryTypes';
+import { HistoryUtils } from '../../Services/HistoryTypes';
 // 타입 정의 임포트
-import { HistoryTableProps } from '../../services/HistoryTypes';
+import { HistoryTableProps } from '../../Services/HistoryTypes';
 // CSS 모듈 스타일 임포트
 import styles from './HistoryTable.module.css';
 

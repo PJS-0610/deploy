@@ -34,7 +34,7 @@
 import React, { useState } from 'react';
 import styles from './UserCodeScreen.module.css';
 import TransitionScreen from "../Transition/TransitionScreen";
-import { verifyCodeApi } from '../../services/LoginTypes';
+import { verifyCodeApi } from '../../Services/LoginTypes';
 
 /**
  * 🎭 사용자 코드 화면 Props 인터페이스

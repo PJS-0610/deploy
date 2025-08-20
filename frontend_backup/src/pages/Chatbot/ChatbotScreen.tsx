@@ -2,20 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { Bell, User, ChevronDown } from 'lucide-react';
-import { Sidebar } from '../../components/common/Sidebar';
-import NotificationDropdown from '../../components/common/dropdown/NotificationDropdown';
-import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
-import { ChatbotScreenProps, NotificationData } from '../../services/ChatbotTypes';
+import { Sidebar } from '../../components/Common/Sidebar';
+import NotificationDropdown from '../../components/Common/Dropdown/NotificationDropdown';
+import AdminDropdown from '../../components/Common/Dropdown/AdminDropdown';
+import { ChatbotScreenProps, NotificationData } from '../../Services/ChatbotTypes';
 import styles from "./ChatbotScreen.module.css";
-import { useChatbot } from '../../services/UseChatbot';
+import { useChatbot } from '../../Services/UseChatbot';
 // 🆕 히스토리 패널 추가
-import ChatbotHistoryPanel from './hooks/ChatbotHistoryPanel';
+import ChatbotHistoryPanel from '../../Hooks/ChatbotHistoryPanel';
 import {
   ChatbotHeader,
   MessageItem,
   TypingIndicator,
   ChatbotInput,
-} from './hooks/ChatbotComponents';
+} from '../../Hooks/ChatbotComponents';
 
 const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ 
   onNavigateToHistory,
@@ -55,7 +55,7 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
   // 🆕 페이지 상태 관리 - 처음 마운트 시 히스토리 확인
   useEffect(() => {
     try {
-      const { getChatbotSessionState, setChatbotVisitState } = require('../../utils/sessionUtils');
+      const { getChatbotSessionState, setChatbotVisitState } = require('../../Utils/sessionUtils');
       const state = getChatbotSessionState();
       
       // 5분 이상 지났고 이전에 챗봇에 있었다면 히스토리 패널 열기
@@ -72,7 +72,7 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
     // 페이지 언마운트 시 상태 저장
     return () => {
       try {
-        const { setChatbotVisitState } = require('../../utils/sessionUtils');
+        const { setChatbotVisitState } = require('../../Utils/sessionUtils');
         setChatbotVisitState(false);
       } catch (error) {
         console.warn('Failed to update visit state on unmount:', error);
@@ -115,7 +115,7 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
   // 🆕 현재 세션 ID 추출
   const getCurrentSessionId = (): string | null => {
     try {
-      const { getSessionId } = require('../../utils/sessionUtils');
+      const { getSessionId } = require('../../Utils/sessionUtils');
       return getSessionId();
     } catch (error) {
       console.warn('Failed to get current session ID:', error);

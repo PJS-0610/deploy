@@ -45,27 +45,27 @@ import {
   DashboardUtils,
   SENSOR_OPTIONS,
   MENU_ITEMS
-} from '../../services/DashboardTypes';
+} from '../../Services/DashboardTypes';
 // 기존 (잘못된 import)
 // 수정 후 (올바른 import)
 import {
   MintrendService
-} from './hooks/MintrendService';
+} from '../../Hooks/MintrendService';
 
 import {
   MintrendResponse
-} from '../../services/MintrendTypes';
+} from '../../Services/MintrendTypes';
 import {
   QuickSightService,
   QuickSightDashboardResponse,
   QuickSightSensorType,
   QUICKSIGHT_SENSOR_OPTIONS
-} from './hooks/QuickSightTypes';
+} from '../../Hooks/QuickSightTypes';
 import styles from "./DashboardScreen.module.css";
-import { Sidebar } from '../../components/common/Sidebar';
-import NotificationDropdown from '../../components/common/dropdown/NotificationDropdown';
-import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
-import AnomalyAlert from './hooks/AnomalyAlert';
+import { Sidebar } from '../../components/Common/Sidebar';
+import NotificationDropdown from '../../components/Common/Dropdown/NotificationDropdown';
+import AdminDropdown from '../../components/Common/Dropdown/AdminDropdown';
+import AnomalyAlert from '../../Hooks/AnomalyAlert';
 
 /**
  * 🔧 DashboardScreen 컴포넌트 Props 인터페이스

@@ -1,6 +1,6 @@
 import React from 'react';
 // 화면 컴포넌트 임포트
-import LoadingScreen from '../../pages/Sloading/LoadingScreen';     // 초기 로딩 화면
+import LoadingScreen from '../../pages/Loading/LoadingScreen';     // 초기 로딩 화면
 import MainScreen from '../../pages/Main/MainScreen';               // 메인 시작 화면
 import RoleSelectionScreen from '../../pages/RoleSelection/RoleSelectionScreen'; // 역할 선택
 import AuthSystem from '../../pages/Login/LoginScreen';             // 관리자 로그인
@@ -10,7 +10,7 @@ import ChatbotScreen from '../../pages/Chatbot/ChatbotScreen';       // 챗봇 �
 import HistoryScreen from '../../pages/History/HistoryScreen';       // 이력 조회
 import SettingScreen from '../../pages/Setting/SettingScreen';       // 설정 화면
 // 훅 및 타입 임포트
-import { AppState, AppHandlers, AppNavigation } from '../../hooks/useAppRouter';
+import { AppState, AppHandlers, AppNavigation } from '../../Hooks/useAppRouter';
 
 /** ✅ 추가: 임포트 성공 여부를 개발환경에서 즉시 검증 */
 const componentsSanityCheck = () => {

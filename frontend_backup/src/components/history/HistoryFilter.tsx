@@ -26,7 +26,7 @@
 import React from 'react';
 import styles from './HistoryFilter.module.css';
 import { Filter, RotateCcw, ChevronDown } from 'lucide-react';
-import { HistoryUtils } from '../../services/HistoryTypes';
+import { HistoryUtils } from '../../Services/HistoryTypes';
 import Calendar from './Calendar';
 
 type Props = {

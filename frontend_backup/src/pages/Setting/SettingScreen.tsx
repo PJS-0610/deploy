@@ -17,15 +17,15 @@ import {
   formatLogForDisplay,
   determineStatusBySensor,
   getStatusColor,
-} from '../../services/ControlApiTypes';
+} from '../../Services/ControlApiTypes';
 
-import { ControlHistoryService } from './hooks/ControlApiHistory';
-import { ControlLogService } from './hooks/ControlApiLog';
-import { Sidebar } from '../../components/common/Sidebar';
-import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
+import { ControlHistoryService } from '../../Hooks/ControlApiHistory';
+import { ControlLogService } from '../../Hooks/ControlApiLog';
+import { Sidebar } from '../../components/Common/Sidebar';
+import AdminDropdown from '../../components/Common/Dropdown/AdminDropdown';
 // ✅ 올바른 임포트 (경로만 프로젝트 구조에 맞게)
-import { MintrendService, type MintrendResponse } from '../Dashboard/hooks/MintrendService';
-import AIRecommendationModal from '../../components/ai-recommendation/AIRecommendationModal';
+import { MintrendService, type MintrendResponse } from '../../Hooks/MintrendService';
+import AIRecommendationModal from '../../components/AiRecommendation/AIRecommendationModal';
 
 
 // 원시 센서 코드 → 화면 라벨
