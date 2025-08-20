@@ -108,7 +108,7 @@ def find_current_indoor_temperature() -> Optional[Dict]:
                             continue
                             
                         # 더 가까운 시간의 데이터인지 확인 (24시간 이내만)
-                        if time_diff < 186400 and time_diff < best_time_diff:  # 24시간 = 86400초
+                        if time_diff < (86400 * 2) and time_diff < best_time_diff:  # 24시간 = 86400초
                             best_time_diff = time_diff
                             best_match = {
                                 'timestamp': timestamp_str,
@@ -195,11 +195,17 @@ def build_prompt(query: str, current_data: Dict, external_conditions: Dict = Non
 1. 최적 온도 계산법: 
    - 기본: 현재온도가 28도 이상이면 -3도, 24-25도면 -1도, 23도 이하면 +2도
    - 외부 온도 추가 고려: 외부온도가 30도 이상이면 추가로 -1도(더 시원하게), 외부온도가 20도 이하면 추가로 +1도(덜 시원하게)
+   - 외부 습도 추가 고려: 외부습도가 70% 이상이면 실내습도를 추가로 -5%(덜 습하게), 외부습도가 30% 이하면 실내습도를 추가로 +5%(덜 건조하게)
+   - 외부 CO2 추가 고려: 외부CO2가 500ppm 이상이면 실내CO2를 추가로 -100ppm(더 깨끗하게), 외부CO2가 350ppm 이하면 현재 유지
 2. 최적 습도 계산법: 현재습도가 50% 이상이면 -10%, 30% 이하면 +10%, 그외는 현재 유지
 3. 최적 공기질 계산법: 현재CO2가 900ppm 이상이면 -400ppm, 그외는 현재 유지
 4. 외부 조건이 주어진 경우:
    - 외부 온도만: '현재 실내온도 X도, 외부온도 Y도 기준으로 최적온도는 Z도입니다'
+   - 외부 습도만: '현재 실내습도 A%, 외부습도 Y 기준으로 최적습도는 C%입니다'
+   - 외부 공기질만: '현재 실내CO2 Cppm, 외부CO2 Yppm 기준으로 최적CO2는 Zppm입니다'
    - 외부 온도+습도: '현재 실내온도 X도(외부 Y도), 실내습도 A%(외부 B%) 기준으로 최적온도는 Z도, 최적습도는 C%입니다'
+   - 외부 온도+공기질: '현재 실내온도 X도(외부 Y도), 실내CO2 Cppm(외부 Dppm) 기준으로 최적온도는 Z도, 최적CO2는 Eppm입니다'
+   - 외부 습도+공기질: '현재 실내습도 A%(외부 B%), 실내CO2 Cppm(외부 Dppm) 기준으로 최적습도는 C%, 최적CO2는 Eppm입니다'
    - 외부 전체조건: '현재 실내온도 X도(외부 Y도), 실내습도 A%(외부 B%), 실내CO2 Cppm 기준으로 최적온도는 Z도, 최적습도는 D%, 최적CO2는 Eppm입니다'
 5. 단순 질문 응답:
    - 현재 온도만 물으면: "27.5도"
@@ -262,48 +268,7 @@ def answer_query(query: str) -> str:
     return generate_response(query, current_data, {})
 
 def main():
-    """API 모드: stdin으로 JSON 입력 받고 답변 출력"""
-    try:
-        import sys
-        
-        # stdin에서 JSON 입력 읽기
-        input_data = sys.stdin.read().strip()
-        
-        if not input_data:
-            print(json.dumps({"error": "No input provided"}, ensure_ascii=False))
-            return
-            
-        # JSON 파싱
-        try:
-            data = json.loads(input_data)
-            query = data.get('query', '')
-        except json.JSONDecodeError:
-            print(json.dumps({"error": "Invalid JSON input"}, ensure_ascii=False))
-            return
-            
-        if not query:
-            print(json.dumps({"error": "No query provided"}, ensure_ascii=False))
-            return
-            
-        # 질문 처리
-        answer = answer_query(query)
-        
-        # JSON 응답 출력
-        response = {
-            "answer": answer,
-            "status": "success"
-        }
-        print(json.dumps(response, ensure_ascii=False))
-        
-    except Exception as e:
-        error_response = {
-            "error": str(e),
-            "status": "error"
-        }
-        print(json.dumps(error_response, ensure_ascii=False))
-
-def interactive_main():
-    """대화형 모드: 콘솔에서 직접 실행할 때 사용"""
+    
     while True:
         try:
             query = input("\n질문을 입력하세요 (종료: quit): ").strip()
@@ -322,11 +287,4 @@ def interactive_main():
             print(f"오류: {e}")
 
 if __name__ == "__main__":
-    import sys
-    
-    # stdin이 tty가 아니면 API 모드 (파이프 입력)
-    if not sys.stdin.isatty():
-        main()
-    else:
-        # 대화형 모드
-        interactive_main()
+    main()
