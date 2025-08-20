@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 import concurrent.futures as _f
 from typing import Optional, List, Dict, Tuple
-
+import sys
 
 # ===== 설정 =====
 REGION = "ap-northeast-2"
@@ -123,7 +123,6 @@ def load_session_history(session_id: str) -> Tuple[List[Dict], int, Dict, str, D
         # followup_timestamp가 문자열이면 datetime으로 변환
         if followup_timestamp and isinstance(followup_timestamp, str):
             try:
-                from datetime import datetime as datetime_cls
                 # ISO 형식 문자열을 datetime으로 파싱
                 followup_timestamp = datetime_cls.fromisoformat(followup_timestamp.replace('Z', '+00:00'))
                 # KST로 변환
@@ -183,7 +182,6 @@ def detect_fields_in_query(raw_query: str):
 # ===== 날짜/시간 파싱 =====
 ISO_PAT = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?"
 def extract_datetime_strings(s: str):
-    from datetime import datetime as datetime_cls
     out = []
     out += re.findall(ISO_PAT, s)  # ISO8601
     patterns = [
@@ -315,7 +313,6 @@ def extract_datetime_strings(s: str):
 
 def extract_time_range_from_query(query: str):
     """범위 쿼리(~부터 ~까지)에서 시작과 끝 시간 추출"""
-    from datetime import datetime as datetime_cls
     
     # "X부터 Y까지", "X부터 Y", "X에서 Y까지" 패턴 매칭
     range_patterns = [
@@ -439,11 +436,7 @@ def calculate_daily_average_temperature(query: str):
     }
 
 def calculate_today_average_all_sensors():
-    """오늘 날짜의 모든 센서 일간 평균 계산"""
-    from datetime import datetime as datetime_cls
-    import boto3
-    import json
-    
+    """오늘 날짜의 모든 센서 일간 평균 계산"""    
     # 오늘 날짜 사용
     now = datetime_cls.now()
     year, month, day = now.year, now.month, now.day
@@ -568,6 +561,172 @@ def calculate_today_average_all_sensors():
     
     return result
 
+def find_extrema_time_in_date(query: str):
+    """특정 날짜에서 센서 데이터의 최고/최저 시간을 찾는 함수"""
+    
+    # print(f"[DEBUG-FIND-EXTREMA] 함수 호출됨: {query}")
+    
+    # 날짜 추출 (calculate_daily_average_all_sensors와 동일한 로직)
+    date_match = re.search(r"(\d{1,2})\s*월\s*(\d{1,2})\s*일", query)
+    if date_match:
+        year = datetime_cls.now().year
+        month, day = int(date_match.group(1)), int(date_match.group(2))
+        # print(f"[DEBUG-FIND-EXTREMA] 절대날짜 추출: {year}-{month:02d}-{day:02d}")
+    elif "오늘" in query:
+        now = datetime_cls.now()
+        year, month, day = now.year, now.month, now.day
+        # print(f"[DEBUG-FIND-EXTREMA] 오늘 추출: {year}-{month:02d}-{day:02d}")
+    elif "어제" in query:
+        yesterday = datetime_cls.now() - timedelta(days=1)
+        year, month, day = yesterday.year, yesterday.month, yesterday.day
+        # print(f"[DEBUG-FIND-EXTREMA] 어제 추출: {year}-{month:02d}-{day:02d}")
+    elif "그제" in query:
+        day_before_yesterday = datetime_cls.now() - timedelta(days=2)
+        year, month, day = day_before_yesterday.year, day_before_yesterday.month, day_before_yesterday.day
+        # print(f"[DEBUG-FIND-EXTREMA] 그제 추출: {year}-{month:02d}-{day:02d}")
+    elif "엊그제" in query:
+        three_days_ago = datetime_cls.now() - timedelta(days=3)
+        year, month, day = three_days_ago.year, three_days_ago.month, three_days_ago.day
+        # print(f"[DEBUG-FIND-EXTREMA] 엊그제 추출: {year}-{month:02d}-{day:02d}")
+    elif "내일" in query:
+        tomorrow = datetime_cls.now() + timedelta(days=1)
+        year, month, day = tomorrow.year, tomorrow.month, tomorrow.day
+        # print(f"[DEBUG-FIND-EXTREMA] 내일 추출: {year}-{month:02d}-{day:02d}")
+    elif "모레" in query:
+        day_after_tomorrow = datetime_cls.now() + timedelta(days=2)
+        year, month, day = day_after_tomorrow.year, day_after_tomorrow.month, day_after_tomorrow.day
+        # print(f"[DEBUG-FIND-EXTREMA] 모레 추출: {year}-{month:02d}-{day:02d}")
+    else:
+        # print(f"[DEBUG-FIND-EXTREMA] 날짜 추출 실패, None 반환")
+        return None
+    
+    # 메트릭과 방향(최고/최저) 결정
+    if re.search(r"가장.*더운|가장.*따뜻한|최고.*온도|가장.*높은.*온도|온도.*가장.*높은|가장.*온도.*가.*높은|가장.*온도가.*높은", query):
+        metric = "temperature"
+        direction = "max"
+        metric_name = "온도"
+        unit = "도"
+    elif re.search(r"가장.*차가운|가장.*시원한|최저.*온도|가장.*낮은.*온도|온도.*가장.*낮은|가장.*온도.*가.*낮은|가장.*온도가.*낮은|가장.*추운", query):
+        metric = "temperature"
+        direction = "min"
+        metric_name = "온도"
+        unit = "도"
+    elif re.search(r"가장.*높은.*습도|최고.*습도|습도.*가장.*높은|가장.*습도.*가.*높은|가장.*습도가.*높은", query):
+        metric = "humidity"
+        direction = "max"
+        metric_name = "습도"
+        unit = "%"
+    elif re.search(r"가장.*낮은.*습도|최저.*습도|습도.*가장.*낮은|가장.*습도.*가.*낮은|가장.*습도가.*낮은", query):
+        metric = "humidity"
+        direction = "min"
+        metric_name = "습도"
+        unit = "%"
+    elif re.search(r"가장.*높은.*공기질|최고.*공기질|공기질.*가장.*나쁜|공기질.*가장.*높은|가장.*공기질.*가.*높은|가장.*공기질.*가.*나쁜", query):
+        metric = "gas"
+        direction = "max"
+        metric_name = "이산화탄소"
+        unit = "ppm"
+    elif re.search(r"가장.*낮은.*공기질|최저.*공기질|공기질.*가장.*좋은|공기질.*가장.*낮은|가장.*공기질.*가.*낮은|가장.*공기질.*가.*좋은", query):
+        metric = "gas"
+        direction = "min"
+        metric_name = "이산화탄소"
+        unit = "ppm"
+    elif re.search(r"가장.*높은.*이산화탄소|최고.*이산화탄소|이산화탄소.*가장.*높은|가장.*이산화탄소.*가.*높은", query):
+        metric = "gas"
+        direction = "max"
+        metric_name = "이산화탄소"
+        unit = "ppm"
+    elif re.search(r"가장.*낮은.*이산화탄소|최저.*이산화탄소|이산화탄소.*가장.*낮은|가장.*이산화탄소.*가.*낮은", query):
+        metric = "gas"
+        direction = "min"
+        metric_name = "이산화탄소"
+        unit = "ppm"
+    else:
+        # print(f"[DEBUG-FIND-EXTREMA] 메트릭/방향 결정 실패, None 반환")
+        return None
+    
+    # print(f"[DEBUG-FIND-EXTREMA] 메트릭: {metric}, 방향: {direction}, 이름: {metric_name}, 단위: {unit}")
+    
+    # S3에서 해당 날짜의 모든 센서 데이터 검색
+    s3 = boto3.client("s3", region_name=REGION)
+    paginator = s3.get_paginator("list_objects_v2")
+    
+    date_str = f"{year:04d}{month:02d}{day:02d}"
+    prefix = f"sensor/date_data/{date_str}/"
+    
+    # print(f"[DEBUG-FIND-EXTREMA] S3 검색 시작: prefix={prefix}")
+    
+    all_values = []
+    
+    try:
+        for page in paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=prefix):
+            for obj in page.get('Contents', []):
+                try:
+                    response = s3.get_object(Bucket=S3_BUCKET_DATA, Key=obj['Key'])
+                    content = response['Body'].read().decode('utf-8')
+                    data = json.loads(content)
+                    
+                    # 데이터에서 해당 메트릭의 값 추출
+                    if metric == "temperature" and "temperature" in data:
+                        timestamp = data.get("timestamp", "")
+                        value = float(data["temperature"])
+                        all_values.append({"timestamp": timestamp, "value": value})
+                    elif metric == "humidity" and "humidity" in data:
+                        timestamp = data.get("timestamp", "")
+                        value = float(data["humidity"])
+                        all_values.append({"timestamp": timestamp, "value": value})
+                    elif metric == "gas" and "gas" in data:
+                        timestamp = data.get("timestamp", "")
+                        value = float(data["gas"])
+                        all_values.append({"timestamp": timestamp, "value": value})
+                        
+                except Exception:
+                    continue
+        
+        # print(f"[DEBUG-FIND-EXTREMA] 수집된 데이터 개수: {len(all_values)}")
+        
+        if not all_values:
+            # print(f"[DEBUG-FIND-EXTREMA] 데이터가 없어서 None 반환")
+            return None
+        
+        # 최고/최저값 찾기
+        if direction == "max":
+            extrema_data = max(all_values, key=lambda x: x["value"])
+            direction_text = "최고" if metric == "temperature" else "가장 높은" if metric == "humidity" else "가장 높은"
+        else:
+            extrema_data = min(all_values, key=lambda x: x["value"])
+            direction_text = "최저" if metric == "temperature" else "가장 낮은" if metric == "humidity" else "가장 낮은"
+        
+        # 시간 정보 파싱
+        try:
+            timestamp = datetime_cls.fromisoformat(extrema_data["timestamp"])
+            time_str = timestamp.strftime("%H시 %M분")
+            date_str_readable = f"{month}월 {day}일"
+        except:
+            time_str = "시간 정보 없음"
+            date_str_readable = f"{month}월 {day}일"
+        
+        value = extrema_data["value"]
+        
+        # 결과 구성
+        description = f"{date_str_readable} {direction_text} {metric_name} 시간 분석"
+        context = f"{date_str_readable} {time_str}에 {direction_text} {metric_name} {value}{unit}를 기록했습니다."
+        
+        return {
+            "date": date_str_readable,
+            "metric": metric,
+            "direction": direction,
+            "time": time_str,
+            "value": value,
+            "unit": unit,
+            "description": description,
+            "context": context
+        }
+        
+    except Exception as e:
+        # print(f"[DEBUG-FIND-EXTREMA] Exception 발생: {e}")
+        return None
+
 def calculate_daily_average_all_sensors(query: str):
     """특정 날짜의 일간 평균 온도, 습도, 공기질 계산 (houravg 데이터 활용)"""
     
@@ -580,6 +739,26 @@ def calculate_daily_average_all_sensors(query: str):
         # "오늘" 키워드인 경우 현재 날짜 사용
         now = datetime_cls.now()
         year, month, day = now.year, now.month, now.day
+    elif "어제" in query:
+        # "어제" 키워드인 경우 현재 날짜에서 1일 빼기
+        yesterday = datetime_cls.now() - timedelta(days=1)
+        year, month, day = yesterday.year, yesterday.month, yesterday.day
+    elif "그제" in query:
+        # "그제" 키워드인 경우 현재 날짜에서 2일 빼기
+        day_before_yesterday = datetime_cls.now() - timedelta(days=2)
+        year, month, day = day_before_yesterday.year, day_before_yesterday.month, day_before_yesterday.day
+    elif "엊그제" in query:
+        # "엊그제" 키워드인 경우 현재 날짜에서 3일 빼기
+        three_days_ago = datetime_cls.now() - timedelta(days=3)
+        year, month, day = three_days_ago.year, three_days_ago.month, three_days_ago.day
+    elif "내일" in query:
+        # "내일" 키워드인 경우 현재 날짜에서 1일 더하기
+        tomorrow = datetime_cls.now() + timedelta(days=1)
+        year, month, day = tomorrow.year, tomorrow.month, tomorrow.day
+    elif "모레" in query:
+        # "모레" 키워드인 경우 현재 날짜에서 2일 더하기
+        day_after_tomorrow = datetime_cls.now() + timedelta(days=2)
+        year, month, day = day_after_tomorrow.year, day_after_tomorrow.month, day_after_tomorrow.day
     else:
         return None
     
@@ -1280,7 +1459,7 @@ def decide_route(query: str) -> str:
 # ===== 검색 =====
 def find_latest_sensor_data_from_s3(query: str) -> dict:
     """현재 시간 기준으로 가장 최근 센서 데이터 파일을 S3에서 찾기"""
-    from datetime import datetime as datetime_cls, timedelta
+
     # KST 기준 현재 시간 사용
     now = datetime_cls.now(KST).replace(tzinfo=None)
     
@@ -1637,9 +1816,7 @@ def find_closest_sensor_data(target_time: datetime) -> dict:
     s3 = boto3.client("s3", region_name=REGION)
     paginator = s3.get_paginator("list_objects_v2")
     
-    closest_files = []
-    found_hours_diff = None
-    
+    closest_files = []    
     
     # 대상 시간 기준으로 가장 가까운 시간부터 순차적으로 검색 (0, ±1, ±2, ±3...)
     for hours_diff in range(0, 73):  # 0~72시간(3일) 차이까지
@@ -1675,7 +1852,6 @@ def find_closest_sensor_data(target_time: datetime) -> dict:
                     
                     # 첫 번째로 파일을 찾으면 중단 (가장 가까운 시간)
                     if closest_files:
-                        found_hours_diff = abs(hours_offset)
                         break
                         
                 except Exception as e:
@@ -1735,17 +1911,21 @@ def find_closest_sensor_data(target_time: datetime) -> dict:
 
 def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHARS, max_files: int = MAX_FILES_TO_SCAN, top_k: int = TOP_K, session=None):
     # 통합된 검색 로직: 요청된 시간에서 가장 가까운 데이터 찾기
-    import re
-    from datetime import datetime as datetime_cls
     
     # 원본 질의 저장 (전처리되기 전)
     original_query = query
     
     # 먼저 원본 질의로 일간 평균인지 확인 (우선순위 높음)
     # 일간 평균 질의: ("평균" + "일" + 센서) 또는 ("오늘" + "평균" + 센서)
-    has_daily_keywords = (("평균" in original_query and "일" in original_query and ("온도" in original_query or "습도" in original_query or "공기질" in original_query or "이산화탄소" in original_query)) or
-                         ("오늘" in original_query and "평균" in original_query and ("온도" in original_query or "습도" in original_query or "공기질" in original_query or "이산화탄소" in original_query)) or
-                         ("오늘" in original_query and ("온도" in original_query or "습도" in original_query or "공기질" in original_query or "이산화탄소" in original_query)))
+    # 센서 관련 키워드 확장 (장소 키워드 포함)
+    sensor_keywords = ["온도", "습도", "공기질", "이산화탄소", "CO2", "gas", "강의실", "실내", "실온", "방안", "교실", "사무실"]
+    has_sensor_keywords = any(keyword in original_query for keyword in sensor_keywords)
+    
+    has_daily_keywords = (("평균" in original_query and "일" in original_query and has_sensor_keywords) or
+                         ("오늘" in original_query and "평균" in original_query and has_sensor_keywords) or
+                         ("오늘" in original_query and has_sensor_keywords) or
+                         (bool(re.search(r"\d{1,2}\s*월\s*\d{1,2}\s*일", original_query)) and has_sensor_keywords) or
+                         (("어제" in original_query or "그제" in original_query or "엊그제" in original_query or "내일" in original_query or "모레" in original_query) and has_sensor_keywords))
     has_average_keywords = ("평균" in query and ("온도" in query or "습도" in query or "공기질" in query or "temperature" in query or "humidity" in query or "gas" in query))
     
     # 원본 질의에서 특정 시간이 언급된 경우 일간 평균이 아님
@@ -1761,7 +1941,60 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
     print(f"[DEBUG] has_daily_keywords: {has_daily_keywords}")
     print(f"[DEBUG] has_specific_time: {has_specific_time}")
     
-    if is_daily_avg_query:
+    # 최고/최저 시간 질의 감지 ("어제 가장 더운 시간", "습도가 가장 낮은 시간" 등)
+    extrema_patterns = [
+        r"가장.*더운.*시간", r"가장.*따뜻한.*시간", r"최고.*온도.*시간",
+        r"가장.*차가운.*시간", r"가장.*시원한.*시간", r"최저.*온도.*시간", 
+        r"가장.*높은.*습도.*시간", r"최고.*습도.*시간", r"습도.*가장.*높은.*시간", r"가장.*습도.*가.*높은.*시간",
+        r"가장.*낮은.*습도.*시간", r"최저.*습도.*시간", r"습도.*가장.*낮은.*시간", r"가장.*습도.*가.*낮은.*시간",
+        r"가장.*높은.*공기질.*시간", r"최고.*공기질.*시간", r"공기질.*가장.*나쁜.*시간", r"공기질.*가장.*높은.*시간", r"가장.*공기질.*가.*높은.*시간", r"가장.*공기질.*가.*나쁜.*시간",
+        r"가장.*낮은.*공기질.*시간", r"최저.*공기질.*시간", r"공기질.*가장.*좋은.*시간", r"공기질.*가장.*낮은.*시간", r"가장.*공기질.*가.*낮은.*시간", r"가장.*공기질.*가.*좋은.*시간",
+        r"가장.*높은.*이산화탄소.*시간", r"최고.*이산화탄소.*시간", r"이산화탄소.*가장.*높은.*시간", r"가장.*이산화탄소.*가.*높은.*시간",
+        r"가장.*낮은.*이산화탄소.*시간", r"최저.*이산화탄소.*시간", r"이산화탄소.*가장.*낮은.*시간", r"가장.*이산화탄소.*가.*낮은.*시간",
+        r"최고.*온도", r"최저.*온도", r"최고.*습도", r"최저.*습도"
+    ]
+    has_extrema_keywords = any(re.search(pattern, original_query) for pattern in extrema_patterns)
+    
+    # 날짜 키워드 (오늘, 어제, 특정 날짜)
+    has_date_reference = ("오늘" in original_query or "어제" in original_query or "그제" in original_query or 
+                         "엊그제" in original_query or "내일" in original_query or "모레" in original_query or
+                         bool(re.search(r"\d{1,2}\s*월\s*\d{1,2}\s*일", original_query)))
+    
+    is_extrema_query = (has_extrema_keywords and has_date_reference)
+    
+    if is_extrema_query:
+        # 최고/최저 시간 질의 처리
+        # print(f"[DEBUG-EXTREMA] 극값 질의 감지됨: {original_query}")
+        extrema_result = find_extrema_time_in_date(original_query)
+        # print(f"[DEBUG-EXTREMA] 극값 결과: {extrema_result}")
+        if extrema_result:
+            context = f"[D1] {extrema_result['description']}\n{extrema_result['context']}\n"
+            
+            top_doc = {
+                'score': 100,
+                'schema': 'extrema_time',
+                'content': extrema_result['context'],
+                'id': f"extrema_{extrema_result['date'].replace(' ', '_')}_{extrema_result['metric']}",
+                'tag': 'D1'
+            }
+            
+            return [top_doc], context
+        else:
+            # 극값 질의이지만 데이터가 없는 경우, 적절한 안내 메시지 반환
+            # print(f"[DEBUG-EXTREMA] 극값 데이터가 없어서 안내 메시지 반환")
+            no_data_message = f"요청하신 날짜의 극값 데이터를 찾을 수 없습니다. 해당 날짜에 센서 데이터가 없거나 부족할 수 있습니다."
+            
+            no_data_doc = {
+                'score': 90,
+                'schema': 'no_extrema_data',
+                'content': no_data_message,
+                'id': 'no_extrema_data',
+                'tag': 'N1'
+            }
+            
+            return [no_data_doc], f"[N1] {no_data_message}\n"
+    
+    elif is_daily_avg_query:
         # "오늘" 질문은 전용 함수 사용 (원본 질의 기준)
         if "오늘" in original_query:
             daily_avg_data = calculate_today_average_all_sensors()
@@ -1808,8 +2041,6 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
     # UTF-8 문제로 인한 fallback 시간 추출
     if not dt_strings:
         # 간단한 패턴 매칭으로 날짜/시간 추출
-        import re
-        from datetime import datetime as datetime_cls
         
         # "8월 13일 오후 1시" 같은 패턴
         patterns = [
@@ -1849,29 +2080,34 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
     # 바이트 패턴으로 백업 검사 (한글 인코딩 문제 대응)
     try:
         query_bytes = query.encode('utf-8')
-        # (평균 + 일 + 센서) or (오늘 + 평균 + 센서)
-        has_daily_keywords_bytes = ((b'\xed\x8f\x89\xea\xb7\xa0' in query_bytes and  # 평균
-                                    b'\xec\x9d\xbc' in query_bytes and               # 일
-                                    (b'\xec\x98\xa8\xeb\x8f\x84' in query_bytes or   # 온도
-                                     b'\xec\x8a\xb5\xeb\x8f\x84' in query_bytes or   # 습도
-                                     b'\xea\xb3\xb5\xea\xb8\xb0\xec\xa7\x88' in query_bytes or  # 공기질
-                                     b'\xec\x9d\xb4\xec\x82\xb0\xed\x99\x94\xed\x83\x84\xec\x86\x8c' in query_bytes)) or  # 이산화탄소
-                                   (b'\xec\x98\xa4\xeb\x8a\x98' in query_bytes and  # 오늘
-                                    b'\xed\x8f\x89\xea\xb7\xa0' in query_bytes and  # 평균
-                                    (b'\xec\x98\xa8\xeb\x8f\x84' in query_bytes or   # 온도
-                                     b'\xec\x8a\xb5\xeb\x8f\x84' in query_bytes or   # 습도
-                                     b'\xea\xb3\xb5\xea\xb8\xb0\xec\xa7\x88' in query_bytes or  # 공기질
-                                     b'\xec\x9d\xb4\xec\x82\xb0\xed\x99\x94\xed\x83\x84\xec\x86\x8c' in query_bytes)) or  # 이산화탄소
-                                   (b'\xec\x98\xa4\xeb\x8a\x98' in query_bytes and  # 오늘 + 센서 (평균 없이도)
-                                    (b'\xec\x98\xa8\xeb\x8f\x84' in query_bytes or   # 온도
-                                     b'\xec\x8a\xb5\xeb\x8f\x84' in query_bytes or   # 습도
-                                     b'\xea\xb3\xb5\xea\xb8\xb0\xec\xa7\x88' in query_bytes or  # 공기질
-                                     b'\xec\x9d\xb4\xec\x82\xb0\xed\x99\x94\xed\x83\x84\xec\x86\x8c' in query_bytes)))  # 이산화탄소
-        # 평균 + (온도 or 습도 or 공기질)
-        has_average_keywords_bytes = (b'\xed\x8f\x89\xea\xb7\xa0' in query_bytes and  # 평균
-                                     (b'\xec\x98\xa8\xeb\x8f\x84' in query_bytes or    # 온도
-                                      b'\xec\x8a\xb5\xeb\x8f\x84' in query_bytes or    # 습도
-                                      b'\xea\xb3\xb5\xea\xb8\xb0\xec\xa7\x88' in query_bytes))  # 공기질
+        # 센서 관련 바이트 패턴 (장소 키워드 포함)
+        sensor_bytes_patterns = [
+            b'\xec\x98\xa8\xeb\x8f\x84',  # 온도
+            b'\xec\x8a\xb5\xeb\x8f\x84',  # 습도
+            b'\xea\xb3\xb5\xea\xb8\xb0\xec\xa7\x88',  # 공기질
+            b'\xec\x9d\xb4\xec\x82\xb0\xed\x99\x94\xed\x83\x84\xec\x86\x8c',  # 이산화탄소
+            b'\xea\xb0\x95\xec\x9d\x98\xec\x8b\xa4',  # 강의실
+            b'\xec\x8b\xa4\xeb\x82\xb4',  # 실내
+            b'\xec\x8b\xa4\xec\x98\xa8',  # 실온
+            b'\xeb\xb0\xa9\xec\x95\x88',  # 방안
+            b'\xea\xb5\x90\xec\x8b\xa4',  # 교실
+            b'\xec\x82\xac\xeb\xac\xb4\xec\x8b\xa4',  # 사무실
+        ]
+        has_sensor_bytes = any(pattern in query_bytes for pattern in sensor_bytes_patterns)
+        
+        # 일간 평균 조건 (바이트 패턴)
+        has_daily_keywords_bytes = (
+            (b'\xed\x8f\x89\xea\xb7\xa0' in query_bytes and b'\xec\x9d\xbc' in query_bytes and has_sensor_bytes) or  # 평균 + 일 + 센서
+            (b'\xec\x98\xa4\xeb\x8a\x98' in query_bytes and b'\xed\x8f\x89\xea\xb7\xa0' in query_bytes and has_sensor_bytes) or  # 오늘 + 평균 + 센서
+            (b'\xec\x98\xa4\xeb\x8a\x98' in query_bytes and has_sensor_bytes) or  # 오늘 + 센서
+            (b'\xec\x9b\x94' in query_bytes and b'\xec\x9d\xbc' in query_bytes and has_sensor_bytes) or  # X월 Y일 + 센서
+            ((b'\xec\x96\xb4\xec\xa0\x9c' in query_bytes or b'\xea\xb7\xb8\xec\xa0\x9c' in query_bytes or 
+              b'\xec\x97\x8a\xea\xb7\xb8\xec\xa0\x9c' in query_bytes or b'\xeb\x82\xb4\xec\x9d\xbc' in query_bytes or 
+              b'\xeb\xaa\xa8\xeb\xa0\x88' in query_bytes) and has_sensor_bytes)  # 상대날짜 + 센서
+        )
+        
+        # 평균 키워드 (바이트 패턴)
+        has_average_keywords_bytes = (b'\xed\x8f\x89\xea\xb7\xa0' in query_bytes and has_sensor_bytes)
     except:
         has_daily_keywords_bytes = False
         has_average_keywords_bytes = False
@@ -1894,7 +2130,6 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
             
             # 범위 쿼리의 시작/끝 시간을 파싱하여 컨텍스트 저장
             if len(time_range) >= 2:
-                from datetime import datetime as datetime_cls
                 try:
                     start_time_str = time_range[0]
                     end_time_str = time_range[-1]  # 마지막 시간 사용
@@ -2202,11 +2437,11 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
                     content = f"이것은 해당 시간대 전체의 평균값입니다.\n"
                     content += f"시간별 평균 센서 데이터:\n"
                     if 'hourtemp' in data:
-                        content += f"⭐ 시간별 평균 온도: {data['hourtemp']}도 (60분간 평균)\n"
+                        content += f"시간별 평균 온도: {data['hourtemp']}도\n"
                     if 'hourhum' in data:
-                        content += f"⭐ 시간별 평균 습도: {data['hourhum']}% (60분간 평균)\n"
+                        content += f"시간별 평균 습도: {data['hourhum']}%\n"
                     if 'hourgas' in data:
-                        content += f"⭐ 시간별 평균 이산화탄소: {data['hourgas']}ppm (60분간 평균)\n"
+                        content += f"시간별 평균 이산화탄소: {data['hourgas']}ppm\n"
                     
                     top_doc = {
                         'score': 100,
@@ -2299,11 +2534,11 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
                     content = f"시간별 평균 센서 데이터:\n"
                     content += f"이것은 해당 시간대 전체의 평균값입니다.\n"
                     if 'hourtemp' in data:
-                        content += f"⭐ 시간별 평균 온도: {data['hourtemp']}도 (60분간 평균)\n"
+                        content += f"시간별 평균 온도: {data['hourtemp']}도\n"
                     if 'hourhum' in data:
-                        content += f"⭐ 시간별 평균 습도: {data['hourhum']}% (60분간 평균)\n"
+                        content += f"시간별 평균 습도: {data['hourhum']}%\n"
                     if 'hourgas' in data:
-                        content += f"⭐ 시간별 평균 이산화탄소: {data['hourgas']}ppm (60분간 평균)\n"
+                        content += f"시간별 평균 이산화탄소: {data['hourgas']}ppm\n"
                     schema = 'houravg'
                 else:
                     content = json.dumps(data, ensure_ascii=False, indent=2)
@@ -2318,7 +2553,6 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
                 }
                 
                 # 타임스탬프를 한국어로 변환
-                from datetime import datetime as datetime_cls
                 try:
                     timestamp_str = data.get('timestamp', '')
                     if timestamp_str:
@@ -2603,7 +2837,6 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
         for days_offset in range(-3, 4):  # -3일부터 +3일까지
             if target_dt:
                 search_date = target_dt + timedelta(days=days_offset)
-                search_date_prefix = search_date.strftime('%Y%m%d')
                 
                 # minavg와 houravg에서 해당 날짜 검색
                 for prefix_path in ["minavg/", "houravg/"]:
@@ -2636,11 +2869,11 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
         
         if fallback_keys:
             all_keys = fallback_keys[:max_files]
-            print(f"[Fallback] {len(all_keys)}개의 대체 데이터를 찾았습니다.")
+            #print(f"[Fallback] {len(all_keys)}개의 대체 데이터를 찾았습니다.")
         
     # minavg 검색이 실패한 경우 find_closest_sensor_data로 fallback
     if not all_keys and gran == "minute" and target_dt:
-        print(f"[Fallback] minavg 검색 실패 (찾은 키: {len(priority_keys)}개), 가장 가까운 센서 데이터를 찾습니다...")
+        #print(f"[Fallback] minavg 검색 실패 (찾은 키: {len(priority_keys)}개), 가장 가까운 센서 데이터를 찾습니다...")
         closest_data = find_closest_sensor_data(target_dt)
         if closest_data:
             # closest_data를 문서 형태로 변환 (개선된 메시지)
@@ -2673,7 +2906,7 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
     
     # 모든 검색이 실패한 경우 최종 fallback
     if not all_keys and target_dt:
-        print(f"[Final Fallback] 모든 검색 실패, find_closest_sensor_data로 최종 시도...")
+        #print(f"[Final Fallback] 모든 검색 실패, find_closest_sensor_data로 최종 시도...")
         closest_data = find_closest_sensor_data(target_dt)
         if closest_data:
             # closest_data를 문서 형태로 변환 (개선된 메시지)
@@ -2739,164 +2972,6 @@ def retrieve_documents_from_s3(query: str, limit_chars: int = LIMIT_CONTEXT_CHAR
     context = "\n---\n".join(parts).strip()
     return top, context
 
-# ===== 통계/추이/윈도우 유틸 =====
-def select_rows_in_range(rows, start_dt, end_dt):
-    return [r for r in rows if start_dt <= r["timestamp"] <= end_dt]
-
-def select_rows_in_minute(rows, dt_minute: datetime):
-    m_start = dt_minute.replace(second=0)
-    m_end = m_start + timedelta(minutes=1) - timedelta(seconds=1)
-    return [r for r in rows if m_start <= r["timestamp"] <= m_end], m_start, m_end
-
-def select_rows_in_hour(rows, dt_hour: datetime):
-    h_start = dt_hour.replace(minute=0, second=0)
-    h_end = h_start + timedelta(hours=1) - timedelta(seconds=1)
-    return [r for r in rows if h_start <= r["timestamp"] <= h_end], h_start, h_end
-
-def select_rows_in_day(rows, dt_day: datetime):
-    d_start = dt_day.replace(hour=0, minute=0, second=0)
-    d_end = d_start + timedelta(days=1) - timedelta(seconds=1)
-    return [r for r in rows if d_start <= r["timestamp"] <= d_end], d_start, d_end
-
-def compute_stats(rows):
-    if not rows: return None
-    keys = set().union(*[set(r.keys()) for r in rows]) - {"timestamp"}
-    out = {}
-    for k in ["temperature","humidity","gas"]:
-        if k in keys:
-            arr = [r[k] for r in rows if k in r]
-            if arr:
-                out[k] = {"avg": sum(arr)/len(arr), "min": min(arr), "max": max(arr), "first": arr[0], "last": arr[-1]}
-    return out
-
-def compare_trend(curr_stat, prev_stat):
-    def diff_pct(a, b):
-        if b is None or a is None or b == 0: return None
-        return (a - b) / b * 100.0
-    out = {}
-    for field in ["temperature", "humidity", "gas"]:
-        cs = curr_stat.get(field) if curr_stat else None
-        ps = prev_stat.get(field) if prev_stat else None
-        if not cs or not ps: out[field] = None; continue
-        base_curr = cs.get("avg") if cs.get("avg") is not None else cs.get("last")
-        base_prev = ps.get("avg") if ps.get("avg") is not None else ps.get("last")
-        if base_curr is None or base_prev is None:
-            out[field] = None; continue
-        delta = base_curr - base_prev
-        pct = diff_pct(base_curr, base_prev)
-        out[field] = {"delta": delta, "pct": pct}
-    return out
-
-def fmt_trend_line(field_kor, stat, trend):
-    if not stat: return f"{field_kor}: 데이터 없음"
-    avg_s = f"평균 {stat['avg']:.3f}, 범위 [{stat['min']:.3f}~{stat['max']:.3f}]"
-    if not trend: return f"{field_kor}: {avg_s}"
-    delta = trend["delta"]; pct = trend["pct"]
-    if delta is None: return f"{field_kor}: {avg_s}"
-    dir_word = "증가" if delta > 0 else ("감소" if delta < 0 else "변화 없음")
-    pct_s = f"{pct:+.2f}%" if pct is not None else "N/A"
-    return f"{field_kor}: {avg_s} | 직전 구간 대비 {dir_word} ({delta:+.3f}, {pct_s})"
-
-def filter_fields(row: dict, need_fields: set):
-    if not need_fields:
-        return {k: row[k] for k in ["temperature","humidity","gas"] if k in row}
-    return {f: row[f] for f in need_fields if f in row}
-
-def format_point_answer(values: dict, ts: datetime, tag="D1"):
-    parts = []
-    for k in ["temperature", "humidity", "gas"]:
-        if k in values:
-            name = FIELD_NAME_KOR.get(k, k)
-            value = values[k]
-            parts.append(f"{name} **{value}**")
-    
-    if not parts:
-        body = "데이터가 없습니다."
-    elif len(parts) == 1:
-        body = f"해당 시점의 {parts[0]}"
-    else:
-        body = f"📊 **정확한 시점 데이터**\n" + "\n".join([f"• {part}" for part in parts])
-    
-    return f"{ts.strftime('%Y-%m-%d %H:%M:%S')} 기준:\n{body} [{tag}]"
-
-def format_window_answer(rows_in_window, w_start, w_end, need_fields, tag="D1", window_name="구간", show_samples=True):
-    fields = list(need_fields) if need_fields else [k for k in ["temperature","humidity","gas"] if any(k in r for r in rows_in_window)]
-    name_map = FIELD_NAME_KOR
-    lines = [f"[{window_name}] {w_start.strftime('%Y-%m-%d %H:%M:%S')} ~ {w_end.strftime('%Y-%m-%d %H:%M:%S')}"]
-    for f in fields:
-        arr = [r[f] for r in rows_in_window if f in r]
-        if arr:
-            a = sum(arr)/len(arr)
-            lines.append(f"{name_map.get(f,f)} 평균: {a:.3f}")
-        else:
-            lines.append(f"{name_map.get(f,f)} 평균: 데이터 없음")
-    if show_samples:
-        lines.append(f"[{window_name} 데이터 {len(rows_in_window)}개]")
-        for r in rows_in_window:
-            parts = []
-            if "temperature" in fields and "temperature" in r: parts.append(f"T={r['temperature']}")
-            if "humidity" in fields and "humidity" in r:    parts.append(f"H={r['humidity']}")
-            if "gas" in fields and "gas" in r:               parts.append(f"CO2={r['gas']}")
-            lines.append(f"{r['timestamp'].strftime('%Y-%m-%d %H:%M:%S')} | " + ", ".join(parts))
-    else:
-        lines.append(f"(샘플 {len(rows_in_window)}개는 생략됨 — '상세' 또는 '원본'이라고 물으면 전부 보여줄게)")
-    return "\n".join(lines) + f" [{tag}]"
-
-# ===== RAW 변환 =====
-def _load_raw_rows(j):
-    rows = []
-    # rawdata: 리스트 형태
-    if isinstance(j, list):
-        for i, r in enumerate(j):
-            try:
-                ts = parse_dt(str(r["timestamp"]))
-                if not ts: continue
-                temperature = float(r["temperature"]) if "temperature" in r else float(r["temp"])
-                humidity    = float(r["humidity"]) if "humidity" in r else float(r["hum"])
-                gas         = float(r["gas"])
-                rows.append({"timestamp": ts, "temperature": temperature, "humidity": humidity, "gas": gas})
-            except Exception:
-                continue
-    # 단일 항목 데이터들을 행으로 변환
-    elif isinstance(j, dict):
-        try:
-            # houravg 형태 (hourtemp, hourhum, hourgas)
-            if "hourtemp" in j:
-                ts = parse_dt(str(j["timestamp"]))
-                if ts:
-                    rows.append({
-                        "timestamp": ts,
-                        "temperature": float(j["hourtemp"]),
-                        "humidity": float(j["hourhum"]),
-                        "gas": float(j["hourgas"])
-                    })
-            # minavg 형태 (mintemp, minhum, mingas)
-            elif "mintemp" in j:
-                ts = parse_dt(str(j["timestamp"]))
-                if ts:
-                    rows.append({
-                        "timestamp": ts,
-                        "temperature": float(j["mintemp"]),
-                        "humidity": float(j["minhum"]),
-                        "gas": float(j["mingas"])
-                    })
-            # mintrend 형태 (data 안에 있음)
-            elif "data" in j and "mintemp" in j["data"]:
-                data = j["data"]
-                ts = parse_dt(str(data["timestamp"]))
-                if ts:
-                    rows.append({
-                        "timestamp": ts,
-                        "temperature": float(data["mintemp"]),
-                        "humidity": float(data["minhum"]),
-                        "gas": float(data["mingas"])
-                    })
-        except Exception:
-            pass
-    
-    rows.sort(key=lambda x: x["timestamp"])
-    return rows
-
 # ====== 마지막 센서 질의 컨텍스트 ======
 LAST_SENSOR_CTX: Dict[str, object] = {
     "window": None,  # "second" | "minute" | "hour" | "range" | None
@@ -2913,252 +2988,11 @@ def _reset_last_ctx(session=None):
     else:
         LAST_SENSOR_CTX.update({"window": None, "start": None, "end": None, "rows": None, "tag": None, "label": None})
 
-def _set_last_ctx(window: str, start: datetime, end: datetime, rows: List[dict], tag: str, label: str, session=None):
-    if session:
-        session.update_last_sensor_ctx(window, start, end, rows, tag, label)
-    else:
-        LAST_SENSOR_CTX["window"] = window
-        LAST_SENSOR_CTX["start"] = start
-        LAST_SENSOR_CTX["end"] = end
-        LAST_SENSOR_CTX["rows"] = rows
-        LAST_SENSOR_CTX["tag"] = tag
-        LAST_SENSOR_CTX["label"] = label
-
 def _get_last_ctx(session=None):
     if session:
         return session.last_sensor_ctx
     else:
         return LAST_SENSOR_CTX
-
-
-def fetch_raw_exact_second_all(target_dt: datetime, max_files: int = MAX_FILES_TO_SCAN) -> Tuple[Optional[dict], Optional[str]]:
-    paginator = s3.get_paginator("list_objects_v2")
-    pages = paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=S3_PREFIX)
-    with _f.ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        futures = []
-        scanned = 0
-        for page in pages:
-            for obj in page.get("Contents", []):
-                k = obj["Key"]
-                if not k.lower().endswith(".json"):
-                    continue
-                futures.append(ex.submit(download_and_score_file, k, str(target_dt)))
-                scanned += 1
-                if scanned >= max_files:
-                    break
-            if scanned >= max_files:
-                break
-        for f in _f.as_completed(futures):
-            r = f.result()
-            if not r or r.get("schema") != "raw_list":
-                continue
-            rows = _load_raw_rows(r.get("json") or [])
-            for row in rows:
-                if row["timestamp"] == target_dt:
-                    return row, "D?"
-    return None, None
-
-def show_hourly_average_if_requested(query: str) -> Optional[str]:
-    """시간별 평균이 요청되면 해당 시간의 houravg 데이터로 처리"""
-    if not hourly_average_requested(query):
-        return None
-    
-    # 날짜와 시간 추출
-    dt_strings = extract_datetime_strings(query)
-    target_dts = []
-    
-    # 모든 시간을 추출 (복수 시간 처리)
-    for ds in dt_strings:
-        dt = parse_dt(ds)
-        if dt:
-            target_dts.append(dt)
-    
-    if not target_dts:
-        # 현재 시간의 이전 시간 사용 (정시로 맞춤)
-        from datetime import datetime as datetime_cls
-        now = datetime_cls.now()
-        target_dt = now.replace(minute=0, second=0, microsecond=0)
-        if now.minute < 30:  # 30분 이전이면 이전 시간 사용
-            target_dt = target_dt - timedelta(hours=1)
-        target_dts = [target_dt]
-    
-    # 요청된 필드 추출
-    need_fields = detect_fields_in_query(query)
-    results = []
-    
-    # 각 시간에 대해 데이터 찾기
-    for target_dt in target_dts:
-        doc = find_houravg_doc_for_hour(target_dt)
-        
-        if doc:
-            # 개별 시간 결과 포맷팅
-            time_str = target_dt.strftime('%Y년 %m월 %d일 %H시')
-            result = format_houravg_answer_from_doc(doc, need_fields)
-            results.append(f"**{time_str}:**\n{result}")
-        else:
-            time_str = target_dt.strftime('%Y년 %m월 %d일 %H시')
-            results.append(f"**{time_str}:**\n해당 시간의 데이터를 찾을 수 없습니다.")
-    
-    if not results:
-        return "요청하신 시간대의 데이터를 찾을 수 없습니다."
-    
-    # 복수 결과를 합쳐서 반환
-    return "\n\n".join(results)
-
-def show_daily_summary_if_requested(query: str) -> Optional[str]:
-    """일간 요약이 요청되면 해당 날짜의 hourly 데이터로 일 평균과 추이 계산"""
-    if not daily_summary_requested(query):
-        return None
-    
-    # 날짜 추출
-    dt_strings = extract_datetime_strings(query)
-    target_date = None
-    
-    for ds in dt_strings:
-        dt = parse_dt(ds)
-        if dt:
-            target_date = dt.replace(hour=0, minute=0, second=0, microsecond=0)
-            break
-    
-    if not target_date:
-        # 날짜가 없으면 오늘 날짜 사용
-        target_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    
-    # 해당 날짜의 hourly 데이터 수집
-    docs = find_houravg_docs_for_day(target_date)
-    
-    if not docs:
-        return f"{target_date.strftime('%Y년 %m월 %d일')}의 시간별 데이터를 찾을 수 없습니다."
-    
-    # 요청된 필드 추출
-    need_fields = detect_fields_in_query(query)
-    
-    # 일간 요약 포맷팅
-    return format_daily_summary_from_houravg(docs, need_fields)
-
-
-# ===== 보조: 파일 탐색 (정확 매칭) =====
-def find_houravg_docs_for_day(target_date: datetime, max_scan: int = MAX_FILES_TO_SCAN):
-    """하루 전체의 houravg 문서들을 수집"""
-    paginator = s3.get_paginator("list_objects_v2")
-    pages = paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=S3_PREFIX)
-    
-    docs = []
-    scanned = 0
-    for page in pages:
-        for obj in page.get("Contents", []):
-            k = obj["Key"]
-            if not k.lower().endswith(".json"):
-                continue
-            key_dt, gran = parse_time_from_key(k)
-            if gran == "hour" and key_dt and \
-               (key_dt.year, key_dt.month, key_dt.day) == \
-               (target_date.year, target_date.month, target_date.day):
-                d = download_and_score_file(k, f"{target_date}")
-                if d and d.get("schema") == "houravg":
-                    d["tag"] = d.get("tag","D?")
-                    d["hour"] = key_dt.hour
-                    docs.append(d)
-            scanned += 1
-            if scanned >= max_scan:
-                break
-        if scanned >= max_scan:
-            break
-    return sorted(docs, key=lambda x: x.get("hour", 0))
-
-def calculate_daily_average_from_houravg(docs):
-    """houravg 문서들로부터 일 평균 계산"""
-    if not docs:
-        return {}
-    
-    temp_values = []
-    hum_values = []
-    gas_values = []
-    
-    for doc in docs:
-        j = doc.get("json") or {}
-        av = j.get("averages", {}) or {}
-        
-        if av.get("temp") is not None:
-            temp_values.append(av["temp"])
-        if av.get("hum") is not None:
-            hum_values.append(av["hum"])
-        if av.get("gas") is not None:
-            gas_values.append(av["gas"])
-    
-    daily_avg = {}
-    if temp_values:
-        daily_avg["temperature"] = sum(temp_values) / len(temp_values)
-    if hum_values:
-        daily_avg["humidity"] = sum(hum_values) / len(hum_values)
-    if gas_values:
-        daily_avg["gas"] = sum(gas_values) / len(gas_values)
-    
-    return daily_avg
-
-def calculate_daily_trend_from_houravg(docs):
-    """houravg 문서들로부터 전체적 추이 계산"""
-    if not docs:
-        return {}
-    
-    trends = {}
-    
-    for field in ["temp", "hum", "gas"]:
-        field_name = {"temp": "temperature", "hum": "humidity", "gas": "gas"}[field]
-        values = []
-        
-        for doc in sorted(docs, key=lambda x: x.get("hour", 0)):
-            j = doc.get("json") or {}
-            av = j.get("averages", {}) or {}
-            if av.get(field) is not None:
-                values.append((doc.get("hour", 0), av[field]))
-        
-        if len(values) >= 2:
-            start_value = values[0][1]
-            end_value = values[-1][1]
-            change = end_value - start_value
-            change_rate = (change / start_value) * 100 if start_value != 0 else 0
-            
-            if change_rate > 5:
-                status = "상승"
-            elif change_rate < -5:
-                status = "하락"
-            else:
-                status = "안정"
-                
-            trends[field_name] = {
-                "start_value": start_value,
-                "end_value": end_value,
-                "change_rate": f"{change_rate:.1f}%",
-                "status": status
-            }
-    
-    return trends
-
-def find_houravg_doc_for_hour(target_dt: datetime, max_scan: int = MAX_FILES_TO_SCAN):
-    paginator = s3.get_paginator("list_objects_v2")
-    pages = paginator.paginate(Bucket=S3_BUCKET_DATA, Prefix=S3_PREFIX)
-
-    scanned = 0
-    for page in pages:
-        for obj in page.get("Contents", []):
-            k = obj["Key"]
-            if not k.lower().endswith(".json"):
-                continue
-            key_dt, gran = parse_time_from_key(k)
-            if gran == "hour" and key_dt and \
-               (key_dt.year, key_dt.month, key_dt.day, key_dt.hour) == \
-               (target_dt.year, target_dt.month, target_dt.day, target_dt.hour):
-                d = download_and_score_file(k, f"{target_dt}")
-                if d and d.get("schema") == "houravg":
-                    d["tag"] = d.get("tag","D?")
-                    return d
-            scanned += 1
-            if scanned >= max_scan:
-                break
-        if scanned >= max_scan:
-            break
-    return None
 
 def find_minavg_doc_for_minute(target_dt: datetime, max_scan: int = MAX_FILES_TO_SCAN):
     paginator = s3.get_paginator("list_objects_v2")
@@ -3183,123 +3017,6 @@ def find_minavg_doc_for_minute(target_dt: datetime, max_scan: int = MAX_FILES_TO
         if scanned >= max_scan:
             break
     return None
-
-# ===== 형식화 유틸 (houravg 출력) =====
-def format_daily_summary_from_houravg(docs, need_fields: set) -> str:
-    """일 평균과 전체적 추이를 포맷팅"""
-    if not docs:
-        return "해당 날짜의 시간별 데이터가 없습니다."
-    
-    daily_avg = calculate_daily_average_from_houravg(docs)
-    daily_trend = calculate_daily_trend_from_houravg(docs)
-    
-    fields = list(need_fields) if need_fields else ["temperature", "humidity", "gas"]
-    lines = ["[일간 요약 (houravg 기반)]"]
-    
-    for f in fields:
-        name = FIELD_NAME_KOR.get(f, f)
-        
-        # 일 평균
-        if f in daily_avg:
-            lines.append(f"{name} 일 평균: {daily_avg[f]:.1f}")
-        
-        # 전체적 추이
-        if f in daily_trend:
-            t = daily_trend[f]
-            cr = t.get("change_rate")
-            st = t.get("status")
-            se = f"(시작 {t.get('start_value'):.1f}, 끝 {t.get('end_value'):.1f})"
-            lines.append(f"{name} 전체 추이: {st} {cr} {se}")
-    
-    lines.append(f"[총 {len(docs)}시간 데이터]")
-    return "\n".join(lines)
-
-def format_houravg_answer_from_doc(d, need_fields: set) -> str:
-    tag = d.get("tag","D?")
-    j = d.get("json") or {}
-    av = j.get("averages", {}) or {}
-    ranges = j.get("hourly_ranges", {}) or {}
-    trends = j.get("trends", {}) or {}
-
-    av_std = {"temperature": av.get("temp") or j.get("hourtemp"),
-              "humidity": av.get("hum") or j.get("hourhum"), 
-              "gas": av.get("gas") or j.get("hourgas")}
-    rng_std = {
-        "temperature": (ranges.get("temp") or {}),
-        "humidity":    (ranges.get("hum") or {}),
-        "gas":         (ranges.get("gas") or {}),
-    }
-    tr_std  = {
-        "temperature": trends.get("temperature"),
-        "humidity":    trends.get("humidity"),
-        "gas":         trends.get("gas"),
-    }
-
-    fields = list(need_fields) if need_fields else ["temperature","humidity","gas"]
-
-    if len(fields) == 1:
-        f = fields[0]
-        name = FIELD_NAME_KOR.get(f, f)
-        parts = []
-        if av_std.get(f) is not None:
-            parts.append(f"{name} 평균: {av_std[f]}")
-        r = rng_std.get(f) or {}
-        if r:
-            parts.append(f"{name} 범위: [{r.get('min')}~{r.get('max')}]")
-        t = tr_std.get(f)
-        if t:
-            cr = t.get("change_rate"); st = t.get("status")
-            se = f"(시작 {t.get('start_value')}, 끝 {t.get('end_value')})" if t and t.get("start_value") is not None else ""
-            parts.append(f"{name} 추세: {st} {cr} {se}".strip())
-        return ("\n".join(parts) if parts else f"{name}: 데이터 없음") + f" [{tag}]"
-
-    lines = ["[시간 단위 집계 요약]"]
-    for f in fields:
-        name = FIELD_NAME_KOR.get(f, f)
-        if av_std.get(f) is not None:
-            lines.append(f"{name} 평균: {av_std[f]}")
-        r = rng_std.get(f) or {}
-        if r:
-            lines.append(f"{name} 범위: [{r.get('min')}~{r.get('max')}]")
-        t = tr_std.get(f)
-        if t:
-            cr = t.get("change_rate"); st = t.get("status")
-            se = f"(시작 {t.get('start_value')}, 끝 {t.get('end_value')})" if t and t.get("start_value") is not None else ""
-            lines.append(f"{name} 추세: {st} {cr} {se}".strip())
-    overall = trends.get("overall")
-    if overall:
-        lines.append(f"전체 추세: {overall}")
-    return "\n".join(lines) + f" [{tag}]"
-
-def format_minavg_answer_from_doc(d, need_fields: set) -> str:
-    tag = d.get("tag","D?")
-    j = d.get("json") or {}
-    
-    # 실제 minavg 데이터 구조에 맞게 파싱
-    av_std = {"temperature": j.get("mintemp"),
-              "humidity": j.get("minhum"), 
-              "gas": j.get("mingas")}
-
-    fields = list(need_fields) if need_fields else ["temperature","humidity","gas"]
-
-    if len(fields) == 1:
-        f = fields[0]
-        name = FIELD_NAME_KOR.get(f, f)
-        value = av_std.get(f)
-        if value is not None:
-            return f"해당 분의 {name}는 평균 **{value}**입니다. [{tag}]"
-        else:
-            return f"해당 분의 {name} 데이터가 없습니다. [{tag}]"
-
-    lines = ["**분 단위 환경 상태**"]
-    for f in fields:
-        name = FIELD_NAME_KOR.get(f, f)
-        value = av_std.get(f)
-        if value is not None:
-            lines.append(f"• {name}: **{value}**")
-        else:
-            lines.append(f"• {name}: 데이터 없음")
-    return "\n".join(lines) + f" [{tag}]"
 
 
 # ===== 정확 모드 =====
@@ -3523,8 +3240,7 @@ HISTORY: List[Dict] = []
 _FOLLOWUP_HINTS = ("같은", "그때", "그 때", "방금", "바로 전에", "이전", "앞의", "동일", "위의", "아까", "해당", "최근", "습도", "공기질", "이산화탄소", "CO2", "gas")
 
 # 시간 참조 우선순위 구분
-_RECENT_TIME_HINTS = ("방금", "바로 전에", "방금 전에", "지금 막", "바로", "직전", "방금 말한", "바로 전에 말한", "가장 최근", "가장 최근 말한", "최근 말한")  # 가장 최근 컨텍스트
-_PREVIOUS_TIME_HINTS = ("이전에", "이전", "앞의", "아까", "앞에서", "이전에 말한")  # 이전 컨텍스트
+_RECENT_TIME_HINTS = ("방금", "바로 전에", "방금 전에", "지금 막", "바로", "직전", "방금 말한", "바로 전에 말한", "가장 최근", "가장 최근 말한", "최근 말한","이전에", "이전", "앞의", "아까", "앞에서", "이전에 말한")  # 가장 최근 컨텍스트
 
 def reset_session():
     """세션 종료 시 히스토리와 컨텍스트 초기화"""
@@ -3613,12 +3329,12 @@ def clear_followup_timestamp(session=None):
 
 def expand_followup_query_with_last_window(query: str, session=None) -> str:
     """후속 질문에 이전 질문의 정확한 시간 정보 추가 (개선된 시간 참조 구분)"""
-    print(f"[DEBUG-FOLLOWUP] 입력 쿼리: '{query}'")
+    #print(f"[DEBUG-FOLLOWUP] 입력 쿼리: '{query}'")
     
     # 현재 질문에 이미 시간 정보가 있으면 후속질문이 아님
     current_dt_strings = extract_datetime_strings(query)
     if current_dt_strings:
-        print(f"[DEBUG-FOLLOWUP] 시간 정보 있음, 확장 안함")
+        #print(f"[DEBUG-FOLLOWUP] 시간 정보 있음, 확장 안함")
         return query
     
     # 상대적 시간 표현이 있으면 후속질문이 아님 (직접 처리)
@@ -3642,12 +3358,18 @@ def expand_followup_query_with_last_window(query: str, session=None) -> str:
         return query
     
     # 일간 평균 질문은 후속질문 처리 안함 (독립적인 질문)
-    is_daily_avg = (("평균" in query and "일" in query and any(s in query for s in ["온도", "습도", "공기질", "이산화탄소"])) or
-                   ("오늘" in query and "평균" in query and any(s in query for s in ["온도", "습도", "공기질", "이산화탄소"])) or
-                   ("오늘" in query and any(s in query for s in ["온도", "습도", "공기질", "이산화탄소"])))
-    print(f"[DEBUG-FOLLOWUP] is_daily_avg: {is_daily_avg}")
+    # 센서 키워드 확장 (장소 키워드 포함)
+    sensor_keywords_followup = ["온도", "습도", "공기질", "이산화탄소", "CO2", "gas", "강의실", "실내", "실온", "방안", "교실", "사무실"]
+    has_sensor_followup = any(s in query for s in sensor_keywords_followup)
+    
+    is_daily_avg = (("평균" in query and "일" in query and has_sensor_followup) or
+                   ("오늘" in query and "평균" in query and has_sensor_followup) or
+                   ("오늘" in query and has_sensor_followup) or
+                   (bool(re.search(r"\d{1,2}\s*월\s*\d{1,2}\s*일", query)) and has_sensor_followup) or
+                   (any(rel_day in query for rel_day in ["어제", "그제", "엊그제", "내일", "모레"]) and has_sensor_followup))
+    #print(f"[DEBUG-FOLLOWUP] is_daily_avg: {is_daily_avg}")
     if is_daily_avg:
-        print(f"[DEBUG-FOLLOWUP] 일간 평균 질문으로 확장 안함")
+        #print(f"[DEBUG-FOLLOWUP] 일간 평균 질문으로 확장 안함")
         return query
     
     # 후속질문 힌트가 없고 센서 질문인 경우, 독립적인 센서 질문으로 처리
@@ -3659,7 +3381,6 @@ def expand_followup_query_with_last_window(query: str, session=None) -> str:
     
     # 시간 참조 타입 구분
     has_recent_hint = any(h in query for h in _RECENT_TIME_HINTS)  # "방금", "바로 전에" 등
-    has_previous_hint = any(h in query for h in _PREVIOUS_TIME_HINTS)  # "이전에", "아까" 등
     
     
     # 사용자 피드백 반영: "이전에 말한"도 바로 전 질문을 의미함
@@ -3950,9 +3671,7 @@ def chat_with_session(session_id: str = None):
     print(f"[세션] 활성 세션 수: {len(USER_SESSIONS)}")
     if len(session.history) > 0:
         print(f"[세션] 이전 대화 {len(session.history)}개 로드됨")
-    print("- RAW·MINAVG·HOURAVG 자동 인식 / 초·분·시간·일 / 구간·지속시간 / 추이 / 처음·마지막 / 원본")
-    print("- '상세/자세히/상세히/원본/목록'으로 직전 창 RAW 전체 출력 + 새 센서 질문 시 컨텍스트 초기화")
-    print(f"설정: 병렬 워커 {MAX_WORKERS}개, 최대 파일 크기 {MAX_FILE_SIZE//1024}KB, 관련도 임계치 {RELEVANCE_THRESHOLD}")
+    #print(f"설정: 병렬 워커 {MAX_WORKERS}개, 최대 파일 크기 {MAX_FILE_SIZE//1024}KB, 관련도 임계치 {RELEVANCE_THRESHOLD}")
     print(f"히스토리: 최대 {MAX_HISTORY_TURNS}턴 기억, 세션별 독립 관리, 자동 저장")
     print("질문을 입력하세요. 종료하려면 'exit'/'quit'/'q' 입력.\n")
 
@@ -3962,9 +3681,6 @@ def chat():
     """기존 호환성을 위한 단일 세션 채팅 함수"""
     print("RAG Chatbot (S3 + Bedrock Claude Sonnet 4)")
     print(f"[세션] SESSION_ID = {SESSION_ID}")
-    print("- RAW·MINAVG·HOURAVG 자동 인식 / 초·분·시간·일 / 구간·지속시간 / 추이 / 처음·마지막 / 원본")
-    print("- '상세/자세히/상세히/원본/목록'으로 직전 창 RAW 전체 출력 + 새 센서 질문 시 컨텍스트 초기화")
-    print(f"설정: 병렬 워커 {MAX_WORKERS}개, 최대 파일 크기 {MAX_FILE_SIZE//1024}KB, 관련도 임계치 {RELEVANCE_THRESHOLD}")
     print(f"히스토리: 최대 {MAX_HISTORY_TURNS}턴 기억, 종료시 자동 초기화")
     print("질문을 입력하세요. 종료하려면 'exit'/'quit'/'q' 입력.\n")
 
@@ -4007,7 +3723,6 @@ def chat_loop(session=None):
             session.update_activity()
 
         try:
-            t0 = time.time()
 
             # 0-3) 후속질문이라면 직전 센서 구간을 자동 주입
             query = expand_followup_query_with_last_window(query_raw, session)
@@ -4097,15 +3812,11 @@ def chat_loop(session=None):
 
             # 3) S3 로그에 없으면 기존 방식으로 센서 확정 → S3 검색
             top_docs, context = retrieve_documents_from_s3(query, session=session)
-            t_search = time.time() - t0
             if top_docs:
                 pass
 
             # 4) 센서 질의는 항상 RAG + LLM 모드로 처리
             # 검색된 데이터가 있으면 RAG로, 없으면 일반 LLM으로
-
-            # 4) 정확 매칭 실패 → RAG 또는 일반
-            # 데이터가 있으면 RAG, 없으면 일반 LLM
             has_sensor_data = top_docs and any(d.get("schema") in {"raw_list","minavg","houravg","mintrend","daily_average","closest_sensor"} or 
                                                any(pattern in d.get("id", "").lower() 
                                                    for pattern in ["rawdata", "houravg", "minavg", "mintrend", "daily_avg"])
@@ -4155,7 +3866,6 @@ def chat_loop(session=None):
 
 def main():
     """메인 함수 - 다중 사용자 지원 채팅"""
-    import sys
     
     if len(sys.argv) > 1:
         # 세션 ID를 명령행 인수로 받을 수 있음
