@@ -86,9 +86,9 @@ type SettingField = keyof SensorSetting;
 // =========================
 const API_CALL_INTERVAL = 5000; // 5초 간격으로 조회 제한 (로그 폭발 방지)
 const INITIAL_SETTINGS: SettingsState = {
-  temp: { current: 24, target: 0, threshold: 28, triggerEnabled: true },
-  humidity: { current: 30, target: 0, threshold: 70, triggerEnabled: true },
-  co2: { current: 500, target: 0, threshold: 1000, triggerEnabled: true }
+  temp: { current: 24, target: 24, threshold: 28, triggerEnabled: true },
+  humidity: { current: 30, target: 30, threshold: 70, triggerEnabled: true },
+  co2: { current: 500, target: 500, threshold: 1000, triggerEnabled: true }
 };
 
 interface SettingScreenProps {
@@ -122,6 +122,21 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
 
   // 디버그 정보 표시
   const [debugInfo, setDebugInfo] = useState<string>('디버그 정보 없음');
+  
+  // 로그 수집 진행 상황 표시
+  const [scanProgress, setScanProgress] = useState<{
+    current: number;
+    total: number;
+    currentDate: string;
+    foundLogs: number;
+    isScanning: boolean;
+  }>({
+    current: 0,
+    total: 0,
+    currentDate: '',
+    foundLogs: 0,
+    isScanning: false
+  });
 
   // 현재 시간 상태
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleString('ko-KR'));
@@ -220,9 +235,9 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   };
 
   // =========================
-  // 로그 조회 (throttle)
+  // 로그 조회 (성능 최적화)
   // =========================
-  const fetchLogs = useCallback(async (): Promise<void> => {
+  const fetchLogs = useCallback(async (fullRefresh: boolean = false): Promise<void> => {
     const now = Date.now();
 
     if (now - lastApiCall < API_CALL_INTERVAL) {
@@ -239,24 +254,180 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
     try {
       setIsLoading(true);
       setLastApiCall(now);
-      setDebugInfo('📡 API 호출 중.');
-
-      const data = await ControlHistoryService.fetchControlHistoryAll(90); // 최근 90일 전부 모아서
-      if (data.success) {
-        const formattedLogs = data.logs.map(formatLogForDisplay);
-        setLogs(formattedLogs);
-        setConnectionStatus('연결됨');
-        setDebugInfo(`✅ 성공: ${data.totalCount}개 로그, ${formattedLogs.length}개 포맷됨`);
-      } else {
-        setDebugInfo('⚠️ 성공 false 응답');
+      
+      // REFRESH 버튼: 30일, 일반 로딩: 7일
+      const totalDays = fullRefresh ? 30 : 7;
+      const actionText = fullRefresh ? '전체 새로고침' : '최근 로그 조회';
+      
+      // 진행 상황 초기화
+      setScanProgress({
+        current: 0,
+        total: totalDays,
+        currentDate: '',
+        foundLogs: 0,
+        isScanning: true
+      });
+      
+      setDebugInfo(`📡 ${actionText} 시작... (${totalDays}일)`);
+      
+      if (fullRefresh) {
+        setLogs([]); // REFRESH 시에만 기존 로그 초기화
       }
-    } catch (err) {
-      console.error(err);
-      setDebugInfo('❌ 조회 실패');
+
+      // 실시간 진행 상황과 함께 로그 수집
+      await fetchLogsWithProgress(totalDays, !fullRefresh);
+      
+    } catch (err: any) {
+      const errorMessage = err?.message || err?.toString() || '알 수 없는 오류';
+      
+      if (errorMessage.includes('CORS') || errorMessage.includes('Access-Control-Allow-Origin')) {
+        console.error('🌐 CORS 오류 발생:', err);
+        setDebugInfo('🌐 CORS 오류 - 서버의 Access-Control-Allow-Origin 설정을 확인하세요');
+        setConnectionStatus('CORS 오류');
+      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_FAILED')) {
+        console.error('📡 네트워크 오류 발생:', err);
+        setDebugInfo('📡 네트워크 연결 오류 - 서버 상태를 확인하세요');
+        setConnectionStatus('네트워크 오류');
+      } else {
+        console.error('❌ 조회 실패:', err);
+        setDebugInfo('❌ 로그 조회 실패 - 잠시 후 다시 시도하세요');
+        setConnectionStatus('오류');
+      }
     } finally {
       setIsLoading(false);
+      setScanProgress(prev => ({ ...prev, isScanning: false }));
     }
-  }, [isLoading, lastApiCall]); // setLogs, setDebugInfo 제거
+  }, [isLoading, lastApiCall]);
+
+  // 최신 변경사항만 조회 (APPLY 후 사용)
+  const fetchRecentChanges = useCallback(async (): Promise<void> => {
+    try {
+      setDebugInfo('📡 최신 변경사항 확인 중...');
+      
+      // 최근 1일만 조회 (429 오류 방지: 20개로 제한)
+      const response = await ControlHistoryService.fetchControlHistory(20, undefined, getDateStrKST(0));
+      
+      if (response && response.logs && response.logs.length > 0) {
+        const formattedLogs = response.logs.map(formatLogForDisplay);
+        const currentTime = new Date();
+        
+        // 최근 5분 이내 로그만 필터링
+        const recentLogs = formattedLogs.filter(log => {
+          const logTime = new Date(log.timestamp);
+          const diffMinutes = (currentTime.getTime() - logTime.getTime()) / (1000 * 60);
+          return diffMinutes <= 5;
+        });
+        
+        if (recentLogs.length > 0) {
+          // 기존 로그와 병합하여 중복 제거
+          setLogs(prev => {
+            const existingIds = new Set(prev.map(log => log.id));
+            const newLogs = recentLogs.filter(log => !existingIds.has(log.id));
+            const merged = [...newLogs, ...prev];
+            return merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          });
+          
+          setDebugInfo(`✅ ${recentLogs.length}개 최신 로그 추가됨`);
+        } else {
+          setDebugInfo('ℹ️ 새로운 로그 없음');
+        }
+      } else {
+        setDebugInfo('ℹ️ 새로운 로그 없음');
+      }
+    } catch (error) {
+      console.warn('최신 변경사항 조회 실패:', error);
+      setDebugInfo('⚠️ 최신 변경사항 조회 실패');
+    }
+  }, []);
+
+  // 실시간 진행 상황을 보여주는 로그 수집 함수
+  const fetchLogsWithProgress = async (days: number, isIncremental: boolean = false): Promise<void> => {
+    const allLogs: any[] = isIncremental ? [...logs] : []; // 증분 조회면 기존 로그 유지
+    let totalFound = isIncremental ? logs.length : 0;
+
+    for (let i = 0; i < days; i++) {
+      const dateStr = getDateStrKST(-i);
+      
+      // 진행 상황 업데이트
+      setScanProgress(prev => ({
+        ...prev,
+        current: i + 1,
+        currentDate: dateStr,
+      }));
+      
+      setDebugInfo(`📅 ${dateStr} 스캔 중... (${i + 1}/${days})`);
+
+      try {
+        // 해당 날짜의 로그 조회 (429 오류 방지: 20개로 제한)
+        const response = await ControlHistoryService.fetchControlHistory(20, undefined, dateStr);
+        
+        if (response && response.logs && response.logs.length > 0) {
+          const formattedLogs = response.logs.map(formatLogForDisplay);
+          
+          if (isIncremental) {
+            // 증분 조회: 중복 제거 후 병합
+            const existingIds = new Set(allLogs.map(log => log.id));
+            const newLogs = formattedLogs.filter(log => !existingIds.has(log.id));
+            allLogs.push(...newLogs);
+            totalFound += newLogs.length;
+          } else {
+            allLogs.push(...formattedLogs);
+            totalFound += formattedLogs.length;
+          }
+          
+          // 즉시 화면에 로그 표시 (실시간 업데이트)
+          setLogs([...allLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+          
+          // 진행 상황 업데이트
+          setScanProgress(prev => ({
+            ...prev,
+            foundLogs: totalFound,
+          }));
+          
+          const dayCount = isIncremental ? 
+            formattedLogs.filter(log => !new Set(allLogs.slice(0, -formattedLogs.length).map(l => l.id)).has(log.id)).length :
+            formattedLogs.length;
+          
+          setDebugInfo(`📅 ${dateStr}: ${dayCount}개 발견 (총 ${totalFound}개)`);
+        } else {
+          setDebugInfo(`📅 ${dateStr}: 로그 없음 (총 ${totalFound}개)`);
+        }
+        
+        // 각 요청 사이 간격 (429 오류 방지를 위해 대폭 증가)
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 200ms → 2000ms
+        
+      } catch (error: any) {
+        const errorMessage = error?.message || error?.toString() || '알 수 없는 오류';
+        
+        // CORS 오류 특별 처리
+        if (errorMessage.includes('CORS') || errorMessage.includes('Access-Control-Allow-Origin')) {
+          console.warn(`🌐 ${dateStr} CORS 오류 - 서버 설정 확인 필요:`, error);
+          setDebugInfo(`🌐 ${dateStr}: CORS 오류 (서버 설정 확인 필요, 총 ${totalFound}개)`);
+        } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_FAILED')) {
+          console.warn(`📡 ${dateStr} 네트워크 오류:`, error);
+          setDebugInfo(`📡 ${dateStr}: 네트워크 연결 오류 (총 ${totalFound}개)`);
+        } else {
+          console.warn(`❌ ${dateStr} 스캔 실패:`, error);
+          setDebugInfo(`❌ ${dateStr} 스캔 실패 (총 ${totalFound}개)`);
+        }
+      }
+    }
+
+    // 최종 정리
+    setConnectionStatus('연결됨');
+    setDebugInfo(`✅ 스캔 완료: ${days}일 동안 총 ${totalFound}개 로그 발견`);
+  };
+
+  // 날짜 문자열 생성 헬퍼 함수
+  const getDateStrKST = (offsetDays: number = 0): string => {
+    const now = new Date();
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    const kst = new Date(utc + 9 * 60 * 60000 + offsetDays * 86400000);
+    const y = kst.getFullYear();
+    const m = String(kst.getMonth() + 1).padStart(2, '0');
+    const d = String(kst.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
 
   // =========================
   // 입력 변경 / 토글
@@ -299,7 +470,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         sensor_type: mapSensorType(type as SensorType),
         before_value: setting.current,
         status,
-        after_value: setting.target,
+        after_value: setting.target || setting.current, // target이 0이면 current 값 사용
       };
 
       const result = await ControlLogService.createControlLog(logData);
@@ -309,7 +480,10 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
           ...prev,
           [type]: { ...prev[type], status },
         }));
-        setDebugInfo('✅ 적용 완료 - 로그를 보려면 REFRESH 버튼을 클릭하세요');
+        
+        // 성공 후 최신 변경사항만 조회
+        await fetchRecentChanges();
+        
         addNotification(`${type.toUpperCase()} 센서 설정이 적용되었습니다.`);
       } else {
         setDebugInfo('⚠️ 적용 실패(success=false)');
@@ -326,6 +500,8 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   // 전체 적용
   // =========================
   const handleApplyAll = async (): Promise<void> => {
+    setIsLoading(true);
+    
     try {
       const tempStatus = determineStatusBySensor('temp', settings.temp.current);
       const humidityStatus = determineStatusBySensor('humidity', settings.humidity.current);
@@ -337,11 +513,19 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         co2: { current: settings.co2.current, target: settings.co2.target, threshold: settings.co2.threshold, status: co2Status },
       });
 
-      setDebugInfo(batchResult.success ? '✅ 전체 적용 완료 - 로그를 보려면 REFRESH 버튼을 클릭하세요' : `⚠️ 일부 실패 (${batchResult.failCount}건)`);
-      addNotification(batchResult.success ? '모든 센서 설정이 적용되었습니다.' : `일부 센서 설정 적용에 실패했습니다. (${batchResult.failCount}건)`);
+      if (batchResult.success) {
+        // 성공 후 최신 변경사항만 조회
+        await fetchRecentChanges();
+        addNotification('모든 센서 설정이 적용되었습니다.');
+      } else {
+        setDebugInfo(`⚠️ 일부 실패 (${batchResult.failCount}건)`);
+        addNotification(`일부 센서 설정 적용에 실패했습니다. (${batchResult.failCount}건)`);
+      }
     } catch (err) {
       console.error(err);
       setDebugInfo('❌ 전체 적용 중 오류');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -356,19 +540,48 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
     setIsAIModalOpen(false);
   };
 
-  const handleApplyAIRecommendation = (recommendation: {
+  const handleApplyAIRecommendation = async (recommendation: {
     temperature: number;
     humidity: number;
     co2: number;
     answer: string;
-  }): void => {
+  }): Promise<void> => {
+    // 먼저 설정값 업데이트
     setSettings(prev => ({
       temp: { ...prev.temp, target: recommendation.temperature, threshold: Math.max(recommendation.temperature + 3, 27) },
       humidity: { ...prev.humidity, target: recommendation.humidity, threshold: Math.max(recommendation.humidity + 15, 65) },
       co2: { ...prev.co2, target: recommendation.co2, threshold: Math.max(recommendation.co2 + 400, 800) }
     }));
 
-    addNotification(`AI 추천 설정이 적용되었습니다. (온도: ${recommendation.temperature}℃, 습도: ${recommendation.humidity}%, CO₂: ${recommendation.co2}ppm)`);
+    // AI 추천값으로 즉시 APPLY ALL 실행
+    setIsLoading(true);
+    
+    try {
+      const tempStatus = determineStatusBySensor('temp', recommendation.temperature);
+      const humidityStatus = determineStatusBySensor('humidity', recommendation.humidity);  
+      const co2Status = determineStatusBySensor('gas', recommendation.co2);
+
+      const batchResult = await ControlLogService.createBatchControlLogs({
+        temp: { current: recommendation.temperature, target: recommendation.temperature, threshold: Math.max(recommendation.temperature + 3, 27), status: tempStatus },
+        humidity: { current: recommendation.humidity, target: recommendation.humidity, threshold: Math.max(recommendation.humidity + 15, 65), status: humidityStatus },
+        co2: { current: recommendation.co2, target: recommendation.co2, threshold: Math.max(recommendation.co2 + 400, 800), status: co2Status },
+      });
+
+      if (batchResult.success) {
+        // 성공 후 최신 변경사항만 조회
+        await fetchRecentChanges();
+        addNotification(`AI 추천 설정이 적용되었습니다. (온도: ${recommendation.temperature}℃, 습도: ${recommendation.humidity}%, CO₂: ${recommendation.co2}ppm)`);
+      } else {
+        setDebugInfo(`⚠️ AI 추천 적용 중 일부 실패 (${batchResult.failCount}건)`);
+        addNotification(`AI 추천 설정 적용 중 일부 실패했습니다. (${batchResult.failCount}건)`);
+      }
+    } catch (err) {
+      console.error('AI 추천 적용 중 오류:', err);
+      setDebugInfo('❌ AI 추천 적용 중 오류');
+      addNotification('AI 추천 설정 적용 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // =========================
@@ -382,7 +595,10 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         if (isConfigured) {
           setConnectionStatus('설정됨');
           console.log('✅ API 설정 확인 완료');
-          // 자동 로그 로딩 제거 - 사용자가 수동으로 REFRESH 버튼을 눌러야 함
+          
+          // 페이지 진입 시 최근 7일 로그 자동 로딩
+          setDebugInfo('📡 최근 7일 로그 자동 로딩 중...');
+          await fetchLogs(false); // 7일 조회
         } else {
           setConnectionStatus('설정 필요');
           console.warn('⚠️ API 설정이 필요합니다');
@@ -641,14 +857,56 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                         alert('⏱️ 다른 작업이 진행 중입니다. 잠시 후 다시 시도해주세요.');
                         return;
                       }
-                      fetchLogs();
+                      fetchLogs(true); // 전체 새로고침 (30일)
                     }}
                     disabled={isLoading}
                     className={`${styles.btn} ${styles.btnSlate} ${isLoading ? styles.btnDisabled : ''}`}
                   >
-                    {isLoading ? '⏳ 로딩중...' : 'REFRESH'}
+                    {isLoading ? '⏳ 새로고침중...' : 'REFRESH (30일)'}
                   </button>
                 </div>
+
+                {/* 스캔 진행 상황 표시 */}
+                {scanProgress.isScanning && (
+                  <div className={styles.scanProgress}>
+                    <div className={styles.progressHeader}>
+                      <span className={styles.progressTitle}>📡 로그 스캔 진행 중...</span>
+                      <span className={styles.progressStats}>
+                        {scanProgress.current}/{scanProgress.total} 일자 완료 
+                        ({scanProgress.foundLogs}개 로그 발견)
+                      </span>
+                    </div>
+                    
+                    <div className={styles.progressBar}>
+                      <div 
+                        className={styles.progressFill}
+                        style={{ 
+                          width: `${(scanProgress.current / scanProgress.total) * 100}%`,
+                          transition: 'width 0.3s ease'
+                        }}
+                      />
+                    </div>
+                    
+                    <div className={styles.progressDetails}>
+                      <span className={styles.currentDate}>
+                        📅 현재: {scanProgress.currentDate}
+                      </span>
+                      <span className={styles.progressPercent}>
+                        {Math.round((scanProgress.current / scanProgress.total) * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 스캔 완료 상태 표시 */}
+                {!scanProgress.isScanning && scanProgress.foundLogs > 0 && (
+                  <div className={styles.scanComplete}>
+                    <span className={styles.completeIcon}>✅</span>
+                    <span className={styles.completeText}>
+                      스캔 완료: {scanProgress.total}일 동안 총 {scanProgress.foundLogs}개 로그 발견
+                    </span>
+                  </div>
+                )}
 
                 <div className={styles.tableWrap}>
                   <div ref={loadMoreRef} style={{ height: 1 }} />

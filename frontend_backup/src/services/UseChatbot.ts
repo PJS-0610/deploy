@@ -47,31 +47,59 @@ export const useChatbot = () => {
     try {
       setChatbotState(prev => ({ ...prev, modelStatus: 'Loading' }));
       
-      // 저장된 메시지 먼저 로드
-      let savedMessages: ChatMessage[] = [];
+      // 세션 상태 확인
+      let shouldStartNew = false;
       try {
-        const { loadChatMessages } = require('../utils/sessionUtils');
-        savedMessages = loadChatMessages();
-        console.log('💾 Loaded saved messages:', savedMessages.length);
+        const { getChatbotSessionState } = require('../utils/sessionUtils');
+        const state = getChatbotSessionState();
+        
+        // 5분 이상 지났고 이전에 챗봇에 있었다면 새 채팅 시작
+        if (state.shouldShowHistory && state.wasInChatbot) {
+          shouldStartNew = true;
+          console.log('🔄 Starting new chat after being away');
+        }
       } catch (error) {
-        console.warn('Failed to load saved messages:', error);
+        console.warn('Failed to check session state:', error);
+      }
+      
+      // 저장된 메시지 로드 (새 채팅 시작하지 않는 경우에만)
+      let savedMessages: ChatMessage[] = [];
+      if (!shouldStartNew) {
+        try {
+          const { loadChatMessages } = require('../utils/sessionUtils');
+          savedMessages = loadChatMessages();
+          console.log('💾 Loaded saved messages:', savedMessages.length);
+        } catch (error) {
+          console.warn('Failed to load saved messages:', error);
+        }
       }
       
       // 건강 상태 확인
       const healthStatus = await ChatbotAPI.checkHealth();
       
       if (healthStatus.status === 'healthy') {
-        // 저장된 메시지가 있으면 복원, 없으면 웰컴 메시지 생성
+        // 새 채팅 시작이거나 저장된 메시지가 없으면 웰컴 메시지 생성
         let initialMessages: ChatMessage[] = [];
         
-        if (savedMessages.length > 0) {
-          initialMessages = savedMessages;
-          console.log('🔄 Restored previous conversation');
-        } else {
+        if (shouldStartNew || savedMessages.length === 0) {
+          // 이전 대화 메시지 삭제하고 새 채팅 시작
+          if (shouldStartNew) {
+            try {
+              const { clearChatMessages, setShouldShowHistory } = require('../utils/sessionUtils');
+              clearChatMessages();
+              setShouldShowHistory(false);
+            } catch (error) {
+              console.warn('Failed to clear old messages:', error);
+            }
+          }
+          
           // 센서 데이터를 포함한 웰컴 메시지 생성
           const welcomeMessage = await ChatbotUtils.createWelcomeMessageWithSensorData();
           initialMessages = [welcomeMessage];
           console.log('🎉 Started new conversation');
+        } else {
+          initialMessages = savedMessages;
+          console.log('🔄 Restored previous conversation');
         }
         
         setChatbotState(prev => ({
@@ -311,9 +339,9 @@ function extractSensorDataFromResponse(response: string) {
 
   if (tempMatch || humMatch || gasMatch) {
     return {
-      temperature: tempMatch ? parseFloat(tempMatch[1]) : Math.random() * 10 + 20,
-      humidity: humMatch ? parseFloat(humMatch[1]) : Math.random() * 30 + 40,
-      gasConcentration: gasMatch ? parseFloat(gasMatch[1]) : Math.random() * 400 + 600,
+      temperature: tempMatch ? parseFloat(parseFloat(tempMatch[1]).toFixed(1)) : parseFloat((Math.random() * 10 + 20).toFixed(1)),
+      humidity: humMatch ? parseFloat(parseFloat(humMatch[1]).toFixed(1)) : parseFloat((Math.random() * 30 + 40).toFixed(1)),
+      gasConcentration: gasMatch ? parseFloat(parseFloat(gasMatch[1]).toFixed(1)) : parseFloat((Math.random() * 400 + 600).toFixed(1)),
     };
   }
 

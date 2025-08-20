@@ -6,7 +6,14 @@ import { v4 as uuidv4 } from 'uuid';
 const SESSION_STORAGE_KEY = 'chatbot_session_id';
 const SESSION_TIMESTAMP_KEY = 'chatbot_session_timestamp';
 const SESSION_MESSAGES_KEY = 'chatbot_session_messages';
+const SESSION_STATE_KEY = 'chatbot_session_state';
 const SESSION_EXPIRY_HOURS = 24; // 24시간 후 세션 만료
+
+interface SessionState {
+  wasInChatbot: boolean;
+  lastVisitTime: number;
+  shouldShowHistory: boolean;
+}
 
 /**
  * 새로운 세션 ID 생성
@@ -81,6 +88,7 @@ export const clearSessionId = (): void => {
     localStorage.removeItem(SESSION_STORAGE_KEY);
     localStorage.removeItem(SESSION_TIMESTAMP_KEY);
     localStorage.removeItem(SESSION_MESSAGES_KEY);
+    localStorage.removeItem(SESSION_STATE_KEY);
   } catch (error) {
     console.warn('Failed to clear session ID from localStorage:', error);
   }
@@ -146,5 +154,79 @@ export const clearChatMessages = (): void => {
     localStorage.removeItem(messagesKey);
   } catch (error) {
     console.warn('Failed to clear chat messages:', error);
+  }
+};
+
+/**
+ * 챗봇 페이지 방문 상태 저장
+ */
+export const setChatbotVisitState = (wasInChatbot: boolean): void => {
+  try {
+    const state: SessionState = {
+      wasInChatbot,
+      lastVisitTime: Date.now(),
+      shouldShowHistory: false
+    };
+    localStorage.setItem(SESSION_STATE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.warn('Failed to save chatbot visit state:', error);
+  }
+};
+
+/**
+ * 히스토리 표시 상태 설정
+ */
+export const setShouldShowHistory = (shouldShow: boolean): void => {
+  try {
+    const existingState = getChatbotSessionState();
+    const state: SessionState = {
+      ...existingState,
+      shouldShowHistory: shouldShow,
+      lastVisitTime: Date.now()
+    };
+    localStorage.setItem(SESSION_STATE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.warn('Failed to set show history state:', error);
+  }
+};
+
+/**
+ * 챗봇 세션 상태 조회
+ */
+export const getChatbotSessionState = (): SessionState => {
+  try {
+    const stateStr = localStorage.getItem(SESSION_STATE_KEY);
+    if (stateStr) {
+      const state = JSON.parse(stateStr);
+      // 5분 이상 지났으면 상태 초기화
+      const fiveMinutes = 5 * 60 * 1000;
+      if (Date.now() - state.lastVisitTime > fiveMinutes) {
+        return {
+          wasInChatbot: false,
+          lastVisitTime: Date.now(),
+          shouldShowHistory: true
+        };
+      }
+      return state;
+    }
+  } catch (error) {
+    console.warn('Failed to get chatbot session state:', error);
+  }
+  
+  return {
+    wasInChatbot: false,
+    lastVisitTime: Date.now(),
+    shouldShowHistory: false
+  };
+};
+
+/**
+ * 세션 상태 초기화
+ */
+export const clearSessionState = (): void => {
+  try {
+    localStorage.removeItem(SESSION_STATE_KEY);
+  } catch (error) {
+    console.warn('Failed to clear session state:', error);
   }
 };

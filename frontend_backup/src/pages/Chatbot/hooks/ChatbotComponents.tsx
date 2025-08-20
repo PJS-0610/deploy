@@ -235,7 +235,7 @@ export const SensorDataCard: React.FC<SensorDataCardProps> = ({ sensorData }) =>
         {/* 3) CO2 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#111827' }}>
           <span>💨 CO₂ CONCENTRATION</span>
-          <span>{sensorData.gasConcentration.toFixed(0)}ppm</span>
+          <span>{sensorData.gasConcentration.toFixed(1)}ppm</span>
           <span style={badgeStyle(gasStatus)}>{gasStatus}</span>
         </div>
       </div>
@@ -413,9 +413,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {[
-                { label: '🌡️ 온도', value: `${message.sensorData.temperature}°C`, status: message.status },
-                { label: '💧 습도', value: `${message.sensorData.humidity}%`, status: message.status },
-                { label: '🌬️ CO₂', value: `${message.sensorData.gasConcentration}ppm`, status: message.status },
+                { label: '🌡️ 온도', value: `${message.sensorData.temperature.toFixed(1)}°C`, status: message.status },
+                { label: '💧 습도', value: `${message.sensorData.humidity.toFixed(1)}%`, status: message.status },
+                { label: '🌬️ CO₂', value: `${message.sensorData.gasConcentration.toFixed(1)}ppm`, status: message.status },
               ].map((item, idx) => (
                 <div key={idx} style={{ 
                   display: 'flex', 

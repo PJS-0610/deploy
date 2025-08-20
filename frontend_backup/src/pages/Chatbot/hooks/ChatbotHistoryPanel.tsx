@@ -260,6 +260,22 @@ const ChatbotHistoryPanel: React.FC<HistoryPanelProps> = ({
                         <strong>답변:</strong>
                         <p>{turn.answer}</p>
                       </div>
+                      <button
+                        onClick={() => {
+                          // 해당 턴까지의 히스토리로 대화 재개
+                          const upToCurrentTurn = historyState.currentHistory.slice(0, 
+                            historyState.currentHistory.findIndex(t => t.turn_id === turn.turn_id) + 1
+                          );
+                          if (onHistoryLoad) {
+                            onHistoryLoad(upToCurrentTurn);
+                          }
+                        }}
+                        className={styles['continue-btn']}
+                        type="button"
+                        title="이 지점부터 대화 계속하기"
+                      >
+                        이어서 대화하기
+                      </button>
                     </div>
                   </div>
                 ))}

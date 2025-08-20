@@ -123,7 +123,7 @@ const ChatbotExample: React.FC = () => {
                 }}>
                   🌡️ {message.sensorData.temperature.toFixed(1)}°C | 
                   💧 {message.sensorData.humidity.toFixed(1)}% | 
-                  🌬️ {message.sensorData.gasConcentration.toFixed(0)}ppm
+                  🌬️ {message.sensorData.gasConcentration.toFixed(1)}ppm
                 </div>
               )}
               

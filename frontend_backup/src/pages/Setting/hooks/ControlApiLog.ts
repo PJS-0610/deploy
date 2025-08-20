@@ -102,7 +102,7 @@ export class ControlLogService {
           sensor_type: sensor.type,
           before_value: sensor.data.current,
           status: sensor.data.status,
-          after_value: sensor.data.target,
+          after_value: sensor.data.target || sensor.data.current, // target이 0이면 current 값 사용
         };
         const res = await this.createControlLog(log);
         results.push(res);

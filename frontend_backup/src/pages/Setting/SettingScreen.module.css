@@ -468,7 +468,10 @@ gap: 8px;
 /* 테이블 */
 .tableWrap {
   overflow-x: auto;
+  overflow-y: auto;
   width: 100%;
+  max-height: 600px;
+  position: relative;
 }
 
 .table {
@@ -967,4 +970,167 @@ gap: 8px;
   .grid > div:last-child .currentLeft { grid-column: 1 / 2; }
   .grid > div:last-child .input { grid-column: 2 / 3; }
   .grid > div:last-child .btn { grid-column: 1 / 3; }
+}
+
+/* ===========================================
+   📊 스캔 진행 상황 표시
+   =========================================== */
+
+/* 스캔 진행 상황 컨테이너 */
+.scanProgress {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  animation: slideIn 0.3s ease-out;
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+  min-height: 120px;
+}
+
+/* 진행 상황 헤더 */
+.progressHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.progressTitle {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.progressStats {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* 진행률 바 */
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 4px;
+  position: relative;
+}
+
+.progressFill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+/* 진행 상황 세부 정보 */
+.progressDetails {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.currentDate {
+  font-size: 12px;
+  color: #475569;
+  font-family: 'Courier New', monospace;
+}
+
+.progressPercent {
+  font-size: 13px;
+  font-weight: 700;
+  color: #3b82f6;
+}
+
+/* 스캔 완료 상태 */
+.scanComplete {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.completeIcon {
+  font-size: 16px;
+}
+
+.completeText {
+  font-size: 13px;
+  color: #166534;
+  font-weight: 500;
+}
+
+/* 애니메이션 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* 반응형 대응 */
+@media (max-width: 768px) {
+  .progressHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .progressDetails {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .scanProgress {
+    padding: 12px;
+  }
 }

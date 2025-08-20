@@ -272,7 +272,7 @@ return (
             className={`${styles.filterPill} ${historyState?.filters?.sensorType === 'GAS' ? styles.selected : ''}`}
             onClick={() => { updateFilter('sensorType', 'GAS'); applyFilters(); }}
           >
-            CO2 CONCENTRATION
+            CO₂ CONCENTRATION
           </button>
         </div>
       </div>

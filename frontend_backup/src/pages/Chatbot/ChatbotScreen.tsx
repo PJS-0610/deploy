@@ -52,6 +52,34 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
   // 🆕 히스토리 패널 상태 추가
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
+  // 🆕 페이지 상태 관리 - 처음 마운트 시 히스토리 확인
+  useEffect(() => {
+    try {
+      const { getChatbotSessionState, setChatbotVisitState } = require('../../utils/sessionUtils');
+      const state = getChatbotSessionState();
+      
+      // 5분 이상 지났고 이전에 챗봇에 있었다면 히스토리 패널 열기
+      if (state.shouldShowHistory && state.wasInChatbot) {
+        setIsHistoryExpanded(true);
+      }
+      
+      // 현재 챗봇 페이지에 있음을 표시
+      setChatbotVisitState(true);
+    } catch (error) {
+      console.warn('Failed to manage chatbot visit state:', error);
+    }
+
+    // 페이지 언마운트 시 상태 저장
+    return () => {
+      try {
+        const { setChatbotVisitState } = require('../../utils/sessionUtils');
+        setChatbotVisitState(false);
+      } catch (error) {
+        console.warn('Failed to update visit state on unmount:', error);
+      }
+    };
+  }, []);
+
   // 기존 UI 상태 관리 (변경 없음)
   const [notificationData, setNotificationData] = useState<NotificationData>({
     count: 0,

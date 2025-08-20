@@ -20,30 +20,50 @@ private static sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// ControlApiHistory.ts - 429 오류에 더 보수적으로 대응
+// ControlApiHistory.ts - 429 오류에 매우 보수적으로 대응하는 재시도 로직
 private static async requestWithRetry(
   url: string,
   init: RequestInit,
-  maxRetries = 3, // ✅ 기본 재시도 횟수 줄임 5→3
-  baseDelayMs = 1000 // ✅ 기본 지연 시간 증가 500→1000ms
+  maxRetries = 5, // ✅ 429 오류로 인해 재시도 줄임 8→5
+  baseDelayMs = 2000 // ✅ 기본 지연 시간 대폭 증가 800→2000ms
 ) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 20000); // ✅ 타임아웃 15→20초로 증가
+    const t = setTimeout(() => controller.abort(), 30000); // ✅ 타임아웃 20→30초로 증가
     
     try {
-      const res = await fetch(url, { ...init, signal: controller.signal, cache: 'no-store' });
+      // CORS 오류 방지를 위한 헤더 추가
+      const enhancedInit = {
+        ...init,
+        signal: controller.signal,
+        cache: 'no-store' as RequestCache,
+        mode: 'cors' as RequestMode,
+        credentials: 'omit' as RequestCredentials,
+        headers: {
+          ...init.headers,
+          'Content-Type': 'application/json',
+        }
+      };
+
+      const res = await fetch(url, enhancedInit);
       clearTimeout(t);
 
-      // ✅ 429/503 오류 처리 - 더 긴 대기 시간
-      if (res.status === 429 || res.status === 503) {
+      // ✅ 429/503/502/504 오류 처리 - 매우 보수적인 대기 시간
+      if (res.status === 429 || res.status === 503 || res.status === 502 || res.status === 504) {
         if (attempt === maxRetries) {
-          console.warn(`⚠️ 최대 재시도 횟수 도달 (${maxRetries}), 429/503 응답 반환`);
+          console.warn(`⚠️ 최대 재시도 횟수 도달 (${maxRetries}), ${res.status} 응답 반환`);
           return res;
         }
         
-        const jitter = Math.floor(Math.random() * 500); // ✅ 지터 증가 250→500ms
-        const delay = baseDelayMs * (2 ** attempt) + jitter;
+        const jitter = Math.floor(Math.random() * 2000); // ✅ 지터 대폭 증가 1000→2000ms
+        let delay = baseDelayMs * (3 ** attempt) + jitter; // ✅ 지수를 3으로 변경 (더 빠르게 증가)
+        
+        // 429 오류는 특별히 더 오래 대기
+        if (res.status === 429) {
+          delay = Math.min(delay * 2, 60000); // ✅ 429는 2배 더 오래, 최대 60초
+        } else {
+          delay = Math.min(delay, 30000); // ✅ 다른 오류는 최대 30초
+        }
         
         console.warn(`⚠️ ${res.status} 오류, ${delay/1000}초 후 재시도 (${attempt + 1}/${maxRetries})`);
         await this.sleep(delay);
@@ -51,17 +71,41 @@ private static async requestWithRetry(
       }
       
       return res;
-    } catch (e) {
+    } catch (e: any) {
       clearTimeout(t);
+      
+      // CORS 오류 특별 처리
+      const isCorsError = e.message?.includes('CORS') || 
+                         e.message?.includes('Access-Control-Allow-Origin') ||
+                         e.message?.includes('preflight');
+      
+      const isNetworkError = e.message?.includes('Failed to fetch') || 
+                            e.message?.includes('ERR_FAILED') ||
+                            e.name === 'TypeError';
+
       if (attempt === maxRetries) {
-        console.error(`❌ 최대 재시도 횟수 도달, 오류 발생:`, e);
+        if (isCorsError) {
+          console.error(`❌ CORS 오류로 최대 재시도 도달 (${maxRetries}회):`, e.message);
+        } else if (isNetworkError) {
+          console.error(`❌ 네트워크 오류로 최대 재시도 도달 (${maxRetries}회):`, e.message);
+        } else {
+          console.error(`❌ 알 수 없는 오류로 최대 재시도 도달 (${maxRetries}회):`, e);
+        }
         throw e;
       }
       
-      const jitter = Math.floor(Math.random() * 500);
-      const delay = baseDelayMs * (2 ** attempt) + jitter;
+      const jitter = Math.floor(Math.random() * 1000);
+      let delay = Math.min(baseDelayMs * (2 ** attempt) + jitter, 15000);
       
-      console.warn(`⚠️ 네트워크 오류, ${delay/1000}초 후 재시도 (${attempt + 1}/${maxRetries}):`, e);
+      // CORS 오류나 네트워크 오류는 더 긴 대기
+      if (isCorsError || isNetworkError) {
+        delay = Math.min(delay * 1.5, 20000); // 1.5배 더 오래 대기, 최대 20초
+      }
+      
+      const errorType = isCorsError ? 'CORS' : 
+                       isNetworkError ? '네트워크' : '알 수 없는';
+      
+      console.warn(`⚠️ ${errorType} 오류, ${delay/1000}초 후 재시도 (${attempt + 1}/${maxRetries}):`, e.message || e);
       await this.sleep(delay);
     }
   }
@@ -118,20 +162,20 @@ static async fetchControlHistoryAll(
       const res = await this.requestWithRetry(
         url,
         { method: 'GET', headers: this.getHeaders(), cache: 'no-store' },
-        3,   // ✅ 재시도 횟수 5→3으로 줄임
-        800  // ✅ 초기 백오프 500→800ms로 증가
+        10,  // ✅ 재시도 횟수 대폭 증가 3→10
+        600  // ✅ 초기 백오프 800→600ms로 조정
       );
 
       if (res.status === 429) {
         console.warn(`⚠️ 429 on date=${dateStr}, skip this day`);
         consecutiveErrors++;
         
-        // ✅ 연속 429 오류가 많으면 더 긴 휴식
-        if (consecutiveErrors >= 3) {
-          console.warn(`⚠️ 연속 429 오류 ${consecutiveErrors}회, 3초 휴식`);
-          await this.sleep(3000);
+        // ✅ 연속 429 오류가 많으면 매우 긴 휴식
+        if (consecutiveErrors >= 2) {
+          console.warn(`⚠️ 연속 429 오류 ${consecutiveErrors}회, 10초 휴식`);
+          await this.sleep(10000); // 3초 → 10초
         } else {
-          await this.sleep(1000); // ✅ 400→1000ms로 증가
+          await this.sleep(3000); // ✅ 1초 → 3초로 증가
         }
         continue;
       }
@@ -155,8 +199,8 @@ static async fetchControlHistoryAll(
       }
     }
 
-    // ✅ 각 일자 요청 사이 간격을 더 길게 (300→800ms)
-    await this.sleep(800);
+    // ✅ 각 일자 요청 사이 간격을 매우 길게 (800→3000ms)
+    await this.sleep(3000);
   }
 
   all.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -193,8 +237,8 @@ static async fetchControlHistory(
       const res = await this.requestWithRetry(
         url,
         { method: 'GET', headers: this.getHeaders(), cache: 'no-store' },
-        2, // 단일 요청이므로 재시도는 적게
-        800
+        8, // ✅ 단일 요청도 재시도 횟수 증가 2→8
+        600
       );
       
       console.log('🔍 Control History API 응답:', {
@@ -229,8 +273,8 @@ static async fetchControlHistory(
       continue;
     }
 
-    // ✅ 날짜 간 요청 사이 간격
-    await this.sleep(500);
+    // ✅ 날짜 간 요청 사이 간격 대폭 증가
+    await this.sleep(2000); // 500ms → 2000ms
   }
   return last ?? { success: true, totalCount: 0, logs: [] }; // 둘 다 비면 빈 결과
 }
