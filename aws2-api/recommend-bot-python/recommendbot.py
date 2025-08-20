@@ -1,7 +1,7 @@
 import json
 import re
 import boto3
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Optional
 
 # AWS 설정
@@ -9,7 +9,7 @@ s3_data = boto3.client('s3')
 bedrock = boto3.client('bedrock-runtime', region_name='ap-northeast-2')
 
 S3_BUCKET_DATA = "aws2-airwatch-data"
-MAX_FILES_TO_SCAN = 50
+MAX_FILES_TO_SCAN = 30
 INFERENCE_PROFILE_ARN = "arn:aws:bedrock:ap-northeast-2:070561229682:inference-profile/apac.anthropic.claude-sonnet-4-20250514-v1:0"
 
 def extract_external_conditions(query: str) -> dict:
@@ -47,19 +47,55 @@ def find_current_indoor_temperature() -> Optional[Dict]:
     try:
         current_time = datetime.now()
         
-        # S3에서 최근 파일들 조회
-        response = s3_data.list_objects_v2(
-            Bucket=S3_BUCKET_DATA,
-            MaxKeys=MAX_FILES_TO_SCAN
-        )
+        # S3에서 minavg/ 폴더의 최근 파일들 조회 - 최신 날짜부터 검색
+        current_date = datetime.now()
+        
+        # 최근 7일간의 데이터를 우선 검색 - 각 날짜에서 늦은 시간부터
+        for days_back in range(0, 7):
+            search_date = current_date - timedelta(days=days_back)
+            
+            # 해당 날짜에서 늦은 시간(23시)부터 역순으로 검색
+            for hour in range(23, -1, -1):
+                hour_prefix = f"minavg/{search_date.strftime('%Y/%m/%d')}/{hour:02d}/"
+                
+                response = s3_data.list_objects_v2(
+                    Bucket=S3_BUCKET_DATA,
+                    Prefix=hour_prefix,
+                    MaxKeys=MAX_FILES_TO_SCAN
+                )
+                
+                if response.get('Contents'):
+                    actual_files = [obj for obj in response['Contents'] if not obj['Key'].endswith('/')]
+                    if actual_files:
+                        # 파일명 기준으로 분 단위 역순 정렬 (예: 202508191759 -> 202508191700)
+                        actual_files.sort(key=lambda x: x['Key'], reverse=True)
+                        print(f"DEBUG: S3 응답 - {len(actual_files)}개 파일 발견 (날짜: {search_date.strftime('%Y-%m-%d')} {hour:02d}시)")
+                        response['Contents'] = actual_files  # 실제 파일만 유지
+                        break
+            else:
+                continue  # 이 날짜에 데이터가 없으면 다음 날짜로
+            break  # 데이터를 찾았으면 검색 종료
+        else:
+            # 최근 7일에 데이터가 없으면 전체 검색
+            response = s3_data.list_objects_v2(
+                Bucket=S3_BUCKET_DATA,
+                Prefix='minavg/',
+                MaxKeys=MAX_FILES_TO_SCAN * 10  # 더 많이 검색해서 최신을 찾음
+            )
+            print(f"DEBUG: S3 응답 - {len(response.get('Contents', []))}개 파일 발견 (전체 검색)")
+        
+        if response.get('Contents'):
+            print(f"DEBUG: 첫 번째 파일 - {response['Contents'][0]['Key']}")
+            print(f"DEBUG: 마지막 파일 - {response['Contents'][-1]['Key']}")
         
         if 'Contents' not in response:
+            print("DEBUG: S3에서 Contents가 없음")
             return None
             
         best_match = None
         best_time_diff = float('inf')
         
-        # 최신 파일부터 확인
+        # 파일들을 최신 순으로 정렬 (이미 실제 파일만 들어있음)
         files = sorted(response['Contents'], key=lambda x: x['LastModified'], reverse=True)
         
         for obj in files[:MAX_FILES_TO_SCAN]:
@@ -68,7 +104,9 @@ def find_current_indoor_temperature() -> Optional[Dict]:
                 content = file_response['Body'].read().decode('utf-8')
                 
                 # JSON Lines 형식으로 처리 (각 줄이 JSON 객체)
-                for line in content.strip().split('\n'):
+                lines = content.strip().split('\n')
+                
+                for line_num, line in enumerate(lines):
                     if not line.strip():
                         continue
                         
@@ -96,6 +134,7 @@ def find_current_indoor_temperature() -> Optional[Dict]:
                             
                         # 현재 시간과의 차이 계산
                         time_diff = abs((data_time - current_time).total_seconds())
+                        time_diff_hours = time_diff / 3600
                         
                         # 온도 데이터가 있는지 확인
                         temperature = None
@@ -107,8 +146,8 @@ def find_current_indoor_temperature() -> Optional[Dict]:
                         if temperature is None:
                             continue
                             
-                        # 더 가까운 시간의 데이터인지 확인 (24시간 이내만)
-                        if time_diff < (86400 * 2) and time_diff < best_time_diff:  # 24시간 = 86400초
+                        # 더 가까운 시간의 데이터인지 확인 (30일 이내만)
+                        if time_diff < (86400 * 30) and time_diff < best_time_diff:  # 30일 = 86400*30초
                             best_time_diff = time_diff
                             best_match = {
                                 'timestamp': timestamp_str,
