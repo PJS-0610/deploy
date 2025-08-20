@@ -76,6 +76,18 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
     }
   };
 
+  // 🆕 세션 알림 메시지 생성
+  const getSessionNotification = (): string => {
+    // 🔧 여기에서 세션 알림 내용을 수정하세요
+    const currentSessionId = getCurrentSessionId();
+    if (!currentSessionId) {
+      return "세션이 생성되지 않았습니다";
+    }
+    
+    // 기본 알림 메시지 (원하는 내용으로 수정 가능)
+    return `세션 활성화 (24시간 유지)`;
+  };
+
   // 🆕 히스토리 로드 핸들러
   const handleHistoryLoad = (turns: any[]) => {
     if (loadChatHistory) {
@@ -199,6 +211,7 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
             <ChatbotHeader
               modelStatus={chatbotState.modelStatus as 'Active' | 'Inactive' | 'Loading'}
               onNewChat={handleNewChat}
+              sessionNotification={getSessionNotification()}
             />
 
             {/* 메시지 영역 */}

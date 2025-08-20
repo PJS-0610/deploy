@@ -1,7 +1,7 @@
 // src/components/chatbot/hooks/ChatbotComponents.tsx
 
-import React from 'react';
-import { Send, Wifi, WifiOff, AlertCircle, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Send, Wifi, WifiOff, AlertCircle, Plus, Info } from 'lucide-react';
 import { ChatMessage, SensorData } from '../../../services/ChatbotTypes';
 
 // ========== ChatbotHeader ==========
@@ -9,12 +9,14 @@ interface ChatbotHeaderProps {
   modelStatus: 'Active' | 'Inactive' | 'Loading';
   onBackClick?: () => void;  // 선택적으로 변경
   onNewChat?: () => void;    // 새 채팅 버튼 콜백 추가
+  sessionNotification?: string;  // 세션 알림 메시지 (선택적)
 }
 
 export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({
   modelStatus,
   onBackClick,
-  onNewChat
+  onNewChat,
+  sessionNotification
 }) => {
   const getStatusColor = () => {
     switch (modelStatus) {
@@ -92,6 +94,9 @@ export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({
             {getStatusText()}
           </span>
         </div>
+
+        {/* 세션 알림 영역 - i 아이콘과 호버 툴팁 */}
+        {sessionNotification && <SessionInfoTooltip message={sessionNotification} />}
       </div>
 
 
@@ -767,6 +772,92 @@ export const ChatbotInput: React.FC<ChatbotInputProps> = ({
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// ========== SessionInfoTooltip ==========
+interface SessionInfoTooltipProps {
+  message: string;
+}
+
+const SessionInfoTooltip: React.FC<SessionInfoTooltipProps> = ({ message }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div style={{
+      position: 'relative',
+      marginLeft: '8px'
+    }}>
+      {/* i 아이콘 */}
+      <div 
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '18px',
+          height: '18px',
+          borderRadius: '50%',
+          backgroundColor: '#e0e7ff',
+          border: '1px solid #c7d2fe',
+          color: '#4338ca',
+          cursor: 'help',
+          fontSize: '11px',
+          fontWeight: '600',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <Info size={11} />
+      </div>
+
+      {/* 호버 툴팁 */}
+      {isHovered && (
+        <div style={{
+          position: 'absolute',
+          top: '25px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#1f2937',
+          color: 'white',
+          padding: '8px 12px',
+          borderRadius: '8px',
+          fontSize: '11px',
+          fontWeight: '500',
+          whiteSpace: 'nowrap',
+          zIndex: 1000,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          animation: 'tooltipFadeIn 0.2s ease-out'
+        }}>
+          {message}
+          {/* 화살표 */}
+          <div style={{
+            position: 'absolute',
+            top: '-4px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '0',
+            height: '0',
+            borderLeft: '4px solid transparent',
+            borderRight: '4px solid transparent',
+            borderBottom: '4px solid #1f2937'
+          }} />
+        </div>
+      )}
+
+      <style>{`
+        @keyframes tooltipFadeIn {
+          from { 
+            opacity: 0; 
+            transform: translateX(-50%) translateY(-5px); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translateX(-50%) translateY(0); 
+          }
         }
       `}</style>
     </div>

@@ -229,6 +229,26 @@
   }
 }
 
+/* 유효성 검증 에러 스타일 */
+.inputError {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 1px #dc2626;
+}
+
+.fieldError {
+  color: #dc2626;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fieldError::before {
+  content: "⚠";
+  font-size: 0.8rem;
+}
+
 /* 반응형 조정 */
 @media (max-width: 640px) {
   .modalContent {

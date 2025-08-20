@@ -25,6 +25,12 @@ interface FormData {
   external_air_quality: string;
 }
 
+interface ValidationState {
+  external_temperature: string | null;
+  external_humidity: string | null;
+  external_air_quality: string | null;
+}
+
 const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
   isOpen,
   onClose,
@@ -36,15 +42,54 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
     external_air_quality: '',
   });
   
+  const [validation, setValidation] = useState<ValidationState>({
+    external_temperature: null,
+    external_humidity: null,
+    external_air_quality: null,
+  });
+  
   const [isLoading, setIsLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const validateField = (field: keyof FormData, value: string): string | null => {
+    if (!value.trim()) return null;
+    
+    const num = parseFloat(value);
+    if (isNaN(num)) return '유효한 숫자를 입력해주세요.';
+    
+    switch (field) {
+      case 'external_temperature':
+        if (num < -50 || num > 60) return '온도는 -50°C ~ 60°C 범위 내에서 입력해주세요.';
+        break;
+      case 'external_humidity':
+        if (num < 0 || num > 100) return '습도는 0% ~ 100% 범위 내에서 입력해주세요.';
+        break;
+      case 'external_air_quality':
+        if (num < 0 || num > 10000) return '공기질은 0ppm ~ 10000ppm 범위 내에서 입력해주세요.';
+        break;
+    }
+    return null;
+  };
+
   const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    // 빈 문자열이거나 숫자(소수점 포함) 형태만 허용
+    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+      
+      // 실시간 유효성 검증
+      const validationError = validateField(field, value);
+      setValidation(prev => ({
+        ...prev,
+        [field]: validationError
+      }));
+      
+      // 전체 에러 메시지 초기화
+      if (error) setError(null);
+    }
   };
 
   const handleGetRecommendation = async () => {
@@ -53,27 +98,58 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
     setRecommendation(null);
 
     try {
-      // 입력값 검증 - 최소 하나는 입력되어야 함
-      const hasInput = formData.external_temperature || 
-                      formData.external_humidity || 
-                      formData.external_air_quality;
+      // 입력값 검증 및 변환
+      const requestData: OptimalRecommendRequest = {};
+      let hasValidInput = false;
+      
+      // 온도 검증
+      if (formData.external_temperature.trim()) {
+        const temp = parseFloat(formData.external_temperature);
+        if (isNaN(temp)) {
+          setError('온도는 유효한 숫자를 입력해주세요.');
+          return;
+        }
+        if (temp < -50 || temp > 60) {
+          setError('온도는 -50°C ~ 60°C 범위 내에서 입력해주세요.');
+          return;
+        }
+        requestData.external_temperature = temp;
+        hasValidInput = true;
+      }
+      
+      // 습도 검증
+      if (formData.external_humidity.trim()) {
+        const humidity = parseFloat(formData.external_humidity);
+        if (isNaN(humidity)) {
+          setError('습도는 유효한 숫자를 입력해주세요.');
+          return;
+        }
+        if (humidity < 0 || humidity > 100) {
+          setError('습도는 0% ~ 100% 범위 내에서 입력해주세요.');
+          return;
+        }
+        requestData.external_humidity = humidity;
+        hasValidInput = true;
+      }
+      
+      // 공기질 검증
+      if (formData.external_air_quality.trim()) {
+        const airQuality = parseFloat(formData.external_air_quality);
+        if (isNaN(airQuality)) {
+          setError('공기질은 유효한 숫자를 입력해주세요.');
+          return;
+        }
+        if (airQuality < 0 || airQuality > 10000) {
+          setError('공기질은 0ppm ~ 10000ppm 범위 내에서 입력해주세요.');
+          return;
+        }
+        requestData.external_air_quality = airQuality;
+        hasValidInput = true;
+      }
 
-      if (!hasInput) {
+      if (!hasValidInput) {
         setError('외부 환경 조건 중 최소 하나 이상을 입력해주세요.');
         return;
-      }
-
-      // API 요청 데이터 준비
-      const requestData: OptimalRecommendRequest = {};
-      
-      if (formData.external_temperature) {
-        requestData.external_temperature = parseFloat(formData.external_temperature);
-      }
-      if (formData.external_humidity) {
-        requestData.external_humidity = parseFloat(formData.external_humidity);
-      }
-      if (formData.external_air_quality) {
-        requestData.external_air_quality = parseFloat(formData.external_air_quality);
       }
 
       // API 호출
@@ -119,6 +195,11 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
       external_humidity: '',
       external_air_quality: '',
     });
+    setValidation({
+      external_temperature: null,
+      external_humidity: null,
+      external_air_quality: null,
+    });
     setRecommendation(null);
     setError(null);
   };
@@ -158,10 +239,13 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
                   value={formData.external_temperature}
                   onChange={(e) => handleInputChange('external_temperature', e.target.value)}
                   placeholder="예: 30"
-                  className={styles.input}
+                  className={`${styles.input} ${validation.external_temperature ? styles.inputError : ''}`}
                   min="-50"
                   max="60"
                 />
+                {validation.external_temperature && (
+                  <div className={styles.fieldError}>{validation.external_temperature}</div>
+                )}
               </div>
 
               <div className={styles.inputGroup}>
@@ -174,10 +258,13 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
                   value={formData.external_humidity}
                   onChange={(e) => handleInputChange('external_humidity', e.target.value)}
                   placeholder="예: 70"
-                  className={styles.input}
+                  className={`${styles.input} ${validation.external_humidity ? styles.inputError : ''}`}
                   min="0"
                   max="100"
                 />
+                {validation.external_humidity && (
+                  <div className={styles.fieldError}>{validation.external_humidity}</div>
+                )}
               </div>
 
               <div className={styles.inputGroup}>
@@ -190,10 +277,13 @@ const AIRecommendationModal: React.FC<AIRecommendationModalProps> = ({
                   value={formData.external_air_quality}
                   onChange={(e) => handleInputChange('external_air_quality', e.target.value)}
                   placeholder="예: 1400"
-                  className={styles.input}
+                  className={`${styles.input} ${validation.external_air_quality ? styles.inputError : ''}`}
                   min="0"
                   max="10000"
                 />
+                {validation.external_air_quality && (
+                  <div className={styles.fieldError}>{validation.external_air_quality}</div>
+                )}
               </div>
             </div>
           </div>
