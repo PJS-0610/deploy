@@ -17,6 +17,7 @@ try:
         get_or_create_session,
         cleanup_expired_sessions,
         ENABLE_CHATLOG_SAVE,
+        MAX_HISTORY_TURNS,
         RELEVANCE_THRESHOLD,
         extract_datetime_strings,
         parse_dt,
