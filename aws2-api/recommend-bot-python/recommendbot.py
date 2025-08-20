@@ -108,7 +108,7 @@ def find_current_indoor_temperature() -> Optional[Dict]:
                             continue
                             
                         # 더 가까운 시간의 데이터인지 확인 (24시간 이내만)
-                        if time_diff < 86400 and time_diff < best_time_diff:  # 24시간 = 86400초
+                        if time_diff < 186400 and time_diff < best_time_diff:  # 24시간 = 86400초
                             best_time_diff = time_diff
                             best_match = {
                                 'timestamp': timestamp_str,
