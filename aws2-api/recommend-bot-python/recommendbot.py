@@ -9,7 +9,7 @@ s3_data = boto3.client('s3')
 bedrock = boto3.client('bedrock-runtime', region_name='ap-northeast-2')
 
 S3_BUCKET_DATA = "aws2-airwatch-data"
-MAX_FILES_TO_SCAN = 30
+MAX_FILES_TO_SCAN = 20
 INFERENCE_PROFILE_ARN = "arn:aws:bedrock:ap-northeast-2:070561229682:inference-profile/apac.anthropic.claude-sonnet-4-20250514-v1:0"
 
 def extract_external_conditions(query: str) -> dict:
@@ -69,7 +69,6 @@ def find_current_indoor_temperature() -> Optional[Dict]:
                     if actual_files:
                         # 파일명 기준으로 분 단위 역순 정렬 (예: 202508191759 -> 202508191700)
                         actual_files.sort(key=lambda x: x['Key'], reverse=True)
-                        print(f"DEBUG: S3 응답 - {len(actual_files)}개 파일 발견 (날짜: {search_date.strftime('%Y-%m-%d')} {hour:02d}시)")
                         response['Contents'] = actual_files  # 실제 파일만 유지
                         break
             else:
@@ -82,14 +81,9 @@ def find_current_indoor_temperature() -> Optional[Dict]:
                 Prefix='minavg/',
                 MaxKeys=MAX_FILES_TO_SCAN * 10  # 더 많이 검색해서 최신을 찾음
             )
-            print(f"DEBUG: S3 응답 - {len(response.get('Contents', []))}개 파일 발견 (전체 검색)")
         
-        if response.get('Contents'):
-            print(f"DEBUG: 첫 번째 파일 - {response['Contents'][0]['Key']}")
-            print(f"DEBUG: 마지막 파일 - {response['Contents'][-1]['Key']}")
         
         if 'Contents' not in response:
-            print("DEBUG: S3에서 Contents가 없음")
             return None
             
         best_match = None
