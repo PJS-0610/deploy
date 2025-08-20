@@ -29,23 +29,56 @@ export const useChatbot = () => {
     scrollToBottom();
   }, [chatbotState.messages, chatbotState.isTyping]);
 
+  // 메시지가 변경될 때마다 localStorage에 저장
+  useEffect(() => {
+    if (chatbotState.messages.length > 0) {
+      try {
+        const { saveChatMessages } = require('../utils/sessionUtils');
+        saveChatMessages(chatbotState.messages);
+        console.log('💾 Saved messages to localStorage:', chatbotState.messages.length);
+      } catch (error) {
+        console.warn('Failed to save messages:', error);
+      }
+    }
+  }, [chatbotState.messages]);
+
   // 챗봇 초기화
   const initializeChatbot = async () => {
     try {
       setChatbotState(prev => ({ ...prev, modelStatus: 'Loading' }));
       
+      // 저장된 메시지 먼저 로드
+      let savedMessages: ChatMessage[] = [];
+      try {
+        const { loadChatMessages } = require('../utils/sessionUtils');
+        savedMessages = loadChatMessages();
+        console.log('💾 Loaded saved messages:', savedMessages.length);
+      } catch (error) {
+        console.warn('Failed to load saved messages:', error);
+      }
+      
       // 건강 상태 확인
       const healthStatus = await ChatbotAPI.checkHealth();
       
       if (healthStatus.status === 'healthy') {
-        // 센서 데이터를 포함한 웰컴 메시지 생성
-        const welcomeMessage = await ChatbotUtils.createWelcomeMessageWithSensorData();
+        // 저장된 메시지가 있으면 복원, 없으면 웰컴 메시지 생성
+        let initialMessages: ChatMessage[] = [];
+        
+        if (savedMessages.length > 0) {
+          initialMessages = savedMessages;
+          console.log('🔄 Restored previous conversation');
+        } else {
+          // 센서 데이터를 포함한 웰컴 메시지 생성
+          const welcomeMessage = await ChatbotUtils.createWelcomeMessageWithSensorData();
+          initialMessages = [welcomeMessage];
+          console.log('🎉 Started new conversation');
+        }
         
         setChatbotState(prev => ({
           ...prev,
           modelStatus: 'Active',
           isConnected: true,
-          messages: [welcomeMessage],
+          messages: initialMessages,
         }));
       } else {
         throw new Error(healthStatus.error || 'Chatbot is not available');
@@ -175,6 +208,15 @@ export const useChatbot = () => {
 
   // 채팅 히스토리 초기화
   const clearHistory = useCallback(async () => {
+    // localStorage에서 저장된 메시지 삭제
+    try {
+      const { clearChatMessages } = require('../utils/sessionUtils');
+      clearChatMessages();
+      console.log('🗑️ Cleared saved messages from localStorage');
+    } catch (error) {
+      console.warn('Failed to clear saved messages:', error);
+    }
+
     const welcomeMessage = await ChatbotUtils.createWelcomeMessageWithSensorData();
     setChatbotState(prev => ({
       ...prev,

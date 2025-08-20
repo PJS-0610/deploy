@@ -353,6 +353,15 @@ export const useAppRouter = () => {
     // 🧹 모든 세션 데이터 완전 삭제
     RoleSelectUtils.clearSavedRole();              // 역할 선택 정보 삭제
     sessionStorage.removeItem('isAuthenticated');  // 인증 상태 삭제
+    
+    // 📞 챗봇 세션 ID 및 저장된 메시지 삭제 (24시간 만료 대신 즉시 삭제)
+    try {
+      const { clearSessionId } = require('../utils/sessionUtils');
+      clearSessionId(); // 세션 ID, 타임스탬프, 저장된 메시지 모두 삭제
+      console.log('🗑️ Cleared chatbot session and saved messages');
+    } catch (error) {
+      console.warn('Failed to clear chatbot session:', error);
+    }
 
     // 🔄 애플리케이션 상태를 초기 상태로 리셋
     setAppState({

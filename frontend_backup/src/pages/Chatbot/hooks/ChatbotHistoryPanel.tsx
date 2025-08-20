@@ -24,27 +24,42 @@ const ChatbotHistoryPanel: React.FC<HistoryPanelProps> = ({
     isExpanded: false
   });
 
-  // 세션 목록 로드
-  const loadSessions = useCallback(async () => {
+  // 현재 세션의 히스토리 로드 (세션 목록이 아닌 현재 세션만)
+  const loadCurrentSessionHistory = useCallback(async () => {
+    if (!currentSessionId) {
+      console.log('⚠️ No current session ID, skipping history load');
+      return;
+    }
+
     try {
-      console.log('🔄 Loading sessions...');
+      console.log('🔄 Loading current session history:', currentSessionId);
       setHistoryState(prev => ({ ...prev, isLoading: true, error: null }));
-      const response = await ChatbotHistoryAPI.getChatbotSessions({});
-      console.log('✅ Sessions loaded:', response.sessions?.length || 0, 'sessions');
+      const response = await ChatbotHistoryAPI.getChatbotHistory(currentSessionId, {});
+      console.log('✅ Current session history loaded:', response.turns?.length || 0, 'turns');
+      
       setHistoryState(prev => ({
         ...prev,
-        sessions: response.sessions || [],
+        currentHistory: response.turns || [],
+        selectedSession: currentSessionId,
+        sessions: response.turns && response.turns.length > 0 ? [{
+          session_id: currentSessionId,
+          first_turn_date: response.start_date,
+          last_turn_date: response.end_date,
+          total_turns: response.total_turns,
+          last_query: response.turns[response.turns.length - 1]?.query || '',
+          last_answer: response.turns[response.turns.length - 1]?.answer || ''
+        }] : [],
         isLoading: false
       }));
     } catch (error) {
-      console.error('❌ Failed to load sessions:', error);
+      console.error('❌ Failed to load current session history:', error);
       setHistoryState(prev => ({
         ...prev,
         isLoading: false,
-        error: error instanceof Error ? error.message : '세션 목록을 불러올 수 없습니다.'
+        error: error instanceof Error ? error.message : '현재 세션 히스토리를 불러올 수 없습니다.'
       }));
     }
-  }, []);
+  }, [currentSessionId]);
 
   // 특정 세션의 히스토리 로드
   const loadSessionHistory = useCallback(async (sessionId: string) => {
@@ -81,8 +96,15 @@ const ChatbotHistoryPanel: React.FC<HistoryPanelProps> = ({
   }, [onHistoryLoad]);
 
   useEffect(() => {
-    if (isExpanded) loadSessions();
-  }, [isExpanded, loadSessions]);
+    if (isExpanded) loadCurrentSessionHistory();
+  }, [isExpanded, loadCurrentSessionHistory]);
+
+  // 현재 세션 ID가 변경되면 히스토리 새로고침
+  useEffect(() => {
+    if (isExpanded && currentSessionId) {
+      loadCurrentSessionHistory();
+    }
+  }, [currentSessionId, isExpanded, loadCurrentSessionHistory]);
 
   // 시간 포맷팅
   const formatTime = (timestamp: string) => {
@@ -128,8 +150,13 @@ const ChatbotHistoryPanel: React.FC<HistoryPanelProps> = ({
           <div className={styles['history-header']}>
             <h3 className={styles['history-title']}>
               <MessageCircle size={20} />
-              대화 히스토리
+              현재 세션 히스토리
             </h3>
+            {currentSessionId && (
+              <p style={{ fontSize: '0.8em', color: '#666', margin: '4px 0 0 0' }}>
+                세션: {currentSessionId.substring(0, 8)}...
+              </p>
+            )}
           </div>
 
           {/* 에러 표시 */}
@@ -154,19 +181,22 @@ const ChatbotHistoryPanel: React.FC<HistoryPanelProps> = ({
             </div>
           )}
 
-          {/* 세션 목록 */}
+          {/* 현재 세션 정보 */}
           {!historyState.selectedSession && (
             <div className={styles['sessions-list']}>
               {historyState.sessions.length === 0 && !historyState.isLoading ? (
                 <div className={styles['empty-state']}>
                   <Clock size={24} />
-                  <p>저장된 대화가 없습니다.</p>
+                  <p>현재 세션에 저장된 대화가 없습니다.</p>
+                  <p style={{ fontSize: '0.9em', color: '#666', marginTop: '8px' }}>
+                    {currentSessionId ? `세션 ID: ${currentSessionId.substring(0, 8)}...` : '세션이 없습니다.'}
+                  </p>
                 </div>
               ) : (
                 historyState.sessions.map((session: any) => (
                   <div
                     key={session.session_id}
-                    className={`${styles['session-item']} ${currentSessionId === session.session_id ? styles.current : ''}`}
+                    className={`${styles['session-item']} ${styles.current}`}
                     onClick={() => loadSessionHistory(session.session_id)}
                     role="button"
                     tabIndex={0}

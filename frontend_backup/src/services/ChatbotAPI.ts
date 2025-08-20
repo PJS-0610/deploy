@@ -475,6 +475,14 @@ class ChatbotAPIImpl implements ChatbotAPIType {
 
   // 메시지 전송
   async sendMessage(text: string) {
+    // 📞 대화 시마다 세션 갱신 (24시간 연장)
+    try {
+      const { refreshSession } = require('../utils/sessionUtils');
+      refreshSession();
+    } catch (error) {
+      console.warn('Failed to refresh session:', error);
+    }
+
     const url = `${this.baseURL}${ASK_PATH}`;
     const requestBody: Record<string, unknown> = { query: text };
 

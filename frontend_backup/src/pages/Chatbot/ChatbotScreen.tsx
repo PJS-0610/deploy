@@ -65,11 +65,15 @@ const ChatbotScreen: React.FC<ChatbotScreenProps> = ({
     setIsHistoryExpanded(prev => !prev);
   };
 
-  // 🆕 현재 세션 ID 추출 (chatbotState에서 sessionId 확인)
+  // 🆕 현재 세션 ID 추출
   const getCurrentSessionId = (): string | null => {
-    // UseChatbot에서 sessionId를 관리하고 있다면 그것을 사용
-    // 현재는 직접적으로 노출되지 않으므로, 임시로 null 반환
-    return null;
+    try {
+      const { getSessionId } = require('../../utils/sessionUtils');
+      return getSessionId();
+    } catch (error) {
+      console.warn('Failed to get current session ID:', error);
+      return null;
+    }
   };
 
   // 🆕 히스토리 로드 핸들러
