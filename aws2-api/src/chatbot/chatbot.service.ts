@@ -20,7 +20,7 @@ export class ChatbotService {
   private readonly timeout = 60000; // 60초 타임아웃
 
   constructor(private readonly s3Service: S3Service) {
-    // 파이썬 스크립트 경로 설정
+    // 파이썬 스크립트 경로 설정 (chatbot.py 연결용 api_wrapper.py)
     this.pythonScriptPath = join(process.cwd(), 'python-scripts', 'api_wrapper.py');
     this.logger.log(`Python script path: ${this.pythonScriptPath}`);
   }

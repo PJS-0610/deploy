@@ -7,7 +7,7 @@ from datetime import datetime
 # 추천봇 모듈 import
 try:
     from recommendbot import answer_query
-    
+
 except ImportError as e:
     print(json.dumps({
         "error": "Failed to import recommendbot module",
@@ -21,19 +21,19 @@ def process_recommendation_query(query: str) -> dict:
     """
     try:
         start_time = datetime.now()
-        
+
         # 추천봇에 질의 처리
         answer = answer_query(query)
-        
+
         processing_time = (datetime.now() - start_time).total_seconds()
-        
+
         result = {
             "answer": answer,
             "status": "success",
             "processing_time": processing_time,
             "mode": "recommend_bot"
         }
-        
+
         return result
 
     except Exception as e:
@@ -54,7 +54,7 @@ def main():
     """
     try:
         query = ""
-        
+
         # stdin으로 JSON 입력을 받는 경우
         try:
             input_data = json.loads(sys.stdin.read())
@@ -66,7 +66,7 @@ def main():
             }
             print(json.dumps(result, ensure_ascii=False))
             return
-        
+
         if not query:
             result = {
                 "error": "No query provided",
@@ -74,7 +74,7 @@ def main():
             }
         else:
             result = process_recommendation_query(query)
-        
+
         # JSON 응답 출력
         print(json.dumps(result, ensure_ascii=False))
         
