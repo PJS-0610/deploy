@@ -963,3 +963,126 @@
 .statusWARNING {
   background-color: #dc2626;
 }
+
+/* ===========================================
+   🔄 QuickSight 로딩 및 에러 상태 스타일
+   =========================================== */
+
+/* QuickSight 로딩 중앙 정렬 */
+.quicksightLoadingCenter {
+  text-align: center;
+  padding: 40px;
+}
+
+.quicksightLoadingTitle {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+/* QuickSight 에러 버튼 컨테이너 */
+.quicksightErrorButtons {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: center;
+}
+
+/* QuickSight 재시도 버튼 */
+.quicksightRetryButton {
+  padding: 8px 16px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* QuickSight 새로고침 버튼 */
+.quicksightRefreshButton {
+  padding: 8px 16px;
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* QuickSight 다시 시도 버튼 (placeholder에서 사용) */
+.quicksightPlaceholderButton {
+  padding: 8px 16px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* QuickSight URL 에러 컨테이너 */
+.quicksightUrlError {
+  padding: 20px;
+  border: 2px dashed #e5e7eb;
+  border-radius: 8px;
+  text-align: center;
+  background-color: #f9fafb;
+}
+
+.quicksightUrlErrorTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #dc2626;
+}
+
+.quicksightUrlErrorDescription {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.quicksightUrlDetails {
+  margin-top: 8px;
+}
+
+.quicksightUrlDetailsSummary {
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.quicksightUrlCode {
+  display: block;
+  margin-top: 8px;
+  padding: 8px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+  word-break: break-all;
+  font-size: 11px;
+}
+
+/* ===========================================
+   📱 플레이스홀더 메뉴 스타일
+   =========================================== */
+
+/* 메뉴 플레이스홀더 컨테이너 */
+.menuPlaceholder {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.menuPlaceholderTitle {
+  font-size: 24px;
+  font-weight: bold;
+  color: #374151;
+  margin-bottom: 16px;
+}
+
+.menuPlaceholderRoute {
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.menuPlaceholderDescription {
+  font-size: 14px;
+  color: #9ca3af;
+}

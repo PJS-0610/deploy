@@ -623,3 +623,13 @@
 .roleSelectCard:focus-visible {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
 }
+
+/* 로딩 컨테이너 */
+.roleSelectLoadingContainer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+}

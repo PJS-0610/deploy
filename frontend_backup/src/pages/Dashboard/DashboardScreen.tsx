@@ -214,8 +214,8 @@ const QuickSightDashboard: React.FC<{
   if (isLoading) {
     return (
       <div className={styles.loadingContainer}>
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{ fontSize: '18px', marginBottom: '8px' }}>
+        <div className={styles.quicksightLoadingCenter}>
+          <div className={styles.quicksightLoadingTitle}>
             QuickSight 대시보드를 불러오는 중...
           </div>
         </div>
@@ -229,34 +229,16 @@ const QuickSightDashboard: React.FC<{
       <div className={styles.errorContainer}>
         <div className={styles.errorTitle}>⚠️ QuickSight 대시보드 로딩 실패</div>
         <div className={styles.errorMessage}>{error}</div>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'center' }}>
+        <div className={styles.quicksightErrorButtons}>
           <button
             onClick={onRetry}
-            className={styles.retryButton}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
+            className={styles.quicksightRetryButton}
           >
             🔄 다시 시도
           </button>
           <button
             onClick={onRefresh}
-            className={styles.refreshButton}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#6b7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
+            className={styles.quicksightRefreshButton}
           >
             🔄 새로고침
           </button>
@@ -274,14 +256,7 @@ const QuickSightDashboard: React.FC<{
         <p>대시보드 데이터가 없습니다.</p>
         <button
           onClick={onRetry}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer'
-          }}
+          className={styles.quicksightPlaceholderButton}
         >
           다시 시도
         </button>
@@ -315,31 +290,17 @@ const QuickSightDashboard: React.FC<{
           />
         </div>
       ) : (
-        <div style={{
-          padding: '20px',
-          border: '2px dashed #e5e7eb',
-          borderRadius: '8px',
-          textAlign: 'center',
-          backgroundColor: '#f9fafb'
-        }}>
-          <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#dc2626' }}>
+        <div className={styles.quicksightUrlError}>
+          <div className={styles.quicksightUrlErrorTitle}>
             ⚠️ 임베드 URL 형식 오류
           </div>
-          <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
+          <div className={styles.quicksightUrlErrorDescription}>
             백엔드에서 <code>/embed/</code> 경로의 URL을 반환해야 iframe으로 표시 가능합니다.
           </div>
           {dashboardData.embedUrl && (
-            <details style={{ marginTop: '8px' }}>
-              <summary style={{ cursor: 'pointer', fontSize: '12px' }}>현재 URL 확인</summary>
-              <code style={{
-                display: 'block',
-                marginTop: '8px',
-                padding: '8px',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '4px',
-                wordBreak: 'break-all',
-                fontSize: '11px'
-              }}>
+            <details className={styles.quicksightUrlDetails}>
+              <summary className={styles.quicksightUrlDetailsSummary}>현재 URL 확인</summary>
+              <code className={styles.quicksightUrlCode}>
                 {dashboardData.embedUrl}
               </code>
             </details>
@@ -858,14 +819,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             </>
           ) : (
             // 다른 메뉴 선택 시 플레이스홀더
-            <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#374151', marginBottom: '16px' }}>
+            <div className={styles.menuPlaceholder}>
+              <h2 className={styles.menuPlaceholderTitle}>
                 {activeMenu} 페이지
               </h2>
-              <p style={{ color: '#6b7280', marginBottom: '8px' }}>
+              <p className={styles.menuPlaceholderRoute}>
                 현재 선택된 메뉴: {activeMenu}
               </p>
-              <p style={{ fontSize: '14px', color: '#9ca3af' }}>
+              <p className={styles.menuPlaceholderDescription}>
                 실제 페이지 컨텐츠를 여기에 구현하세요.
               </p>
             </div>

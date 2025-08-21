@@ -167,14 +167,7 @@ const RoleCard: React.FC<{
       
       {/* ⏳ 로딩 스피너 - 선택 처리 중일 때 표시 */}
       {isLoading && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          display: 'flex',
-          alignItems: 'center'
-        }}>
+        <div className={styles.roleSelectLoadingContainer}>
           <div className={styles.roleSelectLoadingSpinner} />
           <span className={styles.roleSelectLoadingText}>선택 중...</span>
         </div>

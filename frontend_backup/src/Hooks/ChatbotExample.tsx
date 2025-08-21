@@ -4,6 +4,7 @@
 import React from 'react';
 import { useChatbot } from '../Services/UseChatbot';
 import { ChatbotUtils } from '../Services/ChatbotTypes';
+import styles from './ChatbotExample.module.css';
 
 const ChatbotExample: React.FC = () => {
   const {
@@ -28,28 +29,18 @@ const ChatbotExample: React.FC = () => {
   };
 
   return (
-    <div style={{ 
-      maxWidth: '800px', 
-      margin: '0 auto', 
-      padding: '20px',
-      fontFamily: 'Arial, sans-serif'
-    }}>
+    <div className={styles.container}>
       <h2>챗봇 API 연동 예시</h2>
       
       {/* 연결 상태 표시 */}
-      <div style={{ 
-        padding: '10px', 
-        marginBottom: '20px',
-        borderRadius: '5px',
-        backgroundColor: chatbotState.isConnected ? '#d4edda' : '#f8d7da',
-        color: chatbotState.isConnected ? '#155724' : '#721c24',
-        border: `1px solid ${chatbotState.isConnected ? '#c3e6cb' : '#f5c6cb'}`
-      }}>
+      <div className={`${styles.connectionStatus} ${
+        chatbotState.isConnected ? styles.connectionStatusConnected : styles.connectionStatusDisconnected
+      }`}>
         <strong>연결 상태:</strong> {chatbotState.modelStatus}
         {!chatbotState.isConnected && (
           <button 
             onClick={retryConnection}
-            style={{ marginLeft: '10px', padding: '5px 10px' }}
+            className={styles.reconnectButton}
           >
             재연결
           </button>
@@ -57,23 +48,15 @@ const ChatbotExample: React.FC = () => {
       </div>
 
       {/* 빠른 질문 버튼들 */}
-      <div style={{ marginBottom: '20px' }}>
+      <div className={styles.quickQuestionsContainer}>
         <h4>빠른 질문:</h4>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <div className={styles.quickQuestionsButtonGrid}>
           {quickQuestions.map((question, index) => (
             <button
               key={index}
               onClick={() => handleQuickQuestion(question)}
               disabled={chatbotState.isLoading}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '20px',
-                border: '1px solid #007bff',
-                backgroundColor: '#007bff',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '12px'
-              }}
+              className={styles.quickQuestionButton}
             >
               {question}
             </button>
@@ -82,56 +65,31 @@ const ChatbotExample: React.FC = () => {
       </div>
 
       {/* 메시지 영역 */}
-      <div style={{ 
-        height: '400px', 
-        overflowY: 'auto',
-        border: '1px solid #ccc',
-        borderRadius: '5px',
-        padding: '15px',
-        marginBottom: '15px',
-        backgroundColor: '#f9f9f9'
-      }}>
+      <div className={styles.messageArea}>
         {chatbotState.messages.map((message) => (
           <div 
             key={message.id}
-            style={{
-              marginBottom: '15px',
-              display: 'flex',
-              flexDirection: message.sender === 'user' ? 'row-reverse' : 'row'
-            }}
+            className={`${styles.messageContainer} ${
+              message.sender === 'user' ? styles.messageContainerUser : styles.messageContainerBot
+            }`}
           >
-            <div style={{
-              maxWidth: '70%',
-              padding: '10px 15px',
-              borderRadius: '18px',
-              backgroundColor: message.sender === 'user' ? '#007bff' : '#e9ecef',
-              color: message.sender === 'user' ? 'white' : 'black',
-              wordWrap: 'break-word'
-            }}>
-              <div style={{ whiteSpace: 'pre-wrap' }}>
+            <div className={`${styles.messageBubble} ${
+              message.sender === 'user' ? styles.messageBubbleUser : styles.messageBubbleBot
+            }`}>
+              <div className={styles.messageText}>
                 {message.message}
               </div>
               
               {/* 센서 데이터 표시 */}
               {message.sensorData && (
-                <div style={{ 
-                  marginTop: '10px', 
-                  fontSize: '12px',
-                  opacity: 0.8,
-                  borderTop: '1px solid rgba(255,255,255,0.3)',
-                  paddingTop: '8px'
-                }}>
+                <div className={styles.sensorData}>
                   🌡️ {message.sensorData.temperature.toFixed(1)}°C | 
                   💧 {message.sensorData.humidity.toFixed(1)}% | 
                   🌬️ {message.sensorData.gasConcentration.toFixed(1)}ppm
                 </div>
               )}
               
-              <div style={{ 
-                marginTop: '5px', 
-                fontSize: '10px', 
-                opacity: 0.7 
-              }}>
+              <div className={styles.messageTimestamp}>
                 {ChatbotUtils.formatTime(message.timestamp)}
               </div>
             </div>
@@ -140,19 +98,10 @@ const ChatbotExample: React.FC = () => {
         
         {/* 타이핑 인디케이터 */}
         {chatbotState.isTyping && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            marginBottom: '15px'
-          }}>
-            <div style={{
-              padding: '10px 15px',
-              borderRadius: '18px',
-              backgroundColor: '#e9ecef',
-              color: '#6c757d'
-            }}>
+          <div className={styles.typingIndicator}>
+            <div className={styles.typingIndicatorBubble}>
               <span>챗봇이 입력 중</span>
-              <span style={{ animation: 'blink 1s infinite' }}>...</span>
+              <span className={styles.typingIndicatorAnimation}>...</span>
             </div>
           </div>
         )}
@@ -162,20 +111,13 @@ const ChatbotExample: React.FC = () => {
 
       {/* 에러 메시지 */}
       {chatbotState.error && (
-        <div style={{
-          padding: '10px',
-          backgroundColor: '#f8d7da',
-          color: '#721c24',
-          border: '1px solid #f5c6cb',
-          borderRadius: '5px',
-          marginBottom: '15px'
-        }}>
+        <div className={styles.errorMessage}>
           <strong>오류:</strong> {chatbotState.error}
         </div>
       )}
 
       {/* 입력 영역 */}
-      <div style={{ display: 'flex', gap: '10px' }}>
+      <div className={styles.inputArea}>
         <input
           type="text"
           value={chatbotState.inputMessage}
@@ -183,42 +125,18 @@ const ChatbotExample: React.FC = () => {
           onKeyDown={handleKeyDown}
           placeholder="메시지를 입력하세요..."
           disabled={chatbotState.isLoading}
-          style={{
-            flex: 1,
-            padding: '12px',
-            borderRadius: '25px',
-            border: '1px solid #ccc',
-            outline: 'none',
-            fontSize: '14px'
-          }}
+          className={styles.inputField}
         />
         <button
           onClick={() => sendMessage()}
           disabled={chatbotState.isLoading || !chatbotState.inputMessage.trim()}
-          style={{
-            padding: '12px 20px',
-            borderRadius: '25px',
-            border: 'none',
-            backgroundColor: '#007bff',
-            color: 'white',
-            cursor: 'pointer',
-            fontSize: '14px',
-            minWidth: '80px'
-          }}
+          className={styles.sendButton}
         >
           {chatbotState.isLoading ? '전송 중...' : '전송'}
         </button>
         <button
           onClick={clearHistory}
-          style={{
-            padding: '12px 15px',
-            borderRadius: '25px',
-            border: '1px solid #6c757d',
-            backgroundColor: 'white',
-            color: '#6c757d',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
+          className={styles.clearButton}
         >
           초기화
         </button>
@@ -226,17 +144,11 @@ const ChatbotExample: React.FC = () => {
 
       {/* 디버그 정보 (개발 모드) */}
       {process.env.NODE_ENV === 'development' && (
-        <details style={{ marginTop: '20px' }}>
-          <summary style={{ cursor: 'pointer', padding: '10px' }}>
+        <details className={styles.debugInfo}>
+          <summary className={styles.debugSummary}>
             디버그 정보
           </summary>
-          <pre style={{ 
-            backgroundColor: '#f8f9fa', 
-            padding: '15px', 
-            borderRadius: '5px',
-            fontSize: '12px',
-            overflow: 'auto'
-          }}>
+          <pre className={styles.debugContent}>
             {JSON.stringify({
               messageCount: chatbotState.messages.length,
               isLoading: chatbotState.isLoading,
@@ -250,14 +162,6 @@ const ChatbotExample: React.FC = () => {
         </details>
       )}
 
-      <style>
-        {`
-          @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
-          }
-        `}
-      </style>
     </div>
   );
 };

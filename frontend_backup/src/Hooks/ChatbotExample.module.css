@@ -1,0 +1,240 @@
+/* ChatbotExample.module.css - 챗봇 예시 컴포넌트 스타일 */
+
+/* ===========================================
+   📋 컨테이너 스타일
+   =========================================== */
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+/* ===========================================
+   🔌 연결 상태 표시 스타일
+   =========================================== */
+
+.connectionStatus {
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 5px;
+  border: 1px solid;
+}
+
+.connectionStatusConnected {
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+.connectionStatusDisconnected {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-color: #f5c6cb;
+}
+
+.reconnectButton {
+  margin-left: 10px;
+  padding: 5px 10px;
+}
+
+/* ===========================================
+   ⚡ 빠른 질문 버튼 스타일
+   =========================================== */
+
+.quickQuestionsContainer {
+  margin-bottom: 20px;
+}
+
+.quickQuestionsButtonGrid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.quickQuestionButton {
+  padding: 8px 12px;
+  border-radius: 20px;
+  border: 1px solid #007bff;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.quickQuestionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===========================================
+   💬 메시지 영역 스타일
+   =========================================== */
+
+.messageArea {
+  height: 400px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 15px;
+  background-color: #f9f9f9;
+}
+
+.messageContainer {
+  margin-bottom: 15px;
+  display: flex;
+}
+
+.messageContainerUser {
+  flex-direction: row-reverse;
+}
+
+.messageContainerBot {
+  flex-direction: row;
+}
+
+.messageBubble {
+  max-width: 70%;
+  padding: 10px 15px;
+  border-radius: 18px;
+  word-wrap: break-word;
+}
+
+.messageBubbleUser {
+  background-color: #007bff;
+  color: white;
+}
+
+.messageBubbleBot {
+  background-color: #e9ecef;
+  color: black;
+}
+
+.messageText {
+  white-space: pre-wrap;
+}
+
+.sensorData {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.8;
+  border-top: 1px solid rgba(255,255,255,0.3);
+  padding-top: 8px;
+}
+
+.messageTimestamp {
+  margin-top: 5px;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.typingIndicator {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.typingIndicatorBubble {
+  padding: 10px 15px;
+  border-radius: 18px;
+  background-color: #e9ecef;
+  color: #6c757d;
+}
+
+.typingIndicatorAnimation {
+  animation: blink 1s infinite;
+}
+
+/* ===========================================
+   ❌ 에러 메시지 스타일
+   =========================================== */
+
+.errorMessage {
+  padding: 10px;
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  border-radius: 5px;
+  margin-bottom: 15px;
+}
+
+/* ===========================================
+   📝 입력 영역 스타일
+   =========================================== */
+
+.inputArea {
+  display: flex;
+  gap: 10px;
+}
+
+.inputField {
+  flex: 1;
+  padding: 12px;
+  border-radius: 25px;
+  border: 1px solid #ccc;
+  outline: none;
+  font-size: 14px;
+}
+
+.inputField:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sendButton {
+  padding: 12px 20px;
+  border-radius: 25px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 80px;
+}
+
+.sendButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.clearButton {
+  padding: 12px 15px;
+  border-radius: 25px;
+  border: 1px solid #6c757d;
+  background-color: white;
+  color: #6c757d;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* ===========================================
+   🔧 디버그 정보 스타일
+   =========================================== */
+
+.debugInfo {
+  margin-top: 20px;
+}
+
+.debugSummary {
+  cursor: pointer;
+  padding: 10px;
+}
+
+.debugContent {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  font-size: 12px;
+  overflow: auto;
+}
+
+/* ===========================================
+   🎬 애니메이션
+   =========================================== */
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}

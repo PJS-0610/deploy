@@ -37,6 +37,7 @@
  * - 알림 설정 커스터마이징
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import styles from './AnomalyAlert.module.css';
 
 declare global {
   interface Window {
@@ -175,154 +176,7 @@ const DEFAULT_THRESHOLDS: ThresholdSettings = {
   },
 };
 
-/**
- * 🎨 알림 UI 스타일 정의
- * 
- * React 인라인 스타일로 알림 컴포넌트의 모든 시각적 요소를 정의합니다.
- * CSS-in-JS 방식을 사용하여 외부 CSS 파일 없이도 완전한 스타일링을 제공합니다.
- */
-const styles = {
-  /**
-   * 📍 알림 컨테이너 - 고정 위치 오버레이
-   * 화면 우상단에 고정되어 다른 UI 요소를 가리지 않는 비침입적 알림
-   */
-  alertContainer: {
-    position: 'fixed' as const,    // 화면에 고정
-    top: '20px',                   // 상단에서 20px 떨어진 위치
-    right: '20px',                 // 우측에서 20px 떨어진 위치
-    zIndex: 9999,                  // 모든 다른 UI 요소보다 위에 표시
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '12px',
-    pointerEvents: 'none' as const,
-    maxWidth: '400px',
-    width: '100%',
-  },
-  alert: {
-    pointerEvents: 'auto' as const,
-    background: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-    borderLeft: '4px solid',
-    padding: '16px',
-    minHeight: '80px',
-    display: 'flex',
-    alignItems: 'flex-start' as const,
-    gap: '12px',
-    animation: 'slideIn 0.3s ease-out',
-    transition: 'all 0.2s ease',
-    position: 'relative' as const,
-  },
-  alertWarning: {
-    borderLeftColor: '#f59e0b',
-    background: 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)',
-  },
-  alertDanger: {
-    borderLeftColor: '#dc2626',
-    background: 'linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)',
-  },
-  iconContainer: {
-    flexShrink: 0,
-    width: '24px',
-    height: '24px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '50%',
-    marginTop: '2px',
-    color: '#ffffff',
-  },
-  iconWarning: {
-    background: '#fbbf24',
-  },
-  iconDanger: {
-    background: '#dc2626',
-  },
-  content: {
-    flex: 1,
-    minWidth: 0,
-  },
-  title: {
-    fontSize: '14px',
-    fontWeight: 600,
-    margin: '0 0 4px 0',
-    color: '#111827',
-    lineHeight: 1.3,
-  },
-  message: {
-    fontSize: '13px',
-    color: '#6b7280',
-    margin: '0 0 8px 0',
-    lineHeight: 1.4,
-  },
-  details: {
-    display: 'flex',
-    flexWrap: 'wrap' as const,
-    gap: '8px',
-    fontSize: '12px',
-  },
-  detailItem: {
-    background: 'rgba(0, 0, 0, 0.05)',
-    padding: '2px 6px',
-    borderRadius: '4px',
-    color: '#374151',
-    whiteSpace: 'nowrap' as const,
-  },
-  closeButton: {
-    flexShrink: 0,
-    width: '20px',
-    height: '20px',
-    background: 'transparent',
-    border: 'none',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    color: '#9ca3af',
-    transition: 'all 0.2s ease',
-    marginTop: '2px',
-  },
-  progressBar: {
-    position: 'absolute' as const,
-    bottom: 0,
-    left: 0,
-    height: '2px',
-    background: 'currentColor',
-    opacity: 0.3,
-    animation: 'progress 5s linear forwards',
-  },
-};
 
-// CSS 애니메이션을 위한 스타일 태그 추가
-const addGlobalStyles = (() => {
-  let added = false;
-  return () => {
-    if (added) return;
-    added = true;
-
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-      }
-      @keyframes progress {
-        from { width: 100%; }
-        to { width: 0%; }
-      }
-      @media (max-width: 640px) {
-        .anomaly-alert-container {
-          top: 10px !important;
-          right: 10px !important;
-          left: 10px !important;
-          max-width: none !important;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-  };
-})();
 
 // ========== 이상치 감지 훅 ==========
 const useAnomalyDetection = (options: {
@@ -512,6 +366,8 @@ const useAnomalyDetection = (options: {
   }, []);
 
   const addAlert = useCallback((anomalyData: AnomalyData, onNotificationAdd?: (notification: { id: string; message: string; timestamp: string; read: boolean }) => void) => {
+    // WARNING(경고)일 때만 표시
+    if (anomalyData.severity !== 'warning') return;
     // 같은 타입/심각도별 쿨다운 적용
     const key = `${anomalyData.type}:${anomalyData.severity}`;
     const now = Date.now();
@@ -529,7 +385,8 @@ const useAnomalyDetection = (options: {
     };
 
     setAlerts(prev => [...prev, newAlert]);
-
+    // 방금 표시한 타입/심각도에 대한 마지막 표시 시각 기록
+    lastAlertRef.current.set(key, now);
     // 헤더 알림 목록에 추가
     if (onNotificationAdd) {
       const notificationId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -580,6 +437,7 @@ const useAnomalyDetection = (options: {
 
     // ③ 중복 키(ref)로 동일 데이터 재표시 차단, 그리고 이번 사이클은 최대 1건만
     for (const anomaly of detectedAnomalies) {
+      if (anomaly.severity !== 'warning') continue;
       const key = `${anomaly.type}:${anomaly.severity}:${anomaly.timestamp}`;
       if (shownKeyRef.current.has(key)) continue;
       shownKeyRef.current.add(key);
@@ -671,15 +529,11 @@ const AlertItem: React.FC<{
   const { data } = alert;
   const config = ANOMALY_CONFIG[data.type];
 
-  const alertStyle = {
-    ...styles.alert,
-    ...(data.severity === 'warning' ? styles.alertWarning : styles.alertDanger),
-  };
+  const alertClassName = `${styles.alert} ${data.severity === 'warning' ? styles.alertWarning : styles.alertDanger
+    }`;
 
-  const iconStyle = {
-    ...styles.iconContainer,
-    ...(data.severity === 'warning' ? styles.iconWarning : styles.iconDanger),
-  };
+  const iconClassName = `${styles.iconContainer} ${data.severity === 'warning' ? styles.iconWarning : styles.iconDanger
+    }`;
 
   const formatValue = (value: number): string => `${value.toFixed(1)}${config.unit}`;
   const formatTime = (timestamp: string): string =>
@@ -688,40 +542,32 @@ const AlertItem: React.FC<{
     });
 
   return (
-    <div style={alertStyle}>
-      <div style={iconStyle}>
+    <div className={alertClassName}>
+      <div className={iconClassName}>
         <span>{data.severity === 'warning' ? '⚠️' : '🚨'}</span>
       </div>
 
-      <div style={styles.content}>
-        <h4 style={styles.title}>{config.icon} {config.title}</h4>
-        <p style={styles.message}>{data.message}</p>
-        <div style={styles.details}>
-          <span style={styles.detailItem}>현재: {formatValue(data.value)}</span>
-          <span style={styles.detailItem}>임계값: {formatValue(data.threshold)}</span>
-          <span style={styles.detailItem}>{formatTime(data.timestamp)}</span>
-          {data.location && <span style={styles.detailItem}>📍 {data.location}</span>}
+      <div className={styles.content}>
+        <h4 className={styles.title}>{config.icon} {config.title}</h4>
+        <p className={styles.message}>{data.message}</p>
+        <div className={styles.details}>
+          <span className={styles.detailItem}>현재: {formatValue(data.value)}</span>
+          <span className={styles.detailItem}>임계값: {formatValue(data.threshold)}</span>
+          <span className={styles.detailItem}>{formatTime(data.timestamp)}</span>
+          {data.location && <span className={styles.detailItem}>📍 {data.location}</span>}
         </div>
       </div>
 
       <button
-        style={styles.closeButton}
+        className={styles.closeButton}
         onClick={() => onClose(alert.id)}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
-          e.currentTarget.style.color = '#374151';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'transparent';
-          e.currentTarget.style.color = '#9ca3af';
-        }}
       >
         ×
       </button>
 
       <div
+        className={styles.progressBar}
         style={{
-          ...styles.progressBar,
           color: data.severity === 'warning' ? '#f59e0b' : '#dc2626',
           animationDuration: `${autoHideDelay}ms`,
         }}
@@ -748,16 +594,8 @@ const AnomalyAlert: React.FC<AnomalyAlertProps> = ({
     onNotificationAdd,
   });
 
-  // 글로벌 스타일 추가
-  useEffect(() => {
-    addGlobalStyles();
-  }, []);
 
   // AnomalyAlert 컴포넌트 내부
-  // 글로벌 스타일 추가
-  useEffect(() => {
-    addGlobalStyles();
-  }, []);
 
   // ✅ 전역 트리거 브리지: DevTools에서 바로 쓸 수 있게 설치
   useEffect(() => {
@@ -787,7 +625,7 @@ const AnomalyAlert: React.FC<AnomalyAlertProps> = ({
   const displayAlerts = alerts.slice(0, maxAlerts);
 
   return (
-    <div style={styles.alertContainer} className="anomaly-alert-container">
+    <div className={styles.alertContainer}>
       {displayAlerts.map(alert => (
         <AlertItem
           key={alert.id}

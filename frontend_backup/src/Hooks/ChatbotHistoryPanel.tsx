@@ -153,7 +153,7 @@ const ChatbotHistoryPanel: React.FC<HistoryPanelProps> = ({
               현재 세션 히스토리
             </h3>
             {currentSessionId && (
-              <p style={{ fontSize: '0.8em', color: '#666', margin: '4px 0 0 0' }}>
+              <p className={styles.sessionIdSmall}>
                 세션: {currentSessionId.substring(0, 8)}...
               </p>
             )}
@@ -166,7 +166,7 @@ const ChatbotHistoryPanel: React.FC<HistoryPanelProps> = ({
               <div>
                 <div><strong>API 호출 실패:</strong></div>
                 <div>{historyState.error}</div>
-                <div style={{ fontSize: '11px', marginTop: '4px', color: '#666' }}>
+                <div className={styles.errorDetailSmall}>
                   개발자 도구(F12) → Console 탭에서 자세한 로그 확인
                 </div>
               </div>
@@ -188,7 +188,7 @@ const ChatbotHistoryPanel: React.FC<HistoryPanelProps> = ({
                 <div className={styles['empty-state']}>
                   <Clock size={24} />
                   <p>현재 세션에 저장된 대화가 없습니다.</p>
-                  <p style={{ fontSize: '0.9em', color: '#666', marginTop: '8px' }}>
+                  <p className={styles.emptyStateSubtext}>
                     {currentSessionId ? `세션 ID: ${currentSessionId.substring(0, 8)}...` : '세션이 없습니다.'}
                   </p>
                 </div>

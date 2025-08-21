@@ -124,7 +124,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
 
   // 디버그 정보 표시
   const [debugInfo, setDebugInfo] = useState<string>('디버그 정보 없음');
-  
+
   // 로그 수집 진행 상황 표시
   const [scanProgress, setScanProgress] = useState<{
     current: number;
@@ -201,20 +201,20 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   useEffect(() => {
     if (mintrend) {
       setSettings(prev => ({
-        temp: { 
-          ...prev.temp, 
+        temp: {
+          ...prev.temp,
           current: Math.round(mintrend.mintemp || prev.temp.current),
           // target이 0이거나 설정되지 않았다면 현재값을 기본값으로 사용
           target: prev.temp.target || Math.round(mintrend.mintemp || 24)
         },
-        humidity: { 
-          ...prev.humidity, 
+        humidity: {
+          ...prev.humidity,
           current: Math.round(mintrend.minhum || prev.humidity.current),
           // target이 0이거나 설정되지 않았다면 현재값을 기본값으로 사용
           target: prev.humidity.target || Math.round(mintrend.minhum || 50)
         },
-        co2: { 
-          ...prev.co2, 
+        co2: {
+          ...prev.co2,
           current: Math.round(mintrend.mingas || prev.co2.current),
           // target이 0이거나 설정되지 않았다면 현재값을 기본값으로 사용
           target: prev.co2.target || Math.round(mintrend.mingas || 400)
@@ -296,11 +296,11 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
     try {
       setIsLoading(true);
       setLastApiCall(now);
-      
+
       // REFRESH 버튼: 30일, 일반 로딩: 3일
       const totalDays = fullRefresh ? 30 : 3;
       const actionText = fullRefresh ? '전체 새로고침' : '최근 로그 조회';
-      
+
       // 진행 상황 초기화
       setScanProgress({
         current: 0,
@@ -309,19 +309,19 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         foundLogs: 0,
         isScanning: true
       });
-      
+
       setDebugInfo(`📡 ${actionText} 시작... (${totalDays}일)`);
-      
+
       if (fullRefresh) {
         setLogs([]); // REFRESH 시에만 기존 로그 초기화
       }
 
       // 실시간 진행 상황과 함께 로그 수집
       await fetchLogsWithProgress(totalDays, !fullRefresh);
-      
+
     } catch (err: any) {
       const errorMessage = err?.message || err?.toString() || '알 수 없는 오류';
-      
+
       if (errorMessage.includes('CORS') || errorMessage.includes('Access-Control-Allow-Origin')) {
         setDebugInfo('🌐 CORS 오류 - 서버의 Access-Control-Allow-Origin 설정을 확인하세요');
         setConnectionStatus('CORS 오류');
@@ -342,24 +342,24 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   const fetchRecentChanges = useCallback(async (): Promise<void> => {
     try {
       setDebugInfo('📡 최신 변경사항 확인 중...');
-      
+
       // 서버 응답 대기를 위해 잠시 지연
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // 최근 1일만 조회 (429 오류 방지: 30개로 증가)
       const response = await ControlHistoryService.fetchControlHistory(30, undefined, getDateStrKST(0));
-      
+
       if (response && response.logs && response.logs.length > 0) {
         const formattedLogs = response.logs.map(formatLogForDisplay);
         const currentTime = new Date();
-        
+
         // 최근 10분 이내 로그만 필터링 (5분 → 10분으로 확장)
         const recentLogs = formattedLogs.filter(log => {
           const logTime = new Date(log.timestamp);
           const diffMinutes = (currentTime.getTime() - logTime.getTime()) / (1000 * 60);
           return diffMinutes <= 10;
         });
-        
+
         if (recentLogs.length > 0) {
           // 기존 로그와 병합하여 중복 제거
           setLogs(prev => {
@@ -368,7 +368,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
             const merged = [...newLogs, ...prev];
             return merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 50); // 최대 50개로 제한
           });
-          
+
           setDebugInfo(`✅ ${recentLogs.length}개 최신 로그 추가됨`);
         } else {
           setDebugInfo('ℹ️ 새로운 로그 없음');
@@ -388,23 +388,23 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
 
     for (let i = 0; i < days; i++) {
       const dateStr = getDateStrKST(-i);
-      
+
       // 진행 상황 업데이트
       setScanProgress(prev => ({
         ...prev,
         current: i + 1,
         currentDate: dateStr,
       }));
-      
+
       setDebugInfo(`📅 ${dateStr} 스캔 중... (${i + 1}/${days})`);
 
       try {
         // 해당 날짜의 로그 조회 (429 오류 방지: 20개로 제한)
         const response = await ControlHistoryService.fetchControlHistory(20, undefined, dateStr);
-        
+
         if (response && response.logs && response.logs.length > 0) {
           const formattedLogs = response.logs.map(formatLogForDisplay);
-          
+
           if (isIncremental) {
             // 증분 조회: 중복 제거 후 병합
             const existingIds = new Set(allLogs.map(log => log.id));
@@ -415,31 +415,31 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
             allLogs.push(...formattedLogs);
             totalFound += formattedLogs.length;
           }
-          
+
           // 즉시 화면에 로그 표시 (실시간 업데이트)
           setLogs([...allLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-          
+
           // 진행 상황 업데이트
           setScanProgress(prev => ({
             ...prev,
             foundLogs: totalFound,
           }));
-          
-          const dayCount = isIncremental ? 
+
+          const dayCount = isIncremental ?
             formattedLogs.filter(log => !new Set(allLogs.slice(0, -formattedLogs.length).map(l => l.id)).has(log.id)).length :
             formattedLogs.length;
-          
+
           setDebugInfo(`📅 ${dateStr}: ${dayCount}개 발견 (총 ${totalFound}개)`);
         } else {
           setDebugInfo(`📅 ${dateStr}: 로그 없음 (총 ${totalFound}개)`);
         }
-        
+
         // 각 요청 사이 간격 (429 오류 방지를 위해 대폭 증가)
         await new Promise(resolve => setTimeout(resolve, 2000)); // 200ms → 2000ms
-        
+
       } catch (error: any) {
         const errorMessage = error?.message || error?.toString() || '알 수 없는 오류';
-        
+
         // CORS 오류 특별 처리
         if (errorMessage.includes('CORS') || errorMessage.includes('Access-Control-Allow-Origin')) {
           setDebugInfo(`🌐 ${dateStr}: CORS 오류 (서버 설정 확인 필요, 총 ${totalFound}개)`);
@@ -474,8 +474,8 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   const getPlaceholderValue = (type: SensorKey): number => {
     return Math.round(pickLive(type, mintrend).value || (
       type === 'temp' ? 24 :
-      type === 'humidity' ? 50 :
-      type === 'co2' ? 400 : 0
+        type === 'humidity' ? 50 :
+          type === 'co2' ? 400 : 0
     ));
   };
 
@@ -545,7 +545,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
           ...prev,
           [type]: { ...prev[type], status },
         }));
-        
+
         // 새로 생성된 로그를 즉시 UI에 추가
         const newLogEntry = {
           id: `temp_${Date.now()}`, // 임시 ID
@@ -573,12 +573,12 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
           const updated = [newLogEntry, ...prev];
           return updated.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 50);
         });
-        
+
         // 백그라운드에서 실제 로그 데이터로 업데이트
         setTimeout(async () => {
           await fetchRecentChanges();
         }, 2000);
-        
+
         addNotification(`${type.toUpperCase()} 센서 설정이 적용되었습니다.`);
       } else {
         setDebugInfo('⚠️ 적용 실패(success=false)');
@@ -595,7 +595,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
   // =========================
   const handleApplyAll = async (): Promise<void> => {
     setIsLoading(true);
-    
+
     try {
       const tempStatus = determineStatusBySensor('temp', settings.temp.current);
       const humidityStatus = determineStatusBySensor('humidity', settings.humidity.current);
@@ -707,10 +707,10 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
 
     // AI 추천값으로 즉시 APPLY ALL 실행
     setIsLoading(true);
-    
+
     try {
       const tempStatus = determineStatusBySensor('temp', recommendation.temperature);
-      const humidityStatus = determineStatusBySensor('humidity', recommendation.humidity);  
+      const humidityStatus = determineStatusBySensor('humidity', recommendation.humidity);
       const co2Status = determineStatusBySensor('gas', recommendation.co2);
 
       const batchResult = await ControlLogService.createBatchControlLogs({
@@ -804,7 +804,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
         const isConfigured = !!data && data.success !== undefined;
         if (isConfigured) {
           setConnectionStatus('설정됨');
-          
+
           // 페이지 진입 시 최근 3일 로그 자동 로딩
           setDebugInfo('📡 최근 3일 로그 자동 로딩 중...');
           await fetchLogs(false); // 3일 조회
@@ -984,13 +984,14 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                             </span>
 
                             <span
-                              className={styles.badge}
-                              style={{ backgroundColor: colorForStatus(statusTxt), marginLeft: 8 }}
+                              className={`${styles.badge} ${styles.sensorStatusBadge}`}
+                              style={{ backgroundColor: colorForStatus(statusTxt) }}
                               aria-label="sensor-status"
                               title={(statusTxt ?? 'N/A').toUpperCase()}
                             >
                               {(statusTxt ?? 'N/A').toUpperCase()}
                             </span>
+
                           </div>
                         </div>
                       );
@@ -1023,14 +1024,14 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                               className={styles.input}
                               step="0.1"
                               min={
-                                type === 'temp' ? "0" : 
-                                type === 'humidity' ? "0" : 
-                                type === 'co2' ? "0" : "0"
+                                type === 'temp' ? "0" :
+                                  type === 'humidity' ? "0" :
+                                    type === 'co2' ? "0" : "0"
                               }
                               max={
-                                type === 'temp' ? "50" : 
-                                type === 'humidity' ? "100" : 
-                                type === 'co2' ? "5000" : "1000"
+                                type === 'temp' ? "50" :
+                                  type === 'humidity' ? "100" :
+                                    type === 'co2' ? "5000" : "1000"
                               }
                               inputMode="decimal"
                               pattern="[0-9]*\.?[0-9]*"
@@ -1113,21 +1114,21 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                     <div className={styles.progressHeader}>
                       <span className={styles.progressTitle}>로그 스캔 진행 중</span>
                       <span className={styles.progressStats}>
-                        {scanProgress.current}/{scanProgress.total} 일자 완료 
+                        {scanProgress.current}/{scanProgress.total} 일자 완료
                         ({scanProgress.foundLogs}개 로그 발견)
                       </span>
                     </div>
-                    
+
                     <div className={styles.progressBar}>
-                      <div 
+                      <div
                         className={styles.progressFill}
-                        style={{ 
+                        style={{
                           width: `${(scanProgress.current / scanProgress.total) * 100}%`,
                           transition: 'none'
                         }}
                       />
                     </div>
-                    
+
                     <div className={styles.progressDetails}>
                       <span className={styles.currentDate}>
                         현재: {scanProgress.currentDate}
@@ -1149,7 +1150,7 @@ const SettingScreen: React.FC<SettingScreenProps> = ({
                 )}
 
                 <div className={styles.tableWrap}>
-                  <div ref={loadMoreRef} style={{ height: 1 }} />
+                  <div ref={loadMoreRef} className={styles.loadMoreTrigger} />
                   <table className={styles.table}>
                     <thead>
                       <tr>

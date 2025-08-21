@@ -340,3 +340,25 @@
 .turns-list::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.8);
 }
+
+/* ===========================================
+   📝 추가 인라인 스타일 대체 클래스
+   =========================================== */
+
+.sessionIdSmall {
+  font-size: 0.8em;
+  color: #666;
+  margin: 4px 0 0 0;
+}
+
+.errorDetailSmall {
+  font-size: 11px;
+  margin-top: 4px;
+  color: #666;
+}
+
+.emptyStateSubtext {
+  font-size: 0.9em;
+  color: #666;
+  margin-top: 8px;
+}

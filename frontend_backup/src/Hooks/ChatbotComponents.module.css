@@ -1,0 +1,1006 @@
+/* ChatbotComponents.module.css - 챗봇 컴포넌트 스타일 */
+
+/* ===========================================
+   📋 챗봇 헤더 관련 스타일
+   =========================================== */
+
+/* 챗봇 헤더 컨테이너 */
+.chatbotHeader {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom: 1px solid #e2e8f0;
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+
+.chatbotHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chatbotHeaderTitle {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.chatbotHeaderSubtitle {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0;
+}
+
+.chatbotHeaderStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.chatbotHeaderStatusGreen {
+  color: #16a34a;
+}
+
+.chatbotHeaderStatusGreenBold {
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.chatbotHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* ===========================================
+   📊 센서 상태 표시 관련 스타일
+   =========================================== */
+
+/* 센서 상태 컨테이너 */
+.sensorStatus {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.sensorStatusTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 12px 0;
+}
+
+.sensorStatusGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.sensorStatusItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #111827;
+}
+
+/* ===========================================
+   💬 메시지 아이템 관련 스타일
+   =========================================== */
+
+/* 메시지 아이템 컨테이너 */
+.messageItem {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.messageItemUser {
+  align-items: flex-end;
+}
+
+.messageItemBot {
+  align-items: flex-start;
+}
+
+.messageContent {
+  max-width: 85%;
+  padding: 16px 20px;
+  border-radius: 18px;
+  position: relative;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.messageContentUser {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border-bottom-right-radius: 6px;
+  margin-left: auto;
+}
+
+.messageContentBot {
+  background: #f8fafc;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-bottom-left-radius: 6px;
+  margin-right: auto;
+}
+
+.messageText {
+  white-space: pre-wrap;
+}
+
+.messageMetadata {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.messageMetadataUser {
+  justify-content: flex-end;
+}
+
+.messageMetadataBot {
+  justify-content: flex-start;
+}
+
+.messageDetails {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #f1f5f9;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.messageDetailsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.messageDetailsItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.messageDetailsLabel {
+  color: #6c757d;
+}
+
+.messageDetailsValueContainer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.messageDetailsValue {
+  font-weight: 600;
+  color: #212529;
+}
+
+.messageDetailsUnit {
+  font-size: 10px;
+  color: #6c757d;
+  background-color: #f8f9fa;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.messageTimestamp {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 8px;
+}
+
+.messageTimestampUser {
+  justify-content: flex-end;
+}
+
+.messageTimestampBot {
+  justify-content: flex-start;
+}
+
+.messageRouteInfo {
+  font-size: 12px;
+  color: #10b981;
+}
+
+.messageCheckmark {
+  font-size: 12px;
+  color: #10b981;
+}
+
+/* ===========================================
+   ⌨️ 타이핑 인디케이터 관련 스타일
+   =========================================== */
+
+/* 타이핑 인디케이터 컨테이너 */
+.typingIndicator {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  max-width: 85%;
+}
+
+.typingIndicatorContent {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  border-bottom-left-radius: 6px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.typingIndicatorText {
+  color: #64748b;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.typingIndicatorDots {
+  display: flex;
+  gap: 4px;
+}
+
+.typingIndicatorDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #64748b;
+  animation: typingBounce 1.4s infinite ease-in-out;
+}
+
+.typingIndicatorDot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typingIndicatorDot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typingBounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ===========================================
+   📝 챗봇 입력 관련 스타일
+   =========================================== */
+
+/* 챗봇 입력 컨테이너 */
+.chatbotInput {
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  padding: 20px 24px;
+  position: sticky;
+  bottom: 0;
+  backdrop-filter: blur(10px);
+}
+
+.chatbotInputForm {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.chatbotInputFieldContainer {
+  flex: 1;
+  position: relative;
+}
+
+.chatbotInputField {
+  width: 100%;
+  min-height: 44px;
+  max-height: 120px;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  transition: all 0.2s ease;
+  line-height: 1.5;
+  overflow-y: auto;
+}
+
+.chatbotInputField:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.chatbotInputField:disabled {
+  background-color: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.chatbotInputCounter {
+  position: absolute;
+  bottom: -20px;
+  right: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.chatbotInputButton {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 80px;
+  justify-content: center;
+}
+
+.chatbotInputButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.chatbotInputButton:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ===========================================
+   🏷️ 상태 배지 관련 스타일
+   =========================================== */
+
+/* 상태 배지 기본 스타일 */
+.statusBadge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statusBadgeGood {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+.statusBadgeNormal {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.statusBadgeWarning {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.statusBadgeDanger {
+  background-color: #fecaca;
+  color: #dc2626;
+}
+
+/* ===========================================
+   ⚡ 로딩 스피너 관련 스타일
+   =========================================== */
+
+/* 로딩 스피너 */
+.loadingSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f4f6;
+  border-top: 2px solid #f59e0b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===========================================
+   📍 New Chat Button 스타일
+   =========================================== */
+
+.newChatButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #4e5150ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.newChatButton:hover {
+  background: #4e5150ff;
+}
+
+/* ===========================================
+   📊 Sensor Data Card 스타일
+   =========================================== */
+
+.sensorDataCard {
+  margin-top: 0;
+  padding: 10px;
+  background-color: #fff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  font-size: 13px;
+  min-width: 300px;
+  max-width: 340px;
+}
+
+.sensorDataContent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.sensorDataRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #111827;
+}
+
+.sensorDataBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+/* ===========================================
+   💬 Message Item Layout 스타일
+   =========================================== */
+
+.messageItemContainer {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 16px;
+  gap: 12px;
+  max-width: 100%;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.messageItemContainerUser {
+  flex-direction: row-reverse;
+}
+
+.messageItemContainerBot {
+  flex-direction: row;
+}
+
+.messageProfileIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.messageProfileIconUser {
+  background-color: #007bff;
+}
+
+.messageProfileIconBot {
+  background-color: #28a745;
+}
+
+.messageContentContainer {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+  gap: 4px;
+}
+
+.messageUsername {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.messageUsernameUser {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.messageUsernameBot {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.messageBubble {
+  border-radius: 18px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  position: relative;
+  max-width: fit-content;
+}
+
+.messageBubbleUser {
+  background-color: #007bff;
+  color: white;
+}
+
+.messageBubbleBot {
+  background-color: #f1f3f4;
+  color: #202124;
+}
+
+.messageBubbleTail {
+  position: absolute;
+  top: 8px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+.messageBubbleTailUser {
+  right: -8px;
+  border-width: 8px 0 8px 8px;
+  border-color: transparent transparent transparent #007bff;
+}
+
+.messageBubbleTailBot {
+  left: -8px;
+  border-width: 8px 8px 8px 0;
+  border-color: transparent #f1f3f4 transparent transparent;
+}
+
+.messageTextContent {
+  white-space: pre-wrap;
+}
+
+.sensorDataCardInMessage {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.sensorDataCardHeader {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sensorDataCardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sensorDataCardItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.sensorDataCardLabel {
+  color: #6c757d;
+}
+
+.sensorDataCardValue {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sensorDataCardValueText {
+  font-weight: 600;
+  color: #212529;
+}
+
+.sensorDataCardStatusBadge {
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.messageTimestampAndBadge {
+  font-size: 11px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.messageTimestampAndBadgeUser {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.messageTimestampAndBadgeBot {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.responseTypeBadge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.userMessageCheckmark {
+  font-size: 12px;
+  color: #10b981;
+}
+
+/* ===========================================
+   ⌨️ Typing Indicator 스타일
+   =========================================== */
+
+.typingIndicatorContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 8px 16px;
+  gap: 12px;
+  max-width: 100%;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.typingIndicatorBot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #28a745;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.typingIndicatorMessageContainer {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+  gap: 4px;
+}
+
+.typingIndicatorBotName {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.typingIndicatorBubble {
+  background-color: #f1f3f4;
+  color: #6b7280;
+  border-radius: 18px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  position: relative;
+  max-width: fit-content;
+}
+
+.typingIndicatorBubbleTail {
+  position: absolute;
+  top: 8px;
+  left: -8px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 8px 8px 8px 0;
+  border-color: transparent #f1f3f4 transparent transparent;
+}
+
+.typingIndicatorContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.typingDots {
+  display: flex;
+  gap: 2px;
+}
+
+.typingDots span {
+  animation: blink 1.4s infinite both;
+  font-size: 8px;
+  color: #111827;
+}
+
+.typingDots span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typingDots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typingDots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes blink {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===========================================
+   📝 ChatBot Input Layout 스타일
+   =========================================== */
+
+.chatbotInputContainer {
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+  background-color: white;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.chatbotInputError {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-radius: 8px;
+  font-size: 13px;
+  border: 1px solid #fecaca;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chatbotInputForm {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.chatbotInputFieldContainer {
+  flex: 1;
+  position: relative;
+}
+
+.chatbotInputField {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 25px;
+  border: 2px solid;
+  outline: none;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+.chatbotInputFieldFocused {
+  border-color: #111827;
+}
+
+.chatbotInputFieldNormal {
+  border-color: #e5e7eb;
+}
+
+.chatbotInputFieldDisabled {
+  background-color: #f9fafb;
+}
+
+.chatbotInputFieldEnabled {
+  background-color: white;
+}
+
+.chatbotInputCounter {
+  position: absolute;
+  right: 18px;
+  bottom: -20px;
+  font-size: 11px;
+}
+
+.chatbotInputCounterNormal {
+  color: #6b7280;
+}
+
+.chatbotInputCounterWarning {
+  color: #dc2626;
+}
+
+.chatbotInputSendButton {
+  padding: 14px;
+  border-radius: 50%;
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.chatbotInputSendButtonEnabled {
+  background-color: #111827;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.chatbotInputSendButtonDisabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+}
+
+.chatbotInputHelpText {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.loadingSpinnerSmall {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* ===========================================
+   ℹ️ Session Info Tooltip 스타일
+   =========================================== */
+
+.sessionInfoTooltipContainer {
+  position: relative;
+  margin-left: 8px;
+}
+
+.sessionInfoTooltipIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #e0e7ff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+  cursor: help;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.sessionInfoTooltipPopup {
+  position: absolute;
+  top: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1f2937;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: tooltipFadeIn 0.2s ease-out;
+}
+
+.sessionInfoTooltipArrow {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid #1f2937;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
