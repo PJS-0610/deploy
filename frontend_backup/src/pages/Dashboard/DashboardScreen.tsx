@@ -62,9 +62,9 @@ import {
   QUICKSIGHT_SENSOR_OPTIONS
 } from '../../Hooks/QuickSightTypes';
 import styles from "./DashboardScreen.module.css";
-import { Sidebar } from '../../components/Common/Sidebar';
-import NotificationDropdown from '../../components/Common/Dropdown/NotificationDropdown';
-import AdminDropdown from '../../components/Common/Dropdown/AdminDropdown';
+import { Sidebar } from '../../components/common/Sidebar';
+import NotificationDropdown from '../../components/common/dropdown/NotificationDropdown';
+import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
 import AnomalyAlert from '../../Hooks/AnomalyAlert';
 
 /**

@@ -23,16 +23,16 @@
 // HistoryScreen.tsx - 간소화된 히스토리 화면 컴포넌트
 import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, User } from 'lucide-react';
-import { Sidebar } from '../../components/Common/Sidebar';
-import DashboardHeader from '../../components/Common/Dashboard/Header';
-import NotificationDropdown from '../../components/Common/Dropdown/NotificationDropdown';
-import AdminDropdown from '../../components/Common/Dropdown/AdminDropdown';
+import { Sidebar } from '../../components/common/Sidebar';
+import DashboardHeader from '../../components/common/dashboard/Header';
+import NotificationDropdown from '../../components/common/dropdown/NotificationDropdown';
+import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
 import { HistoryUtils } from '../../Services/HistoryTypes';
 import { HistoryScreenProps, NotificationData } from '../../Services/HistoryTypes';
 import styles from './HistoryScreen.module.css';
 import useHistoryData from '../../Hooks/UseHistoryData';
 // ✅ import에서 HistoryTable 제거 (사용하지 않으므로)
-import HistoryFilter from '../../components/History/HistoryFilter';
+import HistoryFilter from '../../components/history/HistoryFilter';
 
 const statusClass = (s?: string) => {
   switch (String(s || '').toUpperCase()) {

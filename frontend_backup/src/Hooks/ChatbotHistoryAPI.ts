@@ -46,7 +46,7 @@ class ChatbotHistoryAPIImpl {
 
     // 세션 ID 자동 첨부 (ChatbotAPI와 동일)
     try {
-      const { getSessionId } = require('../../../Utils/sessionUtils');
+      const { getSessionId } = require('../Utils/sessionUtils');
       headers['X-Session-Id'] = getSessionId();
     } catch (error) {
       // Failed to get session ID - continue without it

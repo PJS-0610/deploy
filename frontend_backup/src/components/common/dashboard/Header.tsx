@@ -23,8 +23,8 @@ import React from 'react';
 import { Bell, User, ChevronDown } from 'lucide-react';
 
 // 드롭다운 컴포넌트 임포트
-import NotificationDropdown from '../Dropdown/NotificationDropdown'; // 알림 드롭다운
-import AdminDropdown from '../Dropdown/AdminDropdown';               // 관리자 메뉴 드롭다운
+import NotificationDropdown from '../dropdown/NotificationDropdown'; // 알림 드롭다운
+import AdminDropdown from '../dropdown/AdminDropdown';               // 관리자 메뉴 드롭다운
 
 // CSS 모듈 스타일 임포트
 import styles from './Header.module.css';

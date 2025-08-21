@@ -21,8 +21,8 @@ import {
 
 import { ControlHistoryService } from '../../Hooks/ControlApiHistory';
 import { ControlLogService } from '../../Hooks/ControlApiLog';
-import { Sidebar } from '../../components/Common/Sidebar';
-import AdminDropdown from '../../components/Common/Dropdown/AdminDropdown';
+import { Sidebar } from '../../components/common/Sidebar';
+import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
 // ✅ 올바른 임포트 (경로만 프로젝트 구조에 맞게)
 import { MintrendService, type MintrendResponse } from '../../Hooks/MintrendService';
 import AIRecommendationModal from '../../components/AiRecommendation/AIRecommendationModal';

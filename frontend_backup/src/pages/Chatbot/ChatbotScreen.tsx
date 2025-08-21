@@ -33,9 +33,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Bell, User, ChevronDown } from 'lucide-react';
-import { Sidebar } from '../../components/Common/Sidebar';
-import NotificationDropdown from '../../components/Common/Dropdown/NotificationDropdown';
-import AdminDropdown from '../../components/Common/Dropdown/AdminDropdown';
+import { Sidebar } from '../../components/common/Sidebar';
+import NotificationDropdown from '../../components/common/dropdown/NotificationDropdown';
+import AdminDropdown from '../../components/common/dropdown/AdminDropdown';
 import { ChatbotScreenProps, NotificationData } from '../../Services/ChatbotTypes';
 import styles from "./ChatbotScreen.module.css";
 import { useChatbot } from '../../Services/UseChatbot';
