@@ -171,7 +171,7 @@ const DEFAULT_THRESHOLDS: ThresholdSettings = {
     // dangerMin / dangerMax 필요시 정의
   },
   gas: {
-    warningMax: 2500.0, // 2500ppm 이상 경고
+    warningMax: 500.0, // 2500ppm 이상 경고
     // dangerMax 필요시 정의
   },
 };
